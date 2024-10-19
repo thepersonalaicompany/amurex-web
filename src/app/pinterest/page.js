@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Search,
   Bell,
@@ -9,231 +9,272 @@ import {
   Home,
   Compass,
   Plus,
+  Maximize2,
+  X
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { OnboardingPopup } from "@/components/OnboardingPopup";
+import { NoteEditorTile } from '@/components/NoteEditorTile';
+import { useDebounce } from '@/hooks/useDebounce';
+import { PinTile } from '@/components/PinTile';
+import { useRouter } from 'next/navigation';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export default function PinterestBoard() {
   const [pins, setPins] = useState([]);
-  const [showOnboarding, setShowOnboarding] = useState(true);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const [importType, setImportType] = useState(null);
+  const [isFocusMode, setIsFocusMode] = useState(false);
+  const [focusNoteContent, setFocusNoteContent] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
+  const [isAiSearching, setIsAiSearching] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
-    const sizes = ["small", "medium", "large"];
-    const newPins = [
-      {
-        id: 1,
-        title: "Cozy living room",
-        image: "/placeholder.svg?height=300&width=200",
-      },
-      {
-        id: 2,
-        title: "Modern kitchen design",
-        image: "/placeholder.svg?height=400&width=300",
-      },
-      {
-        id: 3,
-        title: "Minimalist workspace",
-        image: "/placeholder.svg?height=250&width=200",
-      },
-      {
-        id: 4,
-        title: "Rustic bedroom decor",
-        image: "/placeholder.svg?height=500&width=300",
-      },
-      {
-        id: 5,
-        title: "Elegant bathroom",
-        image: "/placeholder.svg?height=300&width=200",
-      },
-      {
-        id: 6,
-        title: "Outdoor patio ideas",
-        image: "/placeholder.svg?height=400&width=300",
-      },
-      {
-        id: 7,
-        title: "DIY home projects",
-        image: "/placeholder.svg?height=280&width=200",
-      },
-      {
-        id: 8,
-        title: "Colorful art studio",
-        image: "/placeholder.svg?height=500&width=300",
-      },
-      {
-        id: 9,
-        title: "Scandinavian interior",
-        image: "/placeholder.svg?height=360&width=200",
-      },
-      {
-        id: 10,
-        title: "Boho chic bedroom",
-        image: "/placeholder.svg?height=400&width=300",
-      },
-      {
-        id: 11,
-        title: "Vintage home office",
-        image: "/placeholder.svg?height=320&width=200",
-      },
-      {
-        id: 12,
-        title: "Industrial loft design",
-        image: "/placeholder.svg?height=450&width=300",
-      },
-      {
-        id: 13,
-        title: "Zen garden ideas",
-        image: "/placeholder.svg?height=280&width=200",
-      },
-      {
-        id: 14,
-        title: "Coastal living room",
-        image: "/placeholder.svg?height=400&width=300",
-      },
-      {
-        id: 15,
-        title: "Minimalist bedroom",
-        image: "/placeholder.svg?height=350&width=200",
-      },
-    ].map((pin) => ({
-      ...pin,
-      size: sizes[Math.floor(Math.random() * sizes.length)],
-    }));
-    setPins(newPins);
+    fetchDocuments();
   }, []);
 
-  const handleImportDocs = (type) => {
+  useEffect(() => {
+    if (debouncedSearchTerm) {
+      searchPins(debouncedSearchTerm);
+    } else {
+      fetchDocuments();
+    }
+  }, [debouncedSearchTerm]);
+
+  const fetchDocuments = async () => {
+    try {
+      const response = await fetch('/api/searchAll');
+      const data = await response.json();
+      if (data.success) {
+        const sizes = ["small", "medium", "large"];
+        const newPins = data.documents.map(doc => ({
+          id: doc.id,
+          title: doc.title,
+          image: doc.url.includes('notion.so') ? "/notion-page-thumbnail.png" : 
+                 doc.url.includes('docs.google.com') ? "https://www.google.com/images/about/docs-icon.svg" : 
+                 "/placeholder.svg?height=300&width=200",
+          type: doc.url.includes('notion.so') ? "notion" : 
+                doc.url.includes('docs.google.com') ? "google" : "other",
+          size: sizes[Math.floor(Math.random() * sizes.length)],
+          tags: doc.tags,
+        }));
+        setPins(newPins);
+      } else {
+        console.error('Error fetching documents:', data.error);
+      }
+    } catch (error) {
+      console.error('Error fetching documents:', error);
+    }
+  };
+
+  const searchPins = useCallback((term) => {
+    const filteredPins = pins.filter(pin => 
+      pin.title.toLowerCase().includes(term.toLowerCase()) ||
+      pin.tags.some(tag => tag.toLowerCase().includes(term.toLowerCase()))
+    );
+    setPins(filteredPins);
+  }, [pins]);
+
+  const handleImportDocs = async (type) => {
     setImportType(type);
-    // Simulating import of Notion pages
-    const importedDocs = [
-      {
-        id: 16,
-        title: "Project Roadmap",
-        image: "/notion-page-thumbnail.png",
-        type: "notion",
-      },
-      {
-        id: 17,
-        title: "Meeting Notes",
-        image: "/notion-page-thumbnail.png",
-        type: "notion",
-      },
-      {
-        id: 18,
-        title: "Product Backlog",
-        image: "/notion-page-thumbnail.png",
-        type: "notion",
-      },
-    ];
-
-    const sizes = ["small", "medium", "large"];
-    const newPins = importedDocs.map(doc => ({
-      ...doc,
-      size: sizes[Math.floor(Math.random() * sizes.length)],
-    }));
-
-    setPins(prevPins => [...prevPins, ...newPins]);
+    // Here you would typically open a modal or redirect to the upload page
+    // For now, we'll just refetch the documents to simulate an import
+    await fetchDocuments();
     setShowOnboarding(false);
   };
 
+  const handleSaveNote = useCallback(async (noteText) => {
+    try {
+      // Generate a unique filename
+      const filename = `note_${Date.now()}.txt`;
+
+      // Upload the note text to Supabase Storage
+      const { data, error: uploadError } = await supabase.storage
+        .from('notes')
+        .upload(filename, noteText);
+
+      console.log('Uploaded note:', data);
+      if (uploadError) throw uploadError;
+
+      // Get the public URL of the uploaded file
+      const { data: { publicUrl }, error: urlError } = supabase.storage
+        .from('notes')
+        .getPublicUrl(filename);
+
+      if (urlError) throw urlError;
+
+      // Save the note metadata to the database
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          url: publicUrl,
+          title: noteText.substring(0, 50) + '...', 
+          text: noteText 
+        }),
+      });
+
+      const responseData = await response.json();
+      if (responseData.success) {
+        await fetchDocuments();
+      } else {
+        console.error('Error saving note:', responseData.error);
+      }
+    } catch (error) {
+      console.error('Error saving note:', error);
+    }
+  }, [fetchDocuments]);
+
+  const handleOpenFocusMode = useCallback(() => {
+    setIsFocusMode(true);
+  }, []);
+
+  const handleCloseFocusMode = useCallback(() => {
+    setIsFocusMode(false);
+    setFocusNoteContent('');
+  }, []);
+
+  const handleSaveFocusNote = useCallback(async (noteText) => {
+    console.log('Saving focus note:', noteText);
+    await handleSaveNote(noteText);
+    handleCloseFocusMode();
+  }, [handleSaveNote]);
+
+  const handleAiSearch = useCallback(async () => {
+    if (!searchTerm.trim()) return;
+    setIsAiSearching(true);
+    try {
+      const response = await fetch('/api/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: searchTerm, searchType: 'ai' }),
+      });
+      const data = await response.json();
+      if (data.results) {
+        setPins(data.results.map(doc => ({
+          id: doc.id,
+          title: doc.title,
+          image: doc.url.includes('notion.so') ? "/notion-page-thumbnail.png" : 
+                 doc.url.includes('docs.google.com') ? "https://www.google.com/images/about/docs-icon.svg" : 
+                 "/placeholder.svg?height=300&width=200",
+          type: doc.url.includes('notion.so') ? "notion" : 
+                doc.url.includes('docs.google.com') ? "google" : "other",
+          size: ["small", "medium", "large"][Math.floor(Math.random() * 3)],
+          tags: doc.tags,
+        })));
+      }
+    } catch (error) {
+      console.error('Error during AI search:', error);
+    } finally {
+      setIsAiSearching(false);
+    }
+  }, [searchTerm]);
+
+  const handleOpenFolder = useCallback((pin) => {
+    router.push(`/folder/${pin.id}`);
+  }, [router]);
+
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-100">
+    <div className="flex h-screen overflow-hidden" style={{ backgroundColor: "var(--surface-color-2)" }}>
       {showOnboarding && (
         <OnboardingPopup
           onClose={() => setShowOnboarding(false)}
           onImport={handleImportDocs}
         />
       )}
-      <aside className="w-16 bg-white shadow-md flex flex-col items-center py-4 space-y-8 fixed h-full z-50">
+      <aside className="w-16 shadow-md flex flex-col items-center py-4 space-y-8 fixed h-full z-50" style={{ backgroundColor: "var(--surface-color)" }}>
         <span className="text-4xl" role="img" aria-label="Dog emoji">
           🐶
         </span>
         <Button variant="ghost" size="icon">
-          <Home className="h-6 w-6" />
+          <Home className="h-6 w-6" style={{ color: "var(--color-4)" }} />
         </Button>
         <Button variant="ghost" size="icon">
-          <Compass className="h-6 w-6" />
+          <Compass className="h-6 w-6" style={{ color: "var(--color-4)" }} />
         </Button>
         <Button variant="ghost" size="icon">
-          <Bell className="h-6 w-6" />
+          <Bell className="h-6 w-6" style={{ color: "var(--color-4)" }} />
         </Button>
         <Button variant="ghost" size="icon">
-          <MessageCircle className="h-6 w-6" />
+          <MessageCircle className="h-6 w-6" style={{ color: "var(--color-4)" }} />
         </Button>
         <Button variant="ghost" size="icon">
-          <User className="h-6 w-6" />
+          <User className="h-6 w-6" style={{ color: "var(--color-4)" }} />
         </Button>
-        <Button variant="ghost" size="icon">
-          <Plus className="h-6 w-6" />
+        <Button variant="ghost" size="icon" onClick={() => window.location.href = '/upload'}>
+          <Plus className="h-6 w-6" style={{ color: "var(--color-4)" }} />
         </Button>
       </aside>
       <main
         className="flex-1 overflow-y-auto ml-16"
-        style={{ backgroundColor: "#f0f0f0" }}
+        style={{ backgroundColor: "var(--surface-color-2)" }}
       >
-        <div className="sticky top-0 z-40 bg-gray-100 bg-opacity-90 backdrop-blur-sm">
-          <div className="max-w-4xl mx-auto py-4 px-8">
-            <Input
-              type="search"
-              placeholder="Search..."
-              className="w-full text-4xl py-4 px-2 font-serif bg-transparent border-0 border-b-2 border-gray-300 rounded-none focus:ring-0 focus:border-gray-500 transition-colors"
-              style={{ fontFamily: "'Playfair Display', serif" }}
-            />
+        <div className="sticky top-0 z-40 bg-opacity-90 backdrop-blur-sm" style={{ backgroundColor: "var(--surface-color-2)" }}>
+          <div className="max-w-4xl mx-auto py-4 px-8 flex justify-between items-center">
+            <div className="relative w-full">
+              <Input
+                type="search"
+                placeholder="Search..."
+                className="w-full text-4xl py-4 px-2 font-serif bg-transparent border-0 border-b-2 rounded-none focus:ring-0 transition-colors"
+                style={{ 
+                  fontFamily: "'Playfair Display', serif",
+                  borderColor: "var(--line-color)",
+                  color: "var(--color)",
+                }}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyDown={(e) => {
+                  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                    e.preventDefault();
+                    handleAiSearch();
+                  }
+                }}
+              />
+              {isAiSearching && (
+                <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+                  <Search className="animate-spin h-6 w-6" style={{ color: "var(--color-4)" }} />
+                </div>
+              )}
+            </div>
+            <Button variant="ghost" size="icon" onClick={handleOpenFocusMode} className="ml-4">
+              <Maximize2 className="h-6 w-6" style={{ color: "var(--color-4)" }} />
+            </Button>
           </div>
         </div>
         <div className="p-8">
           <div className="columns-2 sm:columns-3 md:columns-4 lg:columns-5 gap-4">
+            <NoteEditorTile onSave={handleSaveNote} onOpenFocusMode={handleOpenFocusMode} />
             {pins.map((pin) => (
-              <div
-                key={pin.id}
-                className={`mb-4 break-inside-avoid ${
-                  pin.size === "large"
-                    ? "h-[500px]"
-                    : pin.size === "medium"
-                    ? "h-[400px]"
-                    : "h-[300px]"
-                }`}
-              >
-                <div className="relative group overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 ease-in-out h-full">
-                  <img
-                    src={pin.image}
-                    alt={pin.title}
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                    <h3
-                      className="text-white text-center font-semibold px-2 font-serif text-lg italic"
-                      style={{ fontFamily: "'Playfair Display', serif" }}
-                    >
-                      {pin.title}
-                    </h3>
-                  </div>
-                  {pin.type === "notion" && (
-                    <div className="absolute top-2 left-2 bg-white rounded-full p-1">
-                      <img
-                        src="/notion-icon.png"
-                        alt="Notion"
-                        className="w-6 h-6"
-                      />
-                    </div>
-                  )}
-                  {pin.image.includes('googleusercontent.com') && (
-                    <div className="absolute top-2 right-2 bg-white rounded-full p-1">
-                      <img
-                        src="https://www.google.com/images/about/docs-icon.svg"
-                        alt="Google Docs"
-                        className="w-6 h-6"
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
+              <PinTile key={pin.id} pin={pin} onClick={handleOpenFolder} />
             ))}
           </div>
         </div>
       </main>
+      {isFocusMode && (
+        <div className="fixed inset-0 bg-white z-50 flex flex-col p-8">
+          <Button variant="ghost" size="icon" onClick={handleCloseFocusMode} className="absolute top-4 right-4">
+            <X className="h-6 w-6" />
+          </Button>
+          <textarea
+            className="flex-grow resize-none border-none focus:ring-0 text-lg p-4"
+            value={focusNoteContent}
+            onChange={(e) => setFocusNoteContent(e.target.value)}
+            placeholder="Start typing your note..."
+            autoFocus
+          />
+          <div className="flex justify-end mt-4">
+            <Button onClick={() => handleSaveFocusNote(focusNoteContent)}>Save</Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

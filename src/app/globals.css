@@ -5,6 +5,47 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --line-color: #E1E1E1;
+  --surface-color: #fff;
+  --surface-color-2: #f0f2f5;
+  --surface-color-3: #f0f2f5;
+  --surface-color-4: #f0f2f5;
+  --color: #000;
+  --color-2: #000;
+  --color-3: #000;
+  --color-4: #748297;
+  --button-color: #E3E7EE;
+  --accent-color: #ff5924;
+  --alert-color: #ff002e;
+  --dropshadow-color: #BABFC2;
+  --highlight-color: #fff6aa;
+  --gutter: 80px;
+  --bar-height: 60px;
+  --col-gap: 25px;
+  --backdrop-color: rgb(0 0 0 / 80%);
+  --inset-top: 0px;
+  --inset-bottom: 0px;
+  --native-nav-gradient-inset: 20px;
+  --note-divider-color: #748297;
+  --shortcut-button: #e3e7ee;
+  --shortcut-label-color: #000;
+  --sunrise-gradient: linear-gradient(113deg, #F2E5D7 1.23%, #DDCAB5 98.53%), #DDCAB5;
+  --button-bg-color: #fff;
+  --button-gradient: linear-gradient(90deg, #ED9EC0 0%, #F5BB79 50%, #FF3B21 100%);
+  --fallback-bg: #fff;
+  --fallback-box-shadow: 0px 77px 31px rgb(64 70 79 / 2%), 0px 43px 32px rgb(64 70 79 / 7%), 0px 19px 19px rgb(64 70 79 / 8%), 0px 2px 7px rgb(64 70 79 / 10%);
+  --transition-ease: cubic-bezier(0.25, 0.1, 0, 1);
+  --card-color: #909CAE;
+  --card-logo-color: #909CAE;
+  --card-shadow-color: #D4DCE7;
+  --repository-object-label-color: #909CAE;
+  --repository-object-value-color: #292F39;
+  --repository-object-link: rgb(240 242 245 / 70%);
+  --repository-object-link-hover: rgb(240 242 245 / 100%);
+  --later-tag-background: #F0FFFE;
+  --later-tag-color: #559490;
+  --root-surface-color: #fff;
+  --scrollbar-color: #D0D8E5;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -15,8 +56,8 @@
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
+  color: var(--color);
+  background: var(--surface-color);
   font-family: Arial, Helvetica, sans-serif;
 }
 
