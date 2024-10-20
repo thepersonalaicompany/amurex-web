@@ -14,8 +14,12 @@ const auth = new google.auth.GoogleAuth({
 
 export async function POST(req) {
   const { url, title, text } = await req.json();
-  // const text = await fetchDocumentText(url);
-  console.log(url, title, text);
+
+  // Check for authentication
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
 
   try {
     // Generate tags using OpenAI
@@ -38,7 +42,7 @@ export async function POST(req) {
     // Store in Supabase
     const { data, error } = await supabase
       .from('documents')
-      .insert({ url, title, text, tags, embeddings })
+      .insert({ url, title, text, tags, embeddings, user_id: session.user.id })
       .select();
 
     if (error) throw error;

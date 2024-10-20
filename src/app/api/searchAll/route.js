@@ -1,14 +1,19 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createSupabaseClient } from '@/lib/supabaseClient';
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+export async function GET(req) {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
 
-export async function GET() {
+  const accessToken = authHeader.split(' ')[1];
+  const supabase = createSupabaseClient(accessToken);
+
   try {
     const { data, error } = await supabase
       .from('documents')
-      .select('id, title, url, tags');
-      // .order('created_at', { ascending: false });
+      .select('*');
 
     if (error) throw error;
 
@@ -18,4 +23,3 @@ export async function GET() {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
-

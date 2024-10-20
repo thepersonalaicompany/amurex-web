@@ -2,15 +2,7 @@ import React from 'react';
 
 export const PinTile = ({ pin }) => {
   return (
-    <div
-      className={`mb-4 mt-10 break-inside-avoid ${
-        pin.size === "large"
-          ? "h-[350px]"
-          : pin.size === "medium"
-          ? "h-[300px]"
-          : "h-[250px]"
-      } min-w-[200px]`}
-    >
+    <div className="mb-4 break-inside-avoid">
       <div className="h-full">
         <div className="relative group overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 ease-in-out h-full flex flex-col" style={{ backgroundColor: "var(--surface-color)" }}>
           <div className="relative flex-grow">
