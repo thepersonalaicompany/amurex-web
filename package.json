@@ -15,6 +15,8 @@
     "lucide-react": "^0.453.0",
     "next": "14.2.15",
     "novel": "^0.5.0",
+    "novel-lightweight": "^0.2.1",
+    "ai": "^2.2.9",
     "openai": "^4.68.1",
     "react": "^18",
     "react-dom": "^18"

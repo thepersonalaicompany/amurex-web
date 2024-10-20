@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { Editor } from "novel";
 
 export default function Home() {
   return (

@@ -20,11 +20,19 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { PinTile } from '@/components/PinTile';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
+import FocusedEditor from '@/components/FocusedEditor';
+import { Loader } from '@/components/Loader';
+import localFont from 'next/font/local';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+const louizeFont = localFont({
+  src: '../fonts/Louize.ttf',
+  variable: '--font-louize',
+});
 
 export default function PinterestBoard() {
   const [pins, setPins] = useState([]);
@@ -36,6 +44,7 @@ export default function PinterestBoard() {
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const [isAiSearching, setIsAiSearching] = useState(false);
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     fetchDocuments();
@@ -50,28 +59,34 @@ export default function PinterestBoard() {
   }, [debouncedSearchTerm]);
 
   const fetchDocuments = async () => {
+    setIsLoading(true);
     try {
       const response = await fetch('/api/searchAll');
       const data = await response.json();
       if (data.success) {
         const sizes = ["small", "medium", "large"];
-        const newPins = data.documents.map(doc => ({
+        const newPins = data.documents.map(doc => {
+          console.log(doc);
+          return {
           id: doc.id,
           title: doc.title,
-          image: doc.url.includes('notion.so') ? "/notion-page-thumbnail.png" : 
+          image: ( doc.url.includes('notion.so') || doc.url.includes('notion.site') ) ? "/notion-page-thumbnail.png" : 
                  doc.url.includes('docs.google.com') ? "https://www.google.com/images/about/docs-icon.svg" : 
                  "/placeholder.svg?height=300&width=200",
-          type: doc.url.includes('notion.so') ? "notion" : 
+          type: ( doc.url.includes('notion.so') || doc.url.includes('notion.site') ) ? "notion" : 
                 doc.url.includes('docs.google.com') ? "google" : "other",
           size: sizes[Math.floor(Math.random() * sizes.length)],
           tags: doc.tags,
-        }));
+          };
+        });
         setPins(newPins);
       } else {
         console.error('Error fetching documents:', data.error);
       }
     } catch (error) {
       console.error('Error fetching documents:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -162,10 +177,10 @@ export default function PinterestBoard() {
         setPins(data.results.map(doc => ({
           id: doc.id,
           title: doc.title,
-          image: doc.url.includes('notion.so') ? "/notion-page-thumbnail.png" : 
+          image:  ( doc.url.includes('notion.so') || doc.url.includes('notion.site') ) ? "https://upload.wikimedia.org/wikipedia/commons/e/e9/Notion-logo.svg" : 
                  doc.url.includes('docs.google.com') ? "https://www.google.com/images/about/docs-icon.svg" : 
                  "/placeholder.svg?height=300&width=200",
-          type: doc.url.includes('notion.so') ? "notion" : 
+          type: ( doc.url.includes('notion.so') || doc.url.includes('notion.site') ) ? "notion" : 
                 doc.url.includes('docs.google.com') ? "google" : "other",
           size: ["small", "medium", "large"][Math.floor(Math.random() * 3)],
           tags: doc.tags,
@@ -183,49 +198,51 @@ export default function PinterestBoard() {
   }, [router]);
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ backgroundColor: "var(--surface-color-2)" }}>
+    <div className={`flex h-screen overflow-hidden ${louizeFont.variable}`} style={{ backgroundColor: "var(--surface-color-2)" }}>
       {showOnboarding && (
         <OnboardingPopup
           onClose={() => setShowOnboarding(false)}
           onImport={handleImportDocs}
         />
       )}
-      <aside className="w-16 shadow-md flex flex-col items-center py-4 space-y-8 fixed h-full z-50" style={{ backgroundColor: "var(--surface-color)" }}>
+      <aside className="w-16 shadow-md flex flex-col justify-between items-center py-4 fixed h-full z-50" style={{ backgroundColor: "var(--surface-color-2)" }}>
         <span className="text-4xl" role="img" aria-label="Dog emoji">
           🐶
         </span>
-        <Button variant="ghost" size="icon">
-          <Home className="h-6 w-6" style={{ color: "var(--color-4)" }} />
-        </Button>
-        <Button variant="ghost" size="icon">
-          <Compass className="h-6 w-6" style={{ color: "var(--color-4)" }} />
-        </Button>
-        <Button variant="ghost" size="icon">
-          <Bell className="h-6 w-6" style={{ color: "var(--color-4)" }} />
-        </Button>
-        <Button variant="ghost" size="icon">
-          <MessageCircle className="h-6 w-6" style={{ color: "var(--color-4)" }} />
-        </Button>
-        <Button variant="ghost" size="icon">
-          <User className="h-6 w-6" style={{ color: "var(--color-4)" }} />
-        </Button>
-        <Button variant="ghost" size="icon" onClick={() => window.location.href = '/upload'}>
-          <Plus className="h-6 w-6" style={{ color: "var(--color-4)" }} />
-        </Button>
+        <div className="flex flex-col items-center space-y-8 mb-4">
+          <Button variant="ghost" size="icon">
+            <Home className="h-6 w-6" style={{ color: "var(--color-4)" }} />
+          </Button>
+          <Button variant="ghost" size="icon">
+            <Compass className="h-6 w-6" style={{ color: "var(--color-4)" }} />
+          </Button>
+          <Button variant="ghost" size="icon">
+            <Bell className="h-6 w-6" style={{ color: "var(--color-4)" }} />
+          </Button>
+          <Button variant="ghost" size="icon">
+            <MessageCircle className="h-6 w-6" style={{ color: "var(--color-4)" }} />
+          </Button>
+          <Button variant="ghost" size="icon">
+            <User className="h-6 w-6" style={{ color: "var(--color-4)" }} />
+          </Button>
+          <Button variant="ghost" size="icon">
+            <Plus className="h-6 w-6" style={{ color: "var(--color-4)" }} />
+          </Button>
+        </div>
       </aside>
       <main
         className="flex-1 overflow-y-auto ml-16"
         style={{ backgroundColor: "var(--surface-color-2)" }}
       >
-        <div className="sticky top-0 z-40 bg-opacity-90 backdrop-blur-sm" style={{ backgroundColor: "var(--surface-color-2)" }}>
-          <div className="max-w-4xl mx-auto py-4 px-8 flex justify-between items-center">
-            <div className="relative w-full">
+        <div className="sticky top-0 z-40 w-full bg-opacity-90 backdrop-blur-sm" style={{ backgroundColor: "var(--surface-color-2)" }}>
+          <div className="w-full py-4 px-8 flex justify-between items-center">
+            <div className="relative w-full flex items-center">
               <Input
                 type="search"
                 placeholder="Search..."
-                className="w-full text-4xl py-4 px-2 font-serif bg-transparent border-0 border-b-2 rounded-none focus:ring-0 transition-colors"
+                className="w-full text-6xl py-4 px-2 font-serif bg-transparent border-0 border-b-2 rounded-none focus:ring-0 transition-colors"
                 style={{ 
-                  fontFamily: "'Playfair Display', serif",
+                  fontFamily: "var(--font-louize), serif",
                   borderColor: "var(--line-color)",
                   color: "var(--color)",
                 }}
@@ -238,24 +255,27 @@ export default function PinterestBoard() {
                   }
                 }}
               />
-              {isAiSearching && (
-                <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
-                  <Search className="animate-spin h-6 w-6" style={{ color: "var(--color-4)" }} />
-                </div>
+              {searchTerm && (
+                <Button
+                  variant="ghost"
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
+                  />
               )}
             </div>
-            <Button variant="ghost" size="icon" onClick={handleOpenFocusMode} className="ml-4">
-              <Maximize2 className="h-6 w-6" style={{ color: "var(--color-4)" }} />
-            </Button>
           </div>
         </div>
         <div className="p-8">
-          <div className="columns-2 sm:columns-3 md:columns-4 lg:columns-5 gap-4">
-            <NoteEditorTile onSave={handleSaveNote} onOpenFocusMode={handleOpenFocusMode} />
-            {pins.map((pin) => (
-              <PinTile key={pin.id} pin={pin} onClick={handleOpenFolder} />
-            ))}
-          </div>
+          {isLoading ? (
+            <Loader />
+          ) : (
+            <div className="columns-2 sm:columns-3 md:columns-4 lg:columns-5 gap-4">
+              <NoteEditorTile onSave={handleSaveNote} onOpenFocusMode={handleOpenFocusMode} />
+              {pins.map((pin) => (
+                <PinTile key={pin.id} pin={pin} onClick={handleOpenFolder} />
+              ))}
+            </div>
+          )}
         </div>
       </main>
       {isFocusMode && (
@@ -263,13 +283,7 @@ export default function PinterestBoard() {
           <Button variant="ghost" size="icon" onClick={handleCloseFocusMode} className="absolute top-4 right-4">
             <X className="h-6 w-6" />
           </Button>
-          <textarea
-            className="flex-grow resize-none border-none focus:ring-0 text-lg p-4"
-            value={focusNoteContent}
-            onChange={(e) => setFocusNoteContent(e.target.value)}
-            placeholder="Start typing your note..."
-            autoFocus
-          />
+          <FocusedEditor />
           <div className="flex justify-end mt-4">
             <Button onClick={() => handleSaveFocusNote(focusNoteContent)}>Save</Button>
           </div>
