@@ -1,8 +1,11 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { supabase } from '@/lib/supabaseClient';
+import { Loader } from '@/components/Loader';
 
 export default function UploadPage() {
   const [url, setUrl] = useState('');
@@ -10,6 +13,22 @@ export default function UploadPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [text, setText] = useState('');
+  const [session, setSession] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
+
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setSession(session);
+      setIsLoading(false);
+      if (!session) {
+        router.push('/signin');
+      }
+    };
+
+    checkSession();
+  }, [router]);
 
   const handleUpload = async (e) => {
     e.preventDefault();
@@ -19,8 +38,10 @@ export default function UploadPage() {
     try {
       const response = await fetch('/api/upload', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url, title, text }),
+        headers: { 
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ url, title, text, session }),
       });
 
       const data = await response.json();
@@ -39,6 +60,18 @@ export default function UploadPage() {
       setLoading(false);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Loader />
+      </div>
+    );
+  }
+
+  if (!session) {
+    return null; // This will prevent any flash of content before redirecting
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -89,4 +122,3 @@ export default function UploadPage() {
     </div>
   );
 }
-

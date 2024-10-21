@@ -13,11 +13,10 @@ const auth = new google.auth.GoogleAuth({
 });
 
 export async function POST(req) {
-  const { url, title, text } = await req.json();
+  const { url, title, text, session } = await req.json();
 
   // Check for authentication
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) {
+  if (!session || !session.user) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
 

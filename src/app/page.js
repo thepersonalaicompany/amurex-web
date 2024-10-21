@@ -169,7 +169,8 @@ export default function PinterestBoard() {
         body: JSON.stringify({ 
           url: publicUrl,
           title: noteText.substring(0, 50) + '...', 
-          text: noteText 
+          text: noteText,
+          session
         }),
       });
 
@@ -182,7 +183,7 @@ export default function PinterestBoard() {
     } catch (error) {
       console.error('Error saving note:', error);
     }
-  }, [fetchDocuments]);
+  }, [fetchDocuments, session]);
 
   const handleOpenFocusMode = useCallback(() => {
     setIsFocusMode(true);
