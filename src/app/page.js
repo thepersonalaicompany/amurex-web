@@ -86,6 +86,16 @@ export default function PinterestBoard() {
     checkSession();
   }, [router]);
 
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const notionConnected = urlParams.get('notionConnected');
+    
+    if (notionConnected === 'true') {
+      fetchNotionDocuments();
+      console.log('Notion connected');
+    }
+  }, []);
+
   const fetchDocuments = async () => {
     setIsLoading(true);
     try {
@@ -144,10 +154,8 @@ export default function PinterestBoard() {
 
   const handleSaveNote = useCallback(async (noteText) => {
     try {
-      // Generate a unique filename
       const filename = `note_${Date.now()}.txt`;
 
-      // Upload the note text to Supabase Storage
       const { data, error: uploadError } = await supabase.storage
         .from('notes')
         .upload(filename, noteText);
@@ -155,14 +163,12 @@ export default function PinterestBoard() {
       console.log('Uploaded note:', data);
       if (uploadError) throw uploadError;
 
-      // Get the public URL of the uploaded file
       const { data: { publicUrl }, error: urlError } = supabase.storage
         .from('notes')
         .getPublicUrl(filename);
 
       if (urlError) throw urlError;
 
-      // Save the note metadata to the database
       const response = await fetch('/api/upload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -176,7 +182,16 @@ export default function PinterestBoard() {
 
       const responseData = await response.json();
       if (responseData.success) {
-        await fetchDocuments();
+        const newNote = {
+          id: responseData.documentId,
+          title: noteText.substring(0, 50) + '...',
+          image: "/placeholder.svg?height=300&width=200",
+          type: "note",
+          size: ["small", "medium", "large"][Math.floor(Math.random() * 3)],
+          tags: [],
+          url: publicUrl
+        };
+        setPins(prevPins => [newNote, ...prevPins]);
         console.log('Note saved successfully');
       } else {
         console.error('Error saving note:', responseData.error);
@@ -184,7 +199,7 @@ export default function PinterestBoard() {
     } catch (error) {
       console.error('Error saving note:', error);
     }
-  }, [fetchDocuments, session]);
+  }, [session]);
 
   const handleOpenFocusMode = useCallback(() => {
     setIsFocusMode(true);
@@ -234,6 +249,33 @@ export default function PinterestBoard() {
   const handleOpenFolder = useCallback((pin) => {
     router.push(`/folder/${pin.id}`);
   }, [router]);
+
+  const fetchNotionDocuments = async () => {
+    try {
+      const response = await fetch('/api/notion/documents', {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      });
+      const data = await response.json();
+      if (data.success) {
+        const notionPins = data.documents.map(doc => ({
+          id: doc.id,
+          title: doc.title,
+          image: "/notion-page-thumbnail.png",
+          type: "notion",
+          size: ["small", "medium", "large"][Math.floor(Math.random() * 3)],
+          tags: [],
+          url: doc.url
+        }));
+        setPins(prevPins => [...prevPins, ...notionPins]);
+      } else {
+        console.error('Error fetching Notion documents:', data.error);
+      }
+    } catch (error) {
+      console.error('Error fetching Notion documents:', error);
+    }
+  };
 
   if (!session) {
     return (
