@@ -2,8 +2,10 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { Editor } from "novel-lightweight";
 import { supabase } from '@/lib/supabaseClient';
+import { Button } from "@/components/ui/button";
+import { X } from "lucide-react";
 
-export default function FocusedEditor({ onSave }) {
+export default function FocusedEditor({ onSave, onClose }) {
   const [data, setData] = useState("");
   const editorRef = useRef(null);
   const [saveStatus, setSaveStatus] = useState("Unsaved");
@@ -31,8 +33,19 @@ export default function FocusedEditor({ onSave }) {
     return "www.example.com/failed-upload.png";
   }, []);
 
+  const handleSave = useCallback(() => {
+    const content = editorRef.current?.storage.markdown.getMarkdown();
+    if (content) {
+      onSave(content);
+      setSaveStatus("Saved");
+    }
+  }, [onSave]);
+
   return (
     <div className="relative w-full max-w-screen-lg">
+      <Button variant="ghost" size="icon" onClick={onClose} className="absolute top-4 right-4">
+        <X className="h-6 w-6" />
+      </Button>
       <div className="absolute right-5 top-5 z-10 mb-5 rounded-lg bg-stone-100 px-2 py-1 text-sm text-stone-400">
         {saveStatus}
       </div>
@@ -42,6 +55,7 @@ export default function FocusedEditor({ onSave }) {
         onUpdate={handleUpdate}
         handleImageUpload={handleImageUpload}
       />
+      <Button onClick={handleSave} className="mt-4">Save Note</Button>
     </div>
   );
 }

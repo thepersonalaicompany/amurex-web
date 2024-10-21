@@ -177,6 +177,7 @@ export default function PinterestBoard() {
       const responseData = await response.json();
       if (responseData.success) {
         await fetchDocuments();
+        console.log('Note saved successfully');
       } else {
         console.error('Error saving note:', responseData.error);
       }
@@ -325,13 +326,7 @@ export default function PinterestBoard() {
       </main>
       {isFocusMode && (
         <div className="fixed inset-0 bg-white z-50 flex flex-col p-8">
-          <Button variant="ghost" size="icon" onClick={handleCloseFocusMode} className="absolute top-4 right-4">
-            <X className="h-6 w-6" />
-          </Button>
-          <FocusedEditor />
-          <div className="flex justify-end mt-4">
-            <Button onClick={() => handleSaveFocusNote(focusNoteContent)}>Save</Button>
-          </div>
+          <FocusedEditor onSave={handleSaveFocusNote} onClose={handleCloseFocusMode} />
         </div>
       )}
     </div>
