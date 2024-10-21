@@ -10,7 +10,8 @@ import {
   Compass,
   Plus,
   Maximize2,
-  X
+  X,
+  Settings
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -43,14 +44,24 @@ export default function PinterestBoard() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    console.log('Fetching session');
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('Session data:', session);
       setSession(session);
-      if (session) fetchDocuments();
+      if (session) {
+        console.log('Session data:', session);
+        console.log('User data:', session.user);
+        fetchDocuments();
+      }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      if (session) fetchDocuments();
+      if (session) {
+        console.log('Session data (on change):', session);
+        console.log('User data (on change):', session.user);
+        fetchDocuments();
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -63,6 +74,17 @@ export default function PinterestBoard() {
       fetchDocuments();
     }
   }, [debouncedSearchTerm]);
+
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.push('/signin');
+      }
+    };
+
+    checkSession();
+  }, [router]);
 
   const fetchDocuments = async () => {
     setIsLoading(true);
@@ -212,8 +234,11 @@ export default function PinterestBoard() {
   }, [router]);
 
   if (!session) {
-    router.push('/signin');
-    return null;
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Loader />
+      </div>
+    );
   }
 
   return (
@@ -241,8 +266,8 @@ export default function PinterestBoard() {
           <Button variant="ghost" size="icon">
             <MessageCircle className="h-6 w-6" style={{ color: "var(--color-4)" }} />
           </Button>
-          <Button variant="ghost" size="icon">
-            <User className="h-6 w-6" style={{ color: "var(--color-4)" }} />
+          <Button variant="ghost" size="icon" onClick={() => router.push('/settings')}>
+            <Settings className="h-6 w-6" style={{ color: "var(--color-4)" }} />
           </Button>
           <Button variant="ghost" size="icon">
             <Plus className="h-6 w-6" style={{ color: "var(--color-4)" }} />

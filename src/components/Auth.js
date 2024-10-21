@@ -21,7 +21,7 @@ export default function Auth({ type = 'signin' }) {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-4">
-      <h1 className="text-2xl font-bold mb-4">{type === 'signin' ? 'Sign In' : 'Sign Up'} to PinDocs</h1>
+      <h1 className="text-2xl font-bold mb-4">{type === 'signin' ? 'Sign In' : 'Sign Up'} to The Thing</h1>
       <form onSubmit={handleLogin} className="w-full max-w-sm">
         <Input
           className="mb-4"

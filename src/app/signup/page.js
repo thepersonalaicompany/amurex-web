@@ -33,7 +33,7 @@ export default function SignUp() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-4">
-      <h1 className="text-2xl font-bold mb-4">Sign Up for PinDocs</h1>
+      <h1 className="text-2xl font-bold mb-4">Sign Up for The Thing</h1>
       <form onSubmit={handleSignUp} className="w-full max-w-sm">
         <Input
           className="mb-4"
