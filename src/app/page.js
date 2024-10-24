@@ -286,86 +286,56 @@ export default function PinterestBoard() {
   }
 
   return (
-    <div className={`flex h-screen overflow-hidden ${louizeFont.variable}`} style={{ backgroundColor: "var(--surface-color-2)" }}>
+    <div className={`${louizeFont.variable}`} style={{ backgroundColor: "var(--surface-color-2)" }}>
       {showOnboarding && (
         <OnboardingPopup
           onClose={() => setShowOnboarding(false)}
           onImport={handleImportDocs}
         />
       )}
-      <aside className="w-16 shadow-md flex flex-col justify-between items-center py-4 fixed h-full z-50" style={{ backgroundColor: "var(--surface-color-2)" }}>
-        <span className="text-4xl" role="img" aria-label="Dog emoji">
-          🐶
-        </span>
-        <div className="flex flex-col items-center space-y-8 mb-4">
-          <Button variant="ghost" size="icon">
-            <Home className="h-6 w-6" style={{ color: "var(--color-4)" }} />
-          </Button>
-          <Button variant="ghost" size="icon">
-            <Compass className="h-6 w-6" style={{ color: "var(--color-4)" }} />
-          </Button>
-          <Button variant="ghost" size="icon">
-            <Bell className="h-6 w-6" style={{ color: "var(--color-4)" }} />
-          </Button>
-          <Button variant="ghost" size="icon">
-            <MessageCircle className="h-6 w-6" style={{ color: "var(--color-4)" }} />
-          </Button>
-          <Button variant="ghost" size="icon" onClick={() => router.push('/settings')}>
-            <Settings className="h-6 w-6" style={{ color: "var(--color-4)" }} />
-          </Button>
-          <Button variant="ghost" size="icon">
-            <Plus className="h-6 w-6" style={{ color: "var(--color-4)" }} />
-          </Button>
-        </div>
-      </aside>
-      <main
-        className="flex-1 overflow-y-auto ml-16"
-        style={{ backgroundColor: "var(--surface-color-2)" }}
-      >
-        <div className="sticky top-0 z-40 w-full bg-opacity-90 backdrop-blur-sm" style={{ backgroundColor: "var(--surface-color-2)" }}>
-          <div className="w-full py-4 px-8 flex justify-between items-center">
-            <div className="relative w-full flex items-center">
-              <Input
-                type="search"
-                placeholder="Search..."
-                className="w-full text-6xl py-4 px-2 font-serif bg-transparent border-0 border-b-2 rounded-none focus:ring-0 transition-colors"
-                style={{ 
-                  fontFamily: "var(--font-louize), serif",
-                  borderColor: "var(--line-color)",
-                  color: "var(--color)",
-                }}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyDown={(e) => {
-                  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-                    e.preventDefault();
-                    handleAiSearch();
-                  }
-                }}
-              />
-              {searchTerm && (
-                <Button
-                  variant="ghost"
-                  onClick={() => setSearchTerm('')}
-                  className="absolute right-4 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
-                  />
-              )}
-            </div>
+      <div className="sticky top-0 z-40 w-full bg-opacity-90 backdrop-blur-sm" style={{ backgroundColor: "var(--surface-color-2)" }}>
+        <div className="w-full py-4 px-8 flex justify-between items-center">
+          <div className="relative w-full flex items-center">
+            <Input
+              type="search"
+              placeholder="Search..."
+              className="w-full text-6xl py-4 px-2 font-serif bg-transparent border-0 border-b-2 rounded-none focus:ring-0 transition-colors"
+              style={{ 
+                fontFamily: "var(--font-louize), serif",
+                borderColor: "var(--line-color)",
+                color: "var(--color)",
+              }}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyDown={(e) => {
+                if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                  e.preventDefault();
+                  handleAiSearch();
+                }
+              }}
+            />
+            {searchTerm && (
+              <Button
+                variant="ghost"
+                onClick={() => setSearchTerm('')}
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
+                />
+            )}
           </div>
         </div>
-        <div className="p-8">
-          {isLoading ? (
-            <Loader />
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              <NoteEditorTile onSave={handleSaveNote} onOpenFocusMode={handleOpenFocusMode} />
-              {pins.map((pin) => (
-                <PinTile key={pin.id} pin={pin} onClick={handleOpenFolder} />
-              ))}
-            </div>
-          )}
-        </div>
-      </main>
+      </div>
+      <div className="p-8">
+        {isLoading ? (
+          <Loader />
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <NoteEditorTile onSave={handleSaveNote} onOpenFocusMode={handleOpenFocusMode} />
+            {pins.map((pin) => (
+              <PinTile key={pin.id} pin={pin} onClick={handleOpenFolder} />
+            ))}
+          </div>
+        )}
+      </div>
       {isFocusMode && (
         <div className="fixed inset-0 bg-white z-50 flex flex-col p-8">
           <FocusedEditor onSave={handleSaveFocusNote} onClose={handleCloseFocusMode} />
