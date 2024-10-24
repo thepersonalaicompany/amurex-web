@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui/Button';
 import { Plus, Maximize2 } from 'lucide-react';
 
 export function NoteEditorTile({ onSave, onOpenFocusMode }) {

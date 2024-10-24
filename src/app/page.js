@@ -13,8 +13,8 @@ import {
   X,
   Settings
 } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
 import { OnboardingPopup } from "@/components/OnboardingPopup";
 import { NoteEditorTile } from '@/components/NoteEditorTile';
 import { useDebounce } from '@/hooks/useDebounce';

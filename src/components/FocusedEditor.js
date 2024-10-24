@@ -2,7 +2,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { Editor } from "novel-lightweight";
 import { supabase } from '@/lib/supabaseClient';
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/Button";
 import { X } from "lucide-react";
 
 export default function FocusedEditor({ onSave, onClose }) {

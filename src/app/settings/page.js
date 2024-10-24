@@ -3,8 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
-import { Button } from '@/components/ui/button';
-import { Loader } from '@/components/Loader';
+import { Button } from '@/components/ui/Button';
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(false);
