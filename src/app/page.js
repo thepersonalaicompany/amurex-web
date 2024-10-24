@@ -12,11 +12,13 @@ import { supabase } from '@/lib/supabaseClient';
 import FocusedEditor from '@/components/FocusedEditor';
 import { Loader } from '@/components/Loader';
 import localFont from 'next/font/local';
+import { NotionConnectModal } from '@/components/NotionConnectModal';
 
 const louizeFont = localFont({
   src: './fonts/Louize.ttf',
   variable: '--font-louize',
 });
+
 
 export default function HomePage() {
   const [session, setSession] = useState(null);
@@ -30,6 +32,7 @@ export default function HomePage() {
   const [isAiSearching, setIsAiSearching] = useState(false);
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
+  const [showNotionPopup, setShowNotionPopup] = useState(true);
 
   useEffect(() => {
     console.log('Fetching session');
@@ -76,47 +79,82 @@ export default function HomePage() {
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const notionConnected = urlParams.get('notionConnected');
+    const code = urlParams.get('code');
+    const state = urlParams.get('state');
+    console.log('Code:', code);
+    console.log('State:', state);
     
-    if (notionConnected === 'true') {
-      fetchNotionDocuments();
-      console.log('Notion connected');
+    if (code) {
+      handleNotionCallback(code, state);
     }
   }, []);
 
+  const handleNotionCallback = async (code, state) => {
+    try {
+      console.log('Session user ID:', session.user.id);
+      const response = await fetch(`/api/notion/callback?code=${code}&state=${state}`, {
+        method: 'GET',
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        await supabase
+        .from('users')
+        .update({ notion_connected: true })
+        .eq('id', session.user.id);
+        console.log('Notion connected successfully');
+        
+        await importNotionPages();
+      } else {
+        console.error('Error connecting Notion:', data.error);
+      }
+    } catch (error) {
+      console.error('Error handling Notion callback:', error);
+    }
+  };
+
+  const importNotionPages = async () => {
+    console.log('Importing Notion pages');
+    try {
+
+      const response = await fetch('/api/notion/import', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+      });
+      const data = await response.json();
+      if (data.success) {
+        console.log('Notion pages imported successfully');
+        fetchDocuments(); // Refresh the documents list
+      } else {
+        console.error('Error importing Notion pages:', data.error);
+      }
+    } catch (error) {
+      console.error('Error importing Notion pages:', error);
+    }
+  };
+
   const fetchDocuments = async () => {
-    setIsLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         console.error('No active session');
-        setIsLoading(false);
         return;
       }
 
-      const response = await fetch('/api/searchAll', {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`
-        }
-      });
-      const data = await response.json();
-      if (data.success) {
-        const sizes = ["small", "medium", "large"];
-        const newPins = data.documents.map(doc => ({
-          id: doc.id,
-          title: doc.title,
-          content: doc.text, // Include the document content
-          image: (doc.url.includes('notion.so') || doc.url.includes('notion.site')) ? "/notion-page-thumbnail.png" : 
-                 doc.url.includes('docs.google.com') ? "https://www.google.com/images/about/docs-icon.svg" : 
-                 "/placeholder.svg?height=300&width=200",
-          type: (doc.url.includes('notion.so') || doc.url.includes('notion.site')) ? "notion" : 
-                doc.url.includes('docs.google.com') ? "google" : "other",
-          size: sizes[Math.floor(Math.random() * sizes.length)],
-          tags: doc.tags,
-        }));
-        setPins(newPins);
-      } else {
-        console.error('Error fetching documents:', data.error);
+      const { data, error } = await supabase
+        .from('documents')
+        .select('*')
+        .eq('user_id', session.user.id);
+
+      if (error) {
+        throw error;
+      }
+
+      if (data) {
+        setPins(data);
       }
     } catch (error) {
       console.error('Error fetching documents:', error);
@@ -241,6 +279,12 @@ export default function HomePage() {
 
   const fetchNotionDocuments = async () => {
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.error('No active session');
+        return;
+      }
+
       const response = await fetch('/api/notion/documents', {
         headers: {
           'Authorization': `Bearer ${session.access_token}`
@@ -251,10 +295,11 @@ export default function HomePage() {
         const notionPins = data.documents.map(doc => ({
           id: doc.id,
           title: doc.title,
+          content: doc.text || '',
           image: "/notion-page-thumbnail.png",
           type: "notion",
           size: ["small", "medium", "large"][Math.floor(Math.random() * 3)],
-          tags: [],
+          tags: doc.tags || [],
           url: doc.url
         }));
         setPins(prevPins => [...prevPins, ...notionPins]);
@@ -265,6 +310,80 @@ export default function HomePage() {
       console.error('Error fetching Notion documents:', error);
     }
   };
+
+  const handleNotionConnect = () => {
+    window.location.href = '/api/notion';
+  };
+
+  useEffect(() => {
+    const handleNotionCallback = async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const code = urlParams.get('code');
+      const state = urlParams.get('state');
+
+      if (code) {
+        try {
+          const response = await fetch(`/api/notion/callback?code=${code}&state=${state}`);
+          const data = await response.json();
+          // fetch the supabase session here and then pass the user id to the backend
+          const { data: { session } } = await supabase.auth.getSession();
+          const userId = session.user.id;
+
+          if (data.success) {
+            const { access_token, workspace_id, bot_id } = data;
+
+            // Send the data to the backend to update the database
+            const updateResponse = await fetch('/api/notion/completeIntegration', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                access_token,
+                workspace_id,
+                bot_id,
+                state,
+                userId
+              }),
+            });
+
+            const updateData = await updateResponse.json();
+            if (updateData.success) {
+              console.log('Notion connected successfully');
+              // Optionally, refresh the page or update the UI
+            } else {
+              console.error('Error updating user:', updateData.error);
+            }
+          } else {
+            console.error('Error connecting Notion:', data.error);
+          }
+        } catch (error) {
+          console.error('Error handling Notion callback:', error);
+        }
+      }
+    };
+
+    handleNotionCallback();
+  }, [router]);
+
+  useEffect(() => {
+    const checkNotionConnection = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const { data: user, error } = await supabase
+          .from('users')
+          .select('notion_connected')
+          .eq('id', session.user.id)
+          .single();
+
+        if (user && user.notion_connected) {
+          setShowNotionPopup(false);
+        }
+      }
+    };
+
+    checkNotionConnection();
+  }, []);
 
   if (!session) {
     return (
@@ -331,6 +450,12 @@ export default function HomePage() {
         <div className="fixed inset-0 bg-white z-50 flex flex-col p-8">
           <FocusedEditor onSave={handleSaveFocusNote} onClose={handleCloseFocusMode} />
         </div>
+      )}
+      {showNotionPopup && (
+        <NotionConnectModal
+          onClose={() => setShowNotionPopup(false)}
+          onConnect={handleNotionConnect}
+        />
       )}
     </div>
   );

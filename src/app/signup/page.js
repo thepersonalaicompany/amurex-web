@@ -5,12 +5,25 @@ import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 export default function SignUp() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const router = useRouter();
+
+  const createUserEntry = async (userId) => {
+    const { data, error } = await supabase
+      .from('users')
+      .insert([{ id: userId, email: email }]);
+
+    if (error) {
+      console.error('Error creating user entry:', error);
+      setMessage('Account created, but there was an error setting up your profile. Please contact support.');
+    }
+  };
 
   const handleSignUp = async (e) => {
     e.preventDefault();
@@ -24,8 +37,12 @@ export default function SignUp() {
 
     if (error) {
       setMessage(error.message);
+    } else if (data.user) {
+      await createUserEntry(data.user.id);
+      setMessage('Account created successfully! Check your email for the confirmation link.');
+      router.push('/signin');
     } else {
-      setMessage('Check your email for the confirmation link!');
+      setMessage('An unexpected error occurred. Please try again.');
     }
 
     setLoading(false);
@@ -68,4 +85,3 @@ export default function SignUp() {
     </div>
   );
 }
-
