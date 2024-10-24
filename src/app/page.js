@@ -1,18 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import {
-  Search,
-  Bell,
-  MessageCircle,
-  User,
-  Home,
-  Compass,
-  Plus,
-  Maximize2,
-  X,
-  Settings
-} from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { OnboardingPopup } from "@/components/OnboardingPopup";
@@ -30,7 +18,7 @@ const louizeFont = localFont({
   variable: '--font-louize',
 });
 
-export default function PinterestBoard() {
+export default function HomePage() {
   const [session, setSession] = useState(null);
   const [pins, setPins] = useState([]);
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -117,6 +105,7 @@ export default function PinterestBoard() {
         const newPins = data.documents.map(doc => ({
           id: doc.id,
           title: doc.title,
+          content: doc.text, // Include the document content
           image: (doc.url.includes('notion.so') || doc.url.includes('notion.site')) ? "/notion-page-thumbnail.png" : 
                  doc.url.includes('docs.google.com') ? "https://www.google.com/images/about/docs-icon.svg" : 
                  "/placeholder.svg?height=300&width=200",
@@ -331,7 +320,7 @@ export default function PinterestBoard() {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             <NoteEditorTile onSave={handleSaveNote} onOpenFocusMode={handleOpenFocusMode} />
             {pins.map((pin) => (
-              <PinTile key={pin.id} pin={pin} onClick={handleOpenFolder} />
+              <PinTile key={pin.id} pin={pin} />
             ))}
           </div>
         )}
