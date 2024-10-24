@@ -8,7 +8,7 @@ const openai = new OpenAI(process.env.OPENAI_API_KEY);
 
 export async function POST(req) {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
+    const { session, access_token } = await req.json(); // Extract session from request body
     if (!session) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
@@ -23,7 +23,7 @@ export async function POST(req) {
       return NextResponse.json({ success: false, error: 'Notion not connected' }, { status: 400 });
     }
 
-    const notion = new Client({ auth: user.notion_access_token });
+    const notion = new Client({ auth: access_token });
 
     const response = await notion.search({
       filter: {
@@ -83,4 +83,3 @@ async function generateEmbeddings(text) {
   });
   return embeddingResponse.data[0].embedding;
 }
-

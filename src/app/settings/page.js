@@ -48,31 +48,39 @@ export default function SettingsPage() {
   };
 
   const handleGoogleDocsConnect = async () => {
-    // Implement Google Docs OAuth flow
     window.location.href = '/api/auth/google';
   };
 
-  const fetchNotionDocuments = useCallback(async () => {
+  const importNotionDocuments = useCallback(async () => {
     if (notionConnected) {
+      const { data: { session } } = await supabase.auth.getSession();
       try {
-        const response = await fetch('/api/notion/documents');
+        console.log('Importing Notion documents');
+        const response = await fetch('/api/notion/import', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ session: session }),
+        });
         const data = await response.json();
         if (data.success) {
           setNotionDocuments(data.documents);
         } else {
-          console.error('Error fetching Notion documents:', data.error);
+          console.error('Error importing Notion documents:', data.error);
         }
       } catch (error) {
-        console.error('Error fetching Notion documents:', error);
+        console.error('Error importing Notion documents:', error);
       }
     }
   }, [notionConnected]);
 
   useEffect(() => {
     if (notionConnected) {
-      fetchNotionDocuments();
+      console.log('Importing Notion documents');
+      importNotionDocuments();
     }
-  }, [notionConnected, fetchNotionDocuments]);
+  }, [notionConnected, importNotionDocuments]);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -95,6 +103,14 @@ export default function SettingsPage() {
               variant={googleDocsConnected ? "outline" : "default"}
             >
               {googleDocsConnected ? 'Google Docs Connected' : 'Connect Google Docs'}
+            </Button>
+          </div>
+          <div>
+            <Button 
+              onClick={importNotionDocuments} 
+              variant="default"
+            >
+              Import Notion Documents
             </Button>
           </div>
         </div>

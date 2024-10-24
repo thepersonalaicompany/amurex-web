@@ -273,43 +273,6 @@ export default function HomePage() {
     }
   }, [searchTerm]);
 
-  const handleOpenFolder = useCallback((pin) => {
-    router.push(`/folder/${pin.id}`);
-  }, [router]);
-
-  const fetchNotionDocuments = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        console.error('No active session');
-        return;
-      }
-
-      const response = await fetch('/api/notion/documents', {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`
-        }
-      });
-      const data = await response.json();
-      if (data.success) {
-        const notionPins = data.documents.map(doc => ({
-          id: doc.id,
-          title: doc.title,
-          content: doc.text || '',
-          image: "/notion-page-thumbnail.png",
-          type: "notion",
-          size: ["small", "medium", "large"][Math.floor(Math.random() * 3)],
-          tags: doc.tags || [],
-          url: doc.url
-        }));
-        setPins(prevPins => [...prevPins, ...notionPins]);
-      } else {
-        console.error('Error fetching Notion documents:', data.error);
-      }
-    } catch (error) {
-      console.error('Error fetching Notion documents:', error);
-    }
-  };
 
   const handleNotionConnect = () => {
     window.location.href = '/api/notion';
@@ -351,6 +314,8 @@ export default function HomePage() {
             if (updateData.success) {
               console.log('Notion connected successfully');
               // Optionally, refresh the page or update the UI
+              // clear the url params
+              window.history.replaceState({}, document.title, window.location.pathname);
             } else {
               console.error('Error updating user:', updateData.error);
             }

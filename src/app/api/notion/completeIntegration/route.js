@@ -25,7 +25,7 @@ export async function POST(req) {
       console.error('Error updating user:', error);
       return NextResponse.json({ success: false, error: 'Failed to update user profile' }, { status: 500 });
     }
-
+    
     return NextResponse.json({ success: true, message: 'Notion connected successfully' });
   } catch (error) {
     console.error('Error in Notion callback:', error);
