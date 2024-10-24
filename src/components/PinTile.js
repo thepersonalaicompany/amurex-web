@@ -15,13 +15,13 @@ export const PinTile = ({ pin }) => {
   return (
     <>
       <div
-        className={`mb-4 break-inside-avoid`}
+        className="h-[300px] mb-4 break-inside-avoid cursor-pointer"
         onClick={handleClick}
       >
         <div className="h-full">
           <div className="relative group overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 ease-in-out h-full flex flex-col" style={{ backgroundColor: "var(--surface-color)" }}>
-            <div className="relative flex-grow">
-              <div className="w-full h-full flex items-center justify-center bg-gray-100">
+            <div className="relative flex-grow p-4">
+              <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
                 {pin.type === "notion" && (
                   <div className="text-2xl font-bold text-blue-600">Notion</div>
                 )}

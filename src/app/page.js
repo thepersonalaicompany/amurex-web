@@ -275,7 +275,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className={`${louizeFont.variable}`} style={{ backgroundColor: "var(--surface-color-2)" }}>
+    <div className={`${louizeFont.variable} flex flex-col h-screen`} style={{ backgroundColor: "var(--surface-color-2)" }}>
       {showOnboarding && (
         <OnboardingPopup
           onClose={() => setShowOnboarding(false)}
@@ -308,22 +308,24 @@ export default function HomePage() {
                 variant="ghost"
                 onClick={() => setSearchTerm('')}
                 className="absolute right-4 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
-                />
+              />
             )}
           </div>
         </div>
       </div>
-      <div className="p-8">
-        {isLoading ? (
-          <Loader />
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            <NoteEditorTile onSave={handleSaveNote} onOpenFocusMode={handleOpenFocusMode} />
-            {pins.map((pin) => (
-              <PinTile key={pin.id} pin={pin} />
-            ))}
-          </div>
-        )}
+      <div className="flex-grow overflow-hidden">
+        <div className="h-full overflow-y-auto p-8">
+          {isLoading ? (
+            <Loader />
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 min-h-full">
+              <NoteEditorTile onSave={handleSaveNote} onOpenFocusMode={handleOpenFocusMode} />
+              {pins.map((pin) => (
+                <PinTile key={pin.id} pin={pin} />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
       {isFocusMode && (
         <div className="fixed inset-0 bg-white z-50 flex flex-col p-8">
