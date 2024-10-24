@@ -43,12 +43,12 @@ export default function SettingsPage() {
     setLoading(false);
   };
 
-  const handleNotionConnect = async () => {
-    window.location.href = '/api/notion';
+  const handleNotionConnect = () => {
+    router.push('/api/notion');
   };
 
-  const handleGoogleDocsConnect = async () => {
-    window.location.href = '/api/auth/google';
+  const handleGoogleDocsConnect = () => {
+    router.push('/api/auth/google');
   };
 
   const importNotionDocuments = useCallback(async () => {

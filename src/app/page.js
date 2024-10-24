@@ -217,7 +217,7 @@ export default function HomePage() {
 
 
   const handleNotionConnect = () => {
-    window.location.href = '/api/notion';
+    router.push('/api/notion');
   };
 
 
