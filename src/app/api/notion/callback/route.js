@@ -27,6 +27,7 @@ export async function GET(req) {
     });
 
     const data = await response.json();
+    console.log('Notion token response:', data);
 
     if (data.error) {
       console.error('Notion API error:', data);

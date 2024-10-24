@@ -8,7 +8,7 @@ const openai = new OpenAI(process.env.OPENAI_API_KEY);
 
 export async function POST(req) {
   try {
-    const { session, access_token } = await req.json(); // Extract session from request body
+    const { session } = await req.json(); // Extract session from request body
     if (!session) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
@@ -23,7 +23,7 @@ export async function POST(req) {
       return NextResponse.json({ success: false, error: 'Notion not connected' }, { status: 400 });
     }
 
-    const notion = new Client({ auth: access_token });
+    const notion = new Client({ auth: user.notion_access_token });
 
     const response = await notion.search({
       filter: {
@@ -31,14 +31,18 @@ export async function POST(req) {
         value: 'page'
       }
     });
+    
+    console.log("Total length", response.results.length);
 
-    for (const page of response.results) {
+    for (const page of response.results.slice(0, 2)) {
       const pageContent = await fetchNotionPageContent(notion, page.id);
       const tags = await generateTags(pageContent);
       const embeddings = await generateEmbeddings(pageContent);
+      console.log("User ID", session.user.id);
 
-      await supabase
-        .from('documents')
+      try {
+        await supabase
+          .from('documents')
         .insert({
           url: page.url,
           title: page.properties.title?.title[0]?.plain_text || 'Untitled',
@@ -48,6 +52,12 @@ export async function POST(req) {
           user_id: session.user.id,
           type: 'notion'
         });
+        console.log("Document inserted");
+        console.log(pageContent);
+        console.log(tags);
+      } catch (error) {
+        console.error('Error inserting document:', error);
+      }
     }
 
     return NextResponse.json({ success: true });
@@ -67,7 +77,7 @@ async function fetchNotionPageContent(notion, pageId) {
 
 async function generateTags(text) {
   const tagsResponse = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
+    model: "gpt-4",
     messages: [
       { role: "system", content: "You are a helpful assistant that generates relevant tags for a given text." },
       { role: "user", content: `Generate 20 relevant tags for the following text:\n\n${text.substring(0, 1000)}` }

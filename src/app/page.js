@@ -77,64 +77,6 @@ export default function HomePage() {
     checkSession();
   }, [router]);
 
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const code = urlParams.get('code');
-    const state = urlParams.get('state');
-    console.log('Code:', code);
-    console.log('State:', state);
-    
-    if (code) {
-      handleNotionCallback(code, state);
-    }
-  }, []);
-
-  const handleNotionCallback = async (code, state) => {
-    try {
-      console.log('Session user ID:', session.user.id);
-      const response = await fetch(`/api/notion/callback?code=${code}&state=${state}`, {
-        method: 'GET',
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        await supabase
-        .from('users')
-        .update({ notion_connected: true })
-        .eq('id', session.user.id);
-        console.log('Notion connected successfully');
-        
-        await importNotionPages();
-      } else {
-        console.error('Error connecting Notion:', data.error);
-      }
-    } catch (error) {
-      console.error('Error handling Notion callback:', error);
-    }
-  };
-
-  const importNotionPages = async () => {
-    console.log('Importing Notion pages');
-    try {
-
-      const response = await fetch('/api/notion/import', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-      });
-      const data = await response.json();
-      if (data.success) {
-        console.log('Notion pages imported successfully');
-        fetchDocuments(); // Refresh the documents list
-      } else {
-        console.error('Error importing Notion pages:', data.error);
-      }
-    } catch (error) {
-      console.error('Error importing Notion pages:', error);
-    }
-  };
 
   const fetchDocuments = async () => {
     try {
@@ -278,58 +220,6 @@ export default function HomePage() {
     window.location.href = '/api/notion';
   };
 
-  useEffect(() => {
-    const handleNotionCallback = async () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const code = urlParams.get('code');
-      const state = urlParams.get('state');
-
-      if (code) {
-        try {
-          const response = await fetch(`/api/notion/callback?code=${code}&state=${state}`);
-          const data = await response.json();
-          // fetch the supabase session here and then pass the user id to the backend
-          const { data: { session } } = await supabase.auth.getSession();
-          const userId = session.user.id;
-
-          if (data.success) {
-            const { access_token, workspace_id, bot_id } = data;
-
-            // Send the data to the backend to update the database
-            const updateResponse = await fetch('/api/notion/completeIntegration', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                access_token,
-                workspace_id,
-                bot_id,
-                state,
-                userId
-              }),
-            });
-
-            const updateData = await updateResponse.json();
-            if (updateData.success) {
-              console.log('Notion connected successfully');
-              // Optionally, refresh the page or update the UI
-              // clear the url params
-              window.history.replaceState({}, document.title, window.location.pathname);
-            } else {
-              console.error('Error updating user:', updateData.error);
-            }
-          } else {
-            console.error('Error connecting Notion:', data.error);
-          }
-        } catch (error) {
-          console.error('Error handling Notion callback:', error);
-        }
-      }
-    };
-
-    handleNotionCallback();
-  }, [router]);
 
   useEffect(() => {
     const checkNotionConnection = async () => {

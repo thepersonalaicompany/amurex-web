@@ -7,23 +7,27 @@ import { supabase } from '@/lib/supabaseClient';
 export default function NotionCallbackPage() {
   const router = useRouter();
 
-  useEffect(() => {
     const handleNotionCallback = async () => {
       const urlParams = new URLSearchParams(window.location.search);
       const code = urlParams.get('code');
       const state = urlParams.get('state');
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session.user.id;
 
       if (code) {
         try {
+          console.log('Code:', code);
+
+          console.log(`Making api call`);
           const response = await fetch(`/api/notion/callback?code=${code}&state=${state}`);
+
           const data = await response.json();
-          const { data: { session } } = await supabase.auth.getSession();
-          const userId = session.user.id;
+          console.log('Data:', data);
 
           if (data.success) {
             const { access_token, workspace_id, bot_id } = data;
 
-            const updateResponse = await fetch('/api/notion/completeIntegration', {
+            const updateResponse = await fetch('/api/notion/callback', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -54,8 +58,7 @@ export default function NotionCallbackPage() {
       }
     };
 
-    handleNotionCallback();
-  }, [router]);
+  handleNotionCallback();
 
   return (
     <div>

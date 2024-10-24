@@ -75,13 +75,6 @@ export default function SettingsPage() {
     }
   }, [notionConnected]);
 
-  useEffect(() => {
-    if (notionConnected) {
-      console.log('Importing Notion documents');
-      importNotionDocuments();
-    }
-  }, [notionConnected, importNotionDocuments]);
-
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-4">Settings</h1>
@@ -116,7 +109,7 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {notionConnected && notionDocuments.length > 0 && (
+      {/* {notionConnected && notionDocuments.length > 0 && (
         <div className="mb-8">
           <h2 className="text-xl font-semibold mb-4">Notion Documents</h2>
           <ul className="list-disc pl-5">
@@ -125,7 +118,7 @@ export default function SettingsPage() {
             ))}
           </ul>
         </div>
-      )}
+      )} */}
 
       <Button onClick={handleLogout} disabled={loading}>
         {loading ? 'Logging out...' : 'Logout'}
