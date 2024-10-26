@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/Button';
-import { ArrowCircleRight, ChatCenteredDots, Stack, GitBranch } from "@phosphor-icons/react";
+import { ArrowCircleRight, ChatCenteredDots, Stack, GitBranch, X } from "@phosphor-icons/react";
 import { motion } from 'framer-motion';
 
 export default function SettingsPage() {
