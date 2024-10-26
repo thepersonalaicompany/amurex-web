@@ -15,6 +15,7 @@ export default function AISearch() {
   const messagesEndRef = useRef(null);
   const [inputValue, setInputValue] = useState("");
   const [messageHistory, setMessageHistory] = useState([]);
+  const [internetSearchEnabled, setInternetSearchEnabled] = useState(false);
 // 5. Auto-scroll to last message
   useEffect(() => {
     setTimeout(() => {
@@ -49,9 +50,8 @@ export default function AISearch() {
   const sendMessage = (messageToSend) => {
     const message = messageToSend || inputValue;
     console.log("message", message);
-    const body = JSON.stringify({ message: message });
+    const body = JSON.stringify({ message: message, internetSearchEnabled });
     setInputValue("");
-// 11. POST message to the backend
     fetch("/api/aisearch", {
       method: "POST",
       body,
@@ -77,6 +77,14 @@ export default function AISearch() {
           </>
         ))}
 {/* 15. Include InputArea for message input and sending */}
+<button
+  onClick={() => setInternetSearchEnabled(!internetSearchEnabled)}
+  className={`mb-2 px-4 py-2 rounded ${
+    internetSearchEnabled ? 'bg-green-500' : 'bg-gray-300'
+  } text-white`}
+>
+  {internetSearchEnabled ? 'Internet Search Enabled' : 'Search on the Internet'}
+</button>
         <InputArea inputValue={inputValue} setInputValue={setInputValue} sendMessage={sendMessage} />
 {/* 16. Add a ref for the end of messages to enable auto-scroll */}
         <div ref={messagesEndRef} />
@@ -237,3 +245,5 @@ const MessageHandler = memo(({ message, sendMessage }) => {
   const Component = COMPONENT_MAP[message.type];
   return Component ? <Component content={message.content} sendMessage={sendMessage} /> : null;
 });
+
+

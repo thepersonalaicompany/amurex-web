@@ -32,64 +32,94 @@ async function rephraseInput(inputString) {
   });
   return gptAnswer.choices[0].message.content;
 }
+
+async function aiSearch(query) {
+  const embeddingResponse = await openai.embeddings.create({
+    model: "text-embedding-ada-002",
+    input: query,
+  });
+  const queryEmbedding = embeddingResponse.data[0].embedding;
+
+  const { data, error } = await supabase
+    .rpc('match_documents', { query_embedding: queryEmbedding })
+    .order('similarity', { ascending: false })
+    .gte('similarity', 0.3);
+    
+  console.log('AI search data', data);
+
+  if (error) throw error;
+
+  return { results: data };
+}
+
 // 5. Search engine for sources
-async function searchEngineForSources(message) {
-  const loader = new BraveSearch({ apiKey: process.env.BRAVE_SEARCH_API_KEY });
-  const repahrasedMessage = await rephraseInput(message);
-  const docs = await loader.call(repahrasedMessage);
-// 6. Normalize data
-  function normalizeData(docs) {
-    return JSON.parse(docs)
-      .filter((doc) => doc.title && doc.link && !doc.link.includes("brave.com"))
-      .slice(0, 4)
-      .map(({ title, link }) => ({ title, link }));
+async function searchEngineForSources(message, internetSearchEnabled) {
+  let combinedResults = [];
+
+  // Perform Supabase document search
+  const supabaseResults = await aiSearch(message);
+  const supabaseData = supabaseResults.results.map(doc => ({
+    title: doc.title,
+    link: doc.url,
+    text: doc.content  // Assuming the field is named 'content' in your Supabase table
+  }));
+  combinedResults = [...combinedResults, ...supabaseData];
+
+  if (internetSearchEnabled) {
+    const loader = new BraveSearch({ apiKey: process.env.BRAVE_SEARCH_API_KEY });
+    const repahrasedMessage = await rephraseInput(message);
+    const docs = await loader.call(repahrasedMessage);
+    function normalizeData(docs) {
+      return JSON.parse(docs)
+        .filter((doc) => doc.title && doc.link && !doc.link.includes("brave.com"))
+        .slice(0, 4)
+        .map(({ title, link }) => ({ title, link }));
+    }
+    const normalizedData = normalizeData(docs);
+    combinedResults = [...combinedResults, ...normalizedData];
   }
-  const normalizedData = normalizeData(docs);
-// 7. Send normalized data as payload
-  sendPayload({ type: "Sources", content: normalizedData });
-// 8. Initialize vectorCount
+
+  sendPayload({ type: "Sources", content: combinedResults });
+
   let vectorCount = 0;
-// 9. Initialize async function for processing each search result item
   const fetchAndProcess = async (item) => {
     try {
-// 10. Create a timer for the fetch promise
-      const timer = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 1500));
-// 11. Fetch the content of the page
-      const fetchPromise = fetchPageContent(item.link);
-// 12. Wait for either the fetch promise or the timer
-      const htmlContent = await Promise.race([timer, fetchPromise]);
-// 13. Check for insufficient content length
+      let htmlContent;
+      if (item.text) {
+        // If the item has text (from Supabase), use it directly
+        htmlContent = item.text;
+      } else {
+        // Otherwise, fetch the content from the URL
+        const timer = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 1500));
+        const fetchPromise = fetchPageContent(item.link);
+        htmlContent = await Promise.race([timer, fetchPromise]);
+      }
+
       if (htmlContent.length < 250) return null;
-// 14. Split the text into chunks
+
       const splitText = await new RecursiveCharacterTextSplitter({ chunkSize: 200, chunkOverlap: 0 }).splitText(
         htmlContent
       );
-// 15. Create a vector store from the split text
       const vectorStore = await MemoryVectorStore.fromTexts(splitText, { annotationPosition: item.link }, embeddings);
-// 16. Increment the vector count
       vectorCount++;
-// 17. Perform similarity search on the vectors
       return await vectorStore.similaritySearch(message, 1);
     } catch (error) {
-// 18. Log any error and increment the vector count
-      console.log(`Failed to fetch content for ${item.link}, skipping!`);
+      console.log(`Failed to process content for ${item.link}, skipping!`);
       vectorCount++;
       return null;
     }
   };
-// 19. Wait for all fetch and process promises to complete
-  const results = await Promise.all(normalizedData.map(fetchAndProcess));
-// 20. Make sure that vectorCount reaches at least 4
+
+  const results = await Promise.all(combinedResults.map(fetchAndProcess));
+
   while (vectorCount < 4) {
     vectorCount++;
   }
-// 21. Filter out unsuccessful results
+
   const successfulResults = results.filter((result) => result !== null);
-// 22. Get top 4 results if there are more than 4, otherwise get all
   const topResult = successfulResults.length > 4 ? successfulResults.slice(0, 4) : successfulResults;
-// 23. Send a payload message indicating the vector creation process is complete
+
   sendPayload({ type: "VectorCreation", content: `Finished Scanning Sources.` });
-// 24. Trigger any remaining logic and follow-up actions
   triggerLLMAndFollowup(`Query: ${message}, Top Results: ${JSON.stringify(topResult)}`);
 }
 // 25. Define fetchPageContent function
@@ -193,11 +223,11 @@ async function generateFollowup(message) {
 // 54. Define POST function for API endpoint
 export async function POST(req, res) {
 // 55. Get message from request payload
-  const { message } = await req.json();
+  const { message, internetSearchEnabled } = await req.json();
 // 56. Send query payload
   sendPayload({ type: "Query", content: message });
 // 57. Start the search engine to find sources based on the query
-  await searchEngineForSources(message);
+  await searchEngineForSources(message, internetSearchEnabled);
 
   return Response.json({ "message": "Processing request" });
 }

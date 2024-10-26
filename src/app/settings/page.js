@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/Button';
+import { ArrowCircleRight, ChatCenteredDots, Stack, GitBranch } from "@phosphor-icons/react";
+import { motion } from 'framer-motion';
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(false);
@@ -96,42 +98,68 @@ export default function SettingsPage() {
   }, [notionConnected]);
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-4">Settings</h1>
-      
-      <div className="mb-8">
-        <h2 className="text-xl font-semibold mb-4">Integrations</h2>
-        <div className="space-y-4">
-          <div>
-            <Button 
-              onClick={handleNotionConnect} 
-              variant={notionConnected ? "outline" : "default"}
-            >
-              {notionConnected ? 'Notion Connected' : 'Connect Notion'}
-            </Button>
+    <div className="container mx-auto px-4 py-8 min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
+      <div className="max-w-3xl mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <h1 className="text-4xl font-bold mb-8 text-center text-blue-600">Settings</h1>
+          <div className="mb-8">
+            <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+              <h2 className="text-2xl font-semibold mb-6 flex items-center">
+                <ChatCenteredDots size={32} className="mr-2 text-blue-500" />
+                Integrations
+              </h2>
+              <div className="space-y-6">
+                <IntegrationButton
+                  onClick={handleNotionConnect}
+                  connected={notionConnected}
+                  label="Notion"
+                  icon={<GitBranch size={24} />}
+                />
+                <IntegrationButton
+                  onClick={handleGoogleDocsConnect}
+                  connected={googleDocsConnected}
+                  label="Google Docs"
+                  icon={<ArrowCircleRight size={24} />}
+                />
+                <Button 
+                  onClick={importNotionDocuments} 
+                  variant="default"
+                  className="w-full py-3 text-lg"
+                >
+                  <Stack size={24} className="mr-2" />
+                  Import Notion Documents
+                </Button>
+              </div>
+            </div>
           </div>
-          <div>
-            <Button 
-              onClick={handleGoogleDocsConnect} 
-              variant={googleDocsConnected ? "outline" : "default"}
-            >
-              {googleDocsConnected ? 'Google Docs Connected' : 'Connect Google Docs'}
-            </Button>
-          </div>
-          <div>
-            <Button 
-              onClick={importNotionDocuments} 
-              variant="default"
-            >
-              Import Notion Documents
-            </Button>
-          </div>
-        </div>
+          <Button onClick={handleLogout} disabled={loading}
+            className="w-full py-3 text-lg bg-red-500 hover:bg-red-600 text-white"
+          >
+            {loading ? 'Logging out...' : 'Logout'}
+          </Button>
+        </motion.div>
       </div>
-
-      <Button onClick={handleLogout} disabled={loading}>
-        {loading ? 'Logging out...' : 'Logout'}
-      </Button>
     </div>
+  );
+}
+
+function IntegrationButton({ onClick, connected, label, icon }) {
+  return (
+    <Button 
+      onClick={onClick} 
+      variant={connected ? "outline" : "default"}
+      className={`w-full py-4 text-lg ${
+        connected 
+          ? 'border-green-500 text-green-600 bg-green-50 hover:bg-green-100 shadow-inner' 
+          : 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-md hover:shadow-lg'
+      } transition-all duration-300`}
+    >
+      {icon}
+      <span className="ml-2">{connected ? `${label} Connected` : `Connect ${label}`}</span>
+    </Button>
   );
 }

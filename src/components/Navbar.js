@@ -33,20 +33,20 @@ export function Navbar() {
         <Button variant="ghost" size="icon" onClick={() => router.push('/')}>
           <Home className="h-6 w-6" style={{ color: "var(--color-4)" }} />
         </Button>
-        <Button variant="ghost" size="icon">
+        {/* <Button variant="ghost" size="icon">
           <Compass className="h-6 w-6" style={{ color: "var(--color-4)" }} />
         </Button>
         <Button variant="ghost" size="icon">
           <Bell className="h-6 w-6" style={{ color: "var(--color-4)" }} />
-        </Button>
+        </Button> */}
         <Button variant="ghost" size="icon" onClick={() => router.push('/aisearch')}>
           <MessageCircle className="h-6 w-6" style={{ color: "var(--color-4)" }} />
         </Button>
-        <Button variant="ghost" size="icon" onClick={() => router.push('/settings')}>
-          <Settings className="h-6 w-6" style={{ color: "var(--color-4)" }} />
-        </Button>
         <Button variant="ghost" size="icon" onClick={() => router.push('/upload')}>
           <Plus className="h-6 w-6" style={{ color: "var(--color-4)" }} />
+        </Button>
+        <Button variant="ghost" size="icon" onClick={() => router.push('/settings')}>
+          <Settings className="h-6 w-6" style={{ color: "var(--color-4)" }} />
         </Button>
       </div>
     </aside>
