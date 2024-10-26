@@ -9,17 +9,22 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@langchain/community": "^0.3.9",
     "@notionhq/client": "^2.2.15",
+    "@phosphor-icons/react": "^2.1.7",
     "@supabase/supabase-js": "^2.45.6",
+    "ai": "^2.2.9",
+    "cheerio": "^1.0.0",
     "googleapis": "^144.0.0",
+    "langchain": "^0.3.4",
     "lucide-react": "^0.453.0",
     "next": "14.2.15",
     "novel": "^0.5.0",
     "novel-lightweight": "^0.2.1",
-    "ai": "^2.2.9",
     "openai": "^4.68.1",
     "react": "^18",
-    "react-dom": "^18"
+    "react-dom": "^18",
+    "remark-gfm": "^4.0.0"
   },
   "devDependencies": {
     "eslint": "^8",

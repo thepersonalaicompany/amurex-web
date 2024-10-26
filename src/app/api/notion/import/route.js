@@ -42,7 +42,7 @@ export async function POST(req) {
 
       try {
         await supabase
-          .from('documents')
+        .from('documents')
         .insert({
           url: page.url,
           title: page.properties.title?.title[0]?.plain_text || 'Untitled',
@@ -52,9 +52,6 @@ export async function POST(req) {
           user_id: session.user.id,
           type: 'notion'
         });
-        console.log("Document inserted");
-        console.log(pageContent);
-        console.log(tags);
       } catch (error) {
         console.error('Error inserting document:', error);
       }
@@ -79,8 +76,8 @@ async function generateTags(text) {
   const tagsResponse = await openai.chat.completions.create({
     model: "gpt-4",
     messages: [
-      { role: "system", content: "You are a helpful assistant that generates relevant tags for a given text." },
-      { role: "user", content: `Generate 20 relevant tags for the following text:\n\n${text.substring(0, 1000)}` }
+      { role: "system", content: "You are a helpful assistant that generates relevant tags for a given text. Provide the tags as a comma-separated list without numbers or bullet points." },
+      { role: "user", content: `Generate 20 relevant tags for the following text, separated by commas:\n\n${text.substring(0, 1000)}` }
     ],
   });
   return tagsResponse.choices[0].message.content.split(',').map(tag => tag.trim());

@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
-import { OnboardingPopup } from "@/components/OnboardingPopup";
 import { NoteEditorTile } from '@/components/NoteEditorTile';
 import { useDebounce } from '@/hooks/useDebounce';
 import { PinTile } from '@/components/PinTile';
@@ -12,7 +11,7 @@ import { supabase } from '@/lib/supabaseClient';
 import FocusedEditor from '@/components/FocusedEditor';
 import { Loader } from '@/components/Loader';
 import localFont from 'next/font/local';
-import { NotionConnectModal } from '@/components/NotionConnectModal';
+import { IntegrationsModal } from '@/components/IntegrationsModal';
 
 const louizeFont = localFont({
   src: './fonts/Louize.ttf',
@@ -23,8 +22,6 @@ const louizeFont = localFont({
 export default function HomePage() {
   const [session, setSession] = useState(null);
   const [pins, setPins] = useState([]);
-  const [showOnboarding, setShowOnboarding] = useState(false);
-  const [importType, setImportType] = useState(null);
   const [isFocusMode, setIsFocusMode] = useState(false);
   const [focusNoteContent, setFocusNoteContent] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -33,6 +30,7 @@ export default function HomePage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [showNotionPopup, setShowNotionPopup] = useState(true);
+  const [showIntegrationsPopup, setShowIntegrationsPopup] = useState(false);
 
   useEffect(() => {
     console.log('Fetching session');
@@ -112,14 +110,6 @@ export default function HomePage() {
     );
     setPins(filteredPins);
   }, [pins]);
-
-  const handleImportDocs = async (type) => {
-    setImportType(type);
-    // Here you would typically open a modal or redirect to the upload page
-    // For now, we'll just refetch the documents to simulate an import
-    await fetchDocuments();
-    setShowOnboarding(false);
-  };
 
   const handleSaveNote = useCallback(async (noteText) => {
     try {
@@ -220,24 +210,27 @@ export default function HomePage() {
     router.push('/api/notion');
   };
 
+  const handleGoogleDocsConnect = () => {
+    router.push('/api/auth/google');
+  };
 
   useEffect(() => {
-    const checkNotionConnection = async () => {
+    const checkConnections = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         const { data: user, error } = await supabase
           .from('users')
-          .select('notion_connected')
+          .select('notion_connected, google_docs_connected')
           .eq('id', session.user.id)
           .single();
 
-        if (user && user.notion_connected) {
-          setShowNotionPopup(false);
+        if (user && (!user.notion_connected && !user.google_docs_connected)) {
+          setShowIntegrationsPopup(true);
         }
       }
     };
 
-    checkNotionConnection();
+    checkConnections();
   }, []);
 
   if (!session) {
@@ -249,13 +242,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className={`${louizeFont.variable} flex flex-col h-screen`} style={{ backgroundColor: "var(--surface-color-2)" }}>
-      {showOnboarding && (
-        <OnboardingPopup
-          onClose={() => setShowOnboarding(false)}
-          onImport={handleImportDocs}
-        />
-      )}
+      <div className={`${louizeFont.variable} flex flex-col h-screen`} style={{ backgroundColor: "var(--surface-color-2)" }}>
       <div className="sticky top-0 z-40 w-full bg-opacity-90 backdrop-blur-sm" style={{ backgroundColor: "var(--surface-color-2)" }}>
         <div className="w-full py-4 px-8 flex justify-between items-center">
           <div className="relative w-full flex items-center">
@@ -306,10 +293,11 @@ export default function HomePage() {
           <FocusedEditor onSave={handleSaveFocusNote} onClose={handleCloseFocusMode} />
         </div>
       )}
-      {showNotionPopup && (
-        <NotionConnectModal
-          onClose={() => setShowNotionPopup(false)}
-          onConnect={handleNotionConnect}
+      {showIntegrationsPopup && (
+        <IntegrationsModal
+          onClose={() => setShowIntegrationsPopup(false)}
+          onConnectNotion={handleNotionConnect}
+          onConnectGoogle={handleGoogleDocsConnect}
         />
       )}
     </div>

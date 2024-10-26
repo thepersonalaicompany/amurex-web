@@ -47,8 +47,28 @@ export default function SettingsPage() {
     router.push('/api/notion');
   };
 
-  const handleGoogleDocsConnect = () => {
-    router.push('/api/auth/google');
+  const handleGoogleDocsConnect = async () => {
+    console.log('handleGoogleDocsConnect');
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const response = await fetch('/api/auth/google', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ userId: session.user.id }),
+        });
+        const data = await response.json();
+        if (data.url) {
+          window.location.href = data.url; // Redirect to Google OAuth flow
+        } else {
+          console.error('Error starting Google OAuth flow:', data.error);
+        }
+      }
+    } catch (error) {
+      console.error('Error connecting Google Docs:', error);
+    }
   };
 
   const importNotionDocuments = useCallback(async () => {
@@ -108,17 +128,6 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
-
-      {/* {notionConnected && notionDocuments.length > 0 && (
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold mb-4">Notion Documents</h2>
-          <ul className="list-disc pl-5">
-            {notionDocuments.map((doc) => (
-              <li key={doc.id}>{doc.title}</li>
-            ))}
-          </ul>
-        </div>
-      )} */}
 
       <Button onClick={handleLogout} disabled={loading}>
         {loading ? 'Logging out...' : 'Logout'}

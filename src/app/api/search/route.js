@@ -10,9 +10,7 @@ export async function POST(req) {
 
   try {
     if (searchType === 'ai') {
-      console.log('AI search', query);
       const result = await aiSearch(query);
-      console.log('AI search result', result);
       return result;
     } else if (searchType === 'pattern') {
       return await patternSearch(query);
@@ -34,8 +32,10 @@ async function aiSearch(query) {
 
   const { data, error } = await supabase
     .rpc('match_documents', { query_embedding: queryEmbedding })
-    .order('similarity', { ascending: false })
-    .limit(5);
+    .order('similarity', { ascending: true })  // Change this to false
+    .gte('similarity', 0.3);
+    
+  console.log('AI search data', data);
 
   if (error) throw error;
 
