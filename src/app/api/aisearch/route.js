@@ -4,12 +4,13 @@ import { OpenAIEmbeddings } from "@langchain/openai";
 import { MemoryVectorStore } from "langchain/vectorstores/memory";
 import { BraveSearch } from "@langchain/community/tools/brave_search";
 import OpenAI from "openai";
-import cheerio from "cheerio";
-import { createClient } from "@supabase/supabase-js";
+import  cheerio from "cheerio";
+import { createSupabaseClient } from "@/lib/supabaseClient";
 // 2. Initialize OpenAI and Supabase clients
 const openai = new OpenAI();
 const embeddings = new OpenAIEmbeddings();
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+const supabase = createSupabaseClient();
+
 // 3. Send payload to Supabase table
 async function sendPayload(content) {
   await supabase
@@ -34,22 +35,38 @@ async function rephraseInput(inputString) {
 }
 
 async function aiSearch(query) {
+  console.log("AI search query", query);
   const embeddingResponse = await openai.embeddings.create({
     model: "text-embedding-ada-002",
     input: query,
   });
   const queryEmbedding = embeddingResponse.data[0].embedding;
 
+  // Get the current user's session
+  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+  console.log("AI search session", session);
+  if (sessionError) throw sessionError;
+  
+  if (!session) {
+    return { results: [] };
+  }
+
+  console.log("AI search query embedding", queryEmbedding);
+  // Search documents with user_id filter
   const { data, error } = await supabase
-    .rpc('match_documents', { query_embedding: queryEmbedding })
-    .order('similarity', { ascending: false })
-    .gte('similarity', 0.3);
+    .rpc('match_page_sections', { 
+      query_embedding: queryEmbedding,
+      similarity_threshold: 0.3,
+      match_count: 5
+    });
+    
     
   console.log('AI search data', data);
 
   if (error) throw error;
 
-  return { results: data };
+  return { results: data || [] };
 }
 
 // 5. Search engine for sources
