@@ -186,6 +186,7 @@ export default function HomePage() {
       });
       const data = await response.json();
       if (data.results) {
+        console.log("Data results", data.results);
         setPins(data.results.map(doc => ({
           id: doc.id,
           title: doc.title,
@@ -194,7 +195,6 @@ export default function HomePage() {
                  "/placeholder.svg?height=300&width=200",
           type: ( doc.url.includes('notion.so') || doc.url.includes('notion.site') ) ? "notion" : 
                 doc.url.includes('docs.google.com') ? "google" : "other",
-          size: ["small", "medium", "large"][Math.floor(Math.random() * 3)],
           tags: doc.tags,
         })));
       }

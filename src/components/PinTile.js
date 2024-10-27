@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { PinPopover } from './PinPopover';
 import { motion } from 'framer-motion';
-import { NotionLogo, GoogleDocs, FileText, FileGoogle } from 'lucide-react';
+import { FileText, FileType2 } from 'lucide-react';
 
 export const PinTile = ({ pin }) => {
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
@@ -36,7 +36,7 @@ export const PinTile = ({ pin }) => {
                   <FileText className="w-16 h-16 text-blue-600" />
                 )}
                 {pin.type === "google" && (
-                  <FileGoogle className="w-16 h-16 text-green-600" />
+                  <FileType2 className="w-16 h-16 text-green-600" />
                 )}
                 {pin.type !== "notion" && pin.type !== "google" && (
                   <div className="text-2xl font-bold text-gray-600">Document</div>

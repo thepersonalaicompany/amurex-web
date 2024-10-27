@@ -3,6 +3,8 @@ import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
 import { Client } from '@notionhq/client';
 import { google } from 'googleapis';
+import crypto from 'crypto';
+import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 const openai = new OpenAI(process.env.OPENAI_API_KEY);
@@ -15,7 +17,6 @@ const auth = new google.auth.GoogleAuth({
 export async function POST(req) {
   const { url, title, text, session } = await req.json();
 
-  // Check for authentication
   if (!session || !session.user) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
@@ -31,22 +32,70 @@ export async function POST(req) {
     });
     const tags = tagsResponse.choices[0].message.content.split(',').map(tag => tag.trim());
 
-    // Generate embeddings using OpenAI
-    const embeddingResponse = await openai.embeddings.create({
-      model: "text-embedding-ada-002",
-      input: text.substring(0, 8000),
-    });
-    const embeddings = embeddingResponse.data[0].embedding;
+    // Generate checksum for deduplication
+    const checksum = crypto.createHash('sha256').update(text).digest('hex');
 
-    // Store in Supabase
-    const { data, error } = await supabase
+    // Check if document exists
+    const { data: existingDoc } = await supabase
       .from('documents')
-      .insert({ url, title, text, tags, embeddings, user_id: session.user.id })
-      .select();
+      .select('id')
+      .eq('checksum', checksum)
+      .single();
 
-    if (error) throw error;
+    if (existingDoc) {
+      return NextResponse.json({ 
+        success: true, 
+        message: 'Document already exists',
+        documentId: existingDoc.id 
+      });
+    }
 
-    return NextResponse.json({ success: true, documentId: data[0].id });
+    // Create new document
+    const { data: document, error: docError } = await supabase
+      .from('documents')
+      .insert({
+        url,
+        title,
+        text,
+        tags,
+        checksum,
+        meta: {
+          type: 'manual',
+          created_at: new Date().toISOString()
+        },
+        user_id: session.user.id
+      })
+      .select()
+      .single();
+
+    if (docError) throw docError;
+
+    // Split text into sections
+    const textSplitter = new RecursiveCharacterTextSplitter({
+      chunkSize: 1000,
+      chunkOverlap: 200,
+    });
+    
+    const sections = await textSplitter.createDocuments([text]);
+
+    // Process each section
+    for (const section of sections) {
+      const embeddingResponse = await openai.embeddings.create({
+        model: "text-embedding-ada-002",
+        input: section.pageContent,
+      });
+
+      await supabase
+        .from('page_sections')
+        .insert({
+          document_id: document.id,
+          context: section.pageContent,
+          token_count: section.pageContent.split(/\s+/).length,
+          embedding: embeddingResponse.data[0].embedding
+        });
+    }
+
+    return NextResponse.json({ success: true, documentId: document.id });
   } catch (error) {
     console.error('Error processing document:', error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
