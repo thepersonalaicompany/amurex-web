@@ -19,18 +19,24 @@ export default function SettingsPage() {
   }, []);
 
   const checkIntegrations = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session) {
+    try {
+      console.log('checkIntegrations');
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (session) {
       const { data: user, error } = await supabase
         .from('users')
         .select('notion_connected, google_docs_connected')
         .eq('id', session.user.id)
         .single();
+      console.log('user', user);
 
       if (user) {
-        setNotionConnected(user.notion_connected);
-        setGoogleDocsConnected(user.google_docs_connected);
+          setNotionConnected(user.notion_connected);
+          setGoogleDocsConnected(user.google_docs_connected);
+        }
       }
+    } catch (error) {
+      console.error('Error checking integrations:', error);
     }
   };
 
@@ -74,6 +80,7 @@ export default function SettingsPage() {
   };
 
   const importNotionDocuments = useCallback(async () => {
+    console.log('importNotionDocuments', notionConnected);
     if (notionConnected) {
       const { data: { session } } = await supabase.auth.getSession();
       try {

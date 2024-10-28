@@ -1,11 +1,10 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabaseClient';
 import { Client } from '@notionhq/client';
 import OpenAI from 'openai';
 import crypto from 'crypto';
-import RecursiveCharacterTextSplitter from 'recursive-character-text-splitter';
+import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 const openai = new OpenAI(process.env.OPENAI_API_KEY);
 
 export async function POST(req) {
@@ -15,20 +14,23 @@ export async function POST(req) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data: user, error: userError } = await supabase
-      .from('users')
+      const { data: user, error: userError } = await supabase
+        .from('users')
       .select('notion_access_token')
       .eq('id', session.user.id)
-      .single();
+        .single();
 
+    
     if (userError || !user.notion_access_token) {
       return NextResponse.json({ success: false, error: 'Notion not connected' }, { status: 400 });
     }
+
 
     const notion = new Client({ auth: user.notion_access_token });
     const response = await notion.search({
       filter: { property: 'object', value: 'page' }
     });
+
 
     const textSplitter = new RecursiveCharacterTextSplitter({
       chunkSize: 1000,
@@ -43,7 +45,7 @@ export async function POST(req) {
 
       // Check for existing page
       const { data: existingPage } = await supabase
-        .from('pages')
+        .from('documents')
         .select('id')
         .eq('checksum', checksum)
         .single();
@@ -55,9 +57,14 @@ export async function POST(req) {
 
       // Create new page
       const { data: newPage, error: pageError } = await supabase
-        .from('pages')
+        .from('documents')
         .insert({
-          path: page.url,
+          url: page.url,
+          title: page.properties.title?.title[0]?.plain_text || 'Untitled',
+          text: pageContent,
+          tags: tags,
+          user_id: session.user.id,
+          type: 'notion',
           checksum,
           meta: {
             title: page.properties.title?.title[0]?.plain_text || 'Untitled',
@@ -65,12 +72,14 @@ export async function POST(req) {
             created_at: new Date().toISOString(),
             tags: tags
           },
-          user_id: session.user.id
         })
         .select()
         .single();
 
-      if (pageError) throw pageError;
+      if (pageError) { 
+        console.error('Error creating page:', pageError, page);
+        throw pageError; 
+      }
 
       // Split and process content
       const sections = await textSplitter.createDocuments([pageContent]);
@@ -89,23 +98,12 @@ export async function POST(req) {
             token_count: section.pageContent.split(/\s+/).length,
             embedding: embeddingResponse.data[0].embedding
           });
-        //   .from('documents')
-        //   .insert({
-        //     url: page.url,
-        //     title: page.properties.title?.title[0]?.plain_text || 'Untitled',
-        //     text: pageContent,
-        //     tags: tags,
-        //     embeddings: embeddings,
-        //     user_id: session.user.id,
-        //     type: 'notion'
-        //   });
-        // } catch (error) {
-        //   console.error('Error inserting document:', error);
       }
 
       results.push({ id: newPage.id, status: 'created' });
     }
 
+    console.log('results', results);
     return NextResponse.json({ success: true, results });
   } catch (error) {
     console.error('Error importing from Notion:', error);
