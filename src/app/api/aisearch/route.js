@@ -179,7 +179,7 @@ const getGPTResults = async (inputString, user_id) => {
   let accumulatedContent = "";
 // 34. Open a streaming connection with OpenAI
   const stream = await openai.chat.completions.create({
-    model: "gpt-3.5-turbo",
+    model: "gpt-4o-mini",
     messages: [
       {
         role: "system",
@@ -244,7 +244,7 @@ async function generateFollowup(message) {
         content: `Generate a 4 follow up questions based on this input ""${message}"" `,
       },
     ],
-    model: "gpt-4",
+    model: "gpt-4o-mini",
   });
 // 53. Return the content of the chat completion
   return chatCompletion.choices[0].message.content;
