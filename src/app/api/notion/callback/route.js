@@ -27,14 +27,12 @@ export async function GET(req) {
     });
 
     const data = await response.json();
-    console.log('Notion token response:', data);
 
     if (data.error) {
       console.error('Notion API error:', data);
       return NextResponse.json({ success: false, error: data.error_description || data.error }, { status: 400 });
     }
 
-    console.log('Access token:', data.access_token);
     if (data.access_token) {
       // Send the data back to the client to handle
       return NextResponse.json({

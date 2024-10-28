@@ -68,9 +68,11 @@ async function aiSearch(query, user_id) {
 
   // Combine the results
   const results = documents.map(doc => ({
+    id: doc.id,
     title: doc.title,
     url: doc.url,
     content: doc.text,
+    tags: doc.tags,
     relevantSections: sections
       .filter(section => section.document_id === doc.id)
       .map(section => ({

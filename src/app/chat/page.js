@@ -87,7 +87,7 @@ export default function AISearch() {
       user_id: session.user.id 
     });
     setInputValue("");
-    fetch("/api/aisearch", {
+    fetch("/api/chat", {
       method: "POST",
       body,
       headers: {

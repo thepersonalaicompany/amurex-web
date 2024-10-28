@@ -174,15 +174,16 @@ export default function HomePage() {
     await handleSaveNote(noteText);
     handleCloseFocusMode();
   }, [handleSaveNote]);
-
+  
   const handleAiSearch = useCallback(async () => {
     if (!searchTerm.trim()) return;
     setIsAiSearching(true);
+
     try {
       const response = await fetch('/api/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: searchTerm, searchType: 'ai' }),
+        body: JSON.stringify({ query: searchTerm, searchType: 'ai', session: session }),
       });
       const data = await response.json();
       if (data.results) {

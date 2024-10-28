@@ -6,14 +6,18 @@ const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.
 const openai = new OpenAI(process.env.OPENAI_API_KEY);
 
 export async function POST(req) {
-  const { query, searchType } = await req.json();
+  const { query, searchType, session } = await req.json();
+
+  if (!session || !session.user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
   try {
     if (searchType === 'ai') {
-      const result = await aiSearch(query);
+      const result = await aiSearch(query, session.user.id);
       return result;
     } else if (searchType === 'pattern') {
-      return await patternSearch(query);
+      return await patternSearch(query, session.user.id);
     } else {
       return NextResponse.json({ error: 'Invalid search type' }, { status: 400 });
     }
@@ -23,7 +27,7 @@ export async function POST(req) {
   }
 }
 
-async function aiSearch(query) {
+async function aiSearch(query, userId) {
   const embeddingResponse = await openai.embeddings.create({
     model: "text-embedding-ada-002",
     input: query,
@@ -35,8 +39,12 @@ async function aiSearch(query) {
     .rpc('match_page_sections', {
       query_embedding: queryEmbedding,
       similarity_threshold: 0.3,
-      match_count: 5
+      match_count: 5,
+      user_id: userId
     });
+
+  console.log('sections', sections);
+  console.log('sectionsError', sectionsError);
 
   if (sectionsError) throw sectionsError;
 
@@ -47,7 +55,8 @@ async function aiSearch(query) {
   const { data: documents, error: documentsError } = await supabase
     .from('documents')
     .select('id, url, title, meta, tags, text')
-    .in('id', documentIds);
+    .in('id', documentIds)
+    .eq('user_id', userId);
 
   if (documentsError) throw documentsError;
 
@@ -71,11 +80,12 @@ async function aiSearch(query) {
   return NextResponse.json({ results });
 }
 
-async function patternSearch(query) {
+async function patternSearch(query, userId) {
   // First search in documents
   const { data: documents, error: documentsError } = await supabase
     .from('documents')
     .select('id, url, title, meta, tags')
+    .eq('user_id', userId)
     .textSearch('text', query)
     .limit(5);
 
