@@ -113,47 +113,54 @@ export function InputArea({ inputValue, setInputValue, sendMessage }) {
   );
 }
 /* 21. Query component for displaying content */
-export const Query = ({ content }) => {
+export const Query = ({ content = '' }) => {
   return <div className="text-3xl font-bold my-4 w-full">{content}</div>;
 };
 /* 22. Sources component for displaying list of sources */
-export const Sources = ({ content }) => {
-// 23. Truncate text to a given length
-  const truncateText = (text, maxLength) => (text.length <= maxLength ? text : `${text.substring(0, maxLength)}...`);
-// 24. Extract site name from a URL
-  const extractSiteName = (url) => new URL(url).hostname.replace("www.", "");
+export const Sources = ({ content = [] }) => {
+  // 23. Truncate text to a given length
+  const truncateText = (text = '', maxLength = 40) => {
+    if (!text) return '';
+    return text.length <= maxLength ? text : `${text.substring(0, maxLength)}...`;
+  };
+
+  // 24. Extract site name from a URL
+  const extractSiteName = (url) => {
+    try {
+      return new URL(url).hostname.replace("www.", "");
+    } catch (error) {
+      return '';
+    }
+  };
+
   return (
-// 25. Render the Sources component
     <>
       <div className="text-3xl font-bold my-4 w-full flex">
         <GitBranch size={32} />
         <span className="px-2">Sources</span>
       </div>
       <div className="flex flex-wrap">
-        {
-// 26. Map over the content array to create source tiles
-          content?.map(({ title, link }) => (
-            <a href={link} className="w-1/4 p-1">
-              <span className="flex flex-col items-center py-2 px-6 bg-white rounded shadow hover:shadow-lg transition-shadow duration-300 tile-animation h-full">
-                <span>{truncateText(title, 40)}</span>
-                <span>{extractSiteName(link)}</span>
-              </span>
-            </a>
-          ))
-        }
+        {Array.isArray(content) && content.map(({ title = '', link = '' }, index) => (
+          <a key={index} href={link} className="w-1/4 p-1">
+            <span className="flex flex-col items-center py-2 px-6 bg-white rounded shadow hover:shadow-lg transition-shadow duration-300 tile-animation h-full">
+              <span>{truncateText(title, 40)}</span>
+              <span>{extractSiteName(link)}</span>
+            </span>
+          </a>
+        ))}
       </div>
     </>
   );
 };
 // 27. VectorCreation component for displaying a brief message
-export const VectorCreation = ({ content }) => {
-// 28. Initialize state to control visibility of the component
+export const VectorCreation = ({ content = '' }) => {
   const [visible, setVisible] = useState(true);
-// 29. Use useEffect to handle the visibility timer
+
   useEffect(() => {
     const timer = setTimeout(() => setVisible(false), 3000);
     return () => clearTimeout(timer);
   }, []);
+
   return visible ? (
     <div className="w-full p-1">
       <span className="flex flex-col items-center py-2 px-6 bg-white rounded shadow hover:shadow-lg transition-shadow duration-300 h-full tile-animation">
@@ -163,7 +170,7 @@ export const VectorCreation = ({ content }) => {
   ) : null;
 };
 // 28. Heading component for displaying various headings
-export const Heading = ({ content }) => {
+export const Heading = ({ content = '' }) => {
   return (
     <div className="text-3xl font-bold my-4 w-full flex">
       <ChatCenteredDots size={32} />
@@ -172,7 +179,7 @@ export const Heading = ({ content }) => {
   );
 };
 // 30. GPT component for rendering markdown content
-const GPT = ({ content }) => (
+const GPT = ({ content = '' }) => (
   <ReactMarkdown
     className="prose mt-1 w-full break-words prose-p:leading-relaxed"
     remarkPlugins={[remarkGfm]}
@@ -184,34 +191,33 @@ const GPT = ({ content }) => (
   </ReactMarkdown>
 );
 // 31. FollowUp component for displaying follow-up options
-export const FollowUp = ({ content, sendMessage }) => {
-// 32. State for storing parsed follow-up options
+export const FollowUp = ({ content = '', sendMessage = () => {} }) => {
   const [followUp, setFollowUp] = useState([]);
-// 33. useRef for scrolling
   const messagesEndReff = useRef(null);
-// 34. Scroll into view when followUp changes
+
   useEffect(() => {
     setTimeout(() => {
       messagesEndReff.current?.scrollIntoView({ behavior: "smooth" });
     }, 0);
   }, [followUp]);
-// 35. Parse JSON content to extract follow-up options
+
   useEffect(() => {
-    if (content[0] === "{" && content[content.length - 1] === "}") {
+    if (typeof content === 'string' && content[0] === "{" && content[content.length - 1] === "}") {
       try {
         const parsed = JSON.parse(content);
-        setFollowUp(parsed.follow_up || []);
+        setFollowUp(Array.isArray(parsed.follow_up) ? parsed.follow_up : []);
       } catch (error) {
         console.log("error parsing json", error);
+        setFollowUp([]);
       }
     }
   }, [content]);
-// 36. Handle follow-up click event
+
   const handleFollowUpClick = (text, e) => {
     e.preventDefault();
-    sendMessage(text);
+    if (text) sendMessage(text);
   };
-// 37. Render the FollowUp component
+
   return (
     <>
       {followUp.length > 0 && (
@@ -219,20 +225,22 @@ export const FollowUp = ({ content, sendMessage }) => {
           <Stack size={32} /> <span className="px-2">Follow-Up</span>
         </div>
       )}
-{/* 38. Map over follow-up options */}
       {followUp.map((text, index) => (
-        <a href="#" key={index} className="text-xl w-full p-1" onClick={(e) => handleFollowUpClick(text, e)}>
-          <span>{text}</span>
+        <a 
+          href="#" 
+          key={index} 
+          className="text-xl w-full p-1" 
+          onClick={(e) => handleFollowUpClick(text, e)}
+        >
+          <span>{text || ''}</span>
         </a>
       ))}
-{/* 39. Scroll anchor */}
       <div ref={messagesEndReff} />
     </>
   );
 };
 // 40. MessageHandler component for dynamically rendering message components
-const MessageHandler = memo(({ message, sendMessage }) => {
-// 41. Map message types to components
+const MessageHandler = memo(({ message = { type: '', content: '' }, sendMessage = () => {} }) => {
   const COMPONENT_MAP = {
     Query,
     Sources,
@@ -241,9 +249,7 @@ const MessageHandler = memo(({ message, sendMessage }) => {
     GPT,
     FollowUp,
   };
-// 42. Determine which component to render based on message type
+  
   const Component = COMPONENT_MAP[message.type];
   return Component ? <Component content={message.content} sendMessage={sendMessage} /> : null;
 });
-
-

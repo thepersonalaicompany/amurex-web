@@ -4,13 +4,12 @@ import { OpenAIEmbeddings } from "@langchain/openai";
 import { MemoryVectorStore } from "langchain/vectorstores/memory";
 import { BraveSearch } from "@langchain/community/tools/brave_search";
 import OpenAI from "openai";
-import  cheerio from "cheerio";
-import { createSupabaseClient } from "@/lib/supabaseClient";
+import { cheerio } from "cheerio";
+import { createClient } from "@supabase/supabase-js";
 // 2. Initialize OpenAI and Supabase clients
 const openai = new OpenAI();
 const embeddings = new OpenAIEmbeddings();
-const supabase = createSupabaseClient();
-
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
 // 3. Send payload to Supabase table
 async function sendPayload(content) {
   await supabase
@@ -21,7 +20,7 @@ async function sendPayload(content) {
 // 4. Rephrase input using GPT
 async function rephraseInput(inputString) {
   const gptAnswer = await openai.chat.completions.create({
-    model: "gpt-3.5-turbo",
+    model: "gpt-4o-mini",
     messages: [
       {
         role: "system",
@@ -42,31 +41,41 @@ async function aiSearch(query) {
   });
   const queryEmbedding = embeddingResponse.data[0].embedding;
 
-  // Get the current user's session
-  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-
-  console.log("AI search session", session);
-  if (sessionError) throw sessionError;
-  
-  if (!session) {
-    return { results: [] };
-  }
-
-  console.log("AI search query embedding", queryEmbedding);
-  // Search documents with user_id filter
-  const { data, error } = await supabase
-    .rpc('match_page_sections', { 
+  // Search in page_sections using the match_page_sections function
+  const { data: sections, error: sectionsError } = await supabase
+    .rpc('match_page_sections', {
       query_embedding: queryEmbedding,
       similarity_threshold: 0.3,
       match_count: 5
     });
-    
-    
-  console.log('AI search data', data);
 
-  if (error) throw error;
+  if (sectionsError) throw sectionsError;
 
-  return { results: data || [] };
+  // Get unique document IDs from the matching sections
+  const documentIds = [...new Set(sections.map(section => section.document_id))];
+
+  // Fetch the corresponding documents
+  const { data: documents, error: documentsError } = await supabase
+    .from('documents')
+    .select('id, url, title, meta, tags, text')
+    .in('id', documentIds);
+
+  if (documentsError) throw documentsError;
+
+  // Combine the results
+  const results = documents.map(doc => ({
+    title: doc.title,
+    url: doc.url,
+    content: doc.text,
+    relevantSections: sections
+      .filter(section => section.document_id === doc.id)
+      .map(section => ({
+        context: section.context,
+        similarity: section.similarity
+      }))
+  }));
+
+  return { results };
 }
 
 // 5. Search engine for sources
@@ -78,7 +87,8 @@ async function searchEngineForSources(message, internetSearchEnabled) {
   const supabaseData = supabaseResults.results.map(doc => ({
     title: doc.title,
     link: doc.url,
-    text: doc.content  // Assuming the field is named 'content' in your Supabase table
+    text: doc.content,
+    relevantSections: doc.relevantSections
   }));
   combinedResults = [...combinedResults, ...supabaseData];
 
