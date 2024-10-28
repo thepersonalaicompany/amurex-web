@@ -11,10 +11,13 @@ const openai = new OpenAI();
 const embeddings = new OpenAIEmbeddings();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
 // 3. Send payload to Supabase table
-async function sendPayload(content) {
+async function sendPayload(content, user_id) {
   await supabase
     .from("message_history")
-    .insert([{ payload: content }])
+    .insert([{ 
+      payload: content,
+      user_id: user_id 
+    }])
     .select("id");
 }
 // 4. Rephrase input using GPT
@@ -33,8 +36,7 @@ async function rephraseInput(inputString) {
   return gptAnswer.choices[0].message.content;
 }
 
-async function aiSearch(query) {
-  console.log("AI search query", query);
+async function aiSearch(query, user_id) {
   const embeddingResponse = await openai.embeddings.create({
     model: "text-embedding-ada-002",
     input: query,
@@ -46,7 +48,8 @@ async function aiSearch(query) {
     .rpc('match_page_sections', {
       query_embedding: queryEmbedding,
       similarity_threshold: 0.3,
-      match_count: 5
+      match_count: 5,
+      user_id: user_id
     });
 
   if (sectionsError) throw sectionsError;
@@ -58,7 +61,8 @@ async function aiSearch(query) {
   const { data: documents, error: documentsError } = await supabase
     .from('documents')
     .select('id, url, title, meta, tags, text')
-    .in('id', documentIds);
+    .in('id', documentIds)
+    .eq('user_id', user_id);
 
   if (documentsError) throw documentsError;
 
@@ -79,11 +83,11 @@ async function aiSearch(query) {
 }
 
 // 5. Search engine for sources
-async function searchEngineForSources(message, internetSearchEnabled) {
+async function searchEngineForSources(message, internetSearchEnabled, user_id) {
   let combinedResults = [];
 
   // Perform Supabase document search
-  const supabaseResults = await aiSearch(message);
+  const supabaseResults = await aiSearch(message, user_id);
   const supabaseData = supabaseResults.results.map(doc => ({
     title: doc.title,
     link: doc.url,
@@ -106,7 +110,7 @@ async function searchEngineForSources(message, internetSearchEnabled) {
     combinedResults = [...combinedResults, ...normalizedData];
   }
 
-  sendPayload({ type: "Sources", content: combinedResults });
+  await sendPayload({ type: "Sources", content: combinedResults }, user_id);
 
   let vectorCount = 0;
   const fetchAndProcess = async (item) => {
@@ -146,8 +150,8 @@ async function searchEngineForSources(message, internetSearchEnabled) {
   const successfulResults = results.filter((result) => result !== null);
   const topResult = successfulResults.length > 4 ? successfulResults.slice(0, 4) : successfulResults;
 
-  sendPayload({ type: "VectorCreation", content: `Finished Scanning Sources.` });
-  triggerLLMAndFollowup(`Query: ${message}, Top Results: ${JSON.stringify(topResult)}`);
+  await sendPayload({ type: "VectorCreation", content: `Finished Scanning Sources.` }, user_id);
+  triggerLLMAndFollowup(`Query: ${message}, Top Results: ${JSON.stringify(topResult)}`, user_id);
 }
 // 25. Define fetchPageContent function
 async function fetchPageContent(link) {
@@ -161,19 +165,17 @@ function extractMainContent(html) {
   return $("body").text().replace(/\s+/g, " ").trim();
 }
 // 27. Define triggerLLMAndFollowup function
-async function triggerLLMAndFollowup(inputString) {
-// 28. Call getGPTResults with inputString
-  await getGPTResults(inputString);
-// 29. Generate follow-up with generateFollowup
+async function triggerLLMAndFollowup(inputString, user_id) {
+  // Pass user_id to getGPTResults
+  await getGPTResults(inputString, user_id);
+  // Generate follow-up with generateFollowup
   const followUpResult = await generateFollowup(inputString);
-// 30. Send follow-up payload
-  sendPayload({ type: "FollowUp", content: followUpResult });
-// 31. Return JSON response
+  // Send follow-up payload with user_id
+  await sendPayload({ type: "FollowUp", content: followUpResult }, user_id);
   return Response.json({ message: "Processing request" });
 }
 // 32. Define getGPTResults function
-const getGPTResults = async (inputString) => {
-// 33. Initialize accumulatedContent
+const getGPTResults = async (inputString, user_id) => {
   let accumulatedContent = "";
 // 34. Open a streaming connection with OpenAI
   const stream = await openai.chat.completions.create({
@@ -188,46 +190,46 @@ const getGPTResults = async (inputString) => {
     ],
     stream: true,
   });
-// 35. Create an initial row in the database
-  let rowId = await createRowForGPTResponse();
-// 36. Send initial payload
-  sendPayload({ type: "Heading", content: "Answer" });
-// 37. Iterate through the response stream
+
+  // Create initial row with user_id
+  // TODO: Why?
+  let rowId = await createRowForGPTResponse(user_id);
+  // Send initial payload with user_id
+  await sendPayload({ type: "Heading", content: "Answer" }, user_id);
+
   for await (const part of stream) {
 // 38. Check if delta content exists
     if (part.choices[0]?.delta?.content) {
 // 39. Accumulate the content
       accumulatedContent += part.choices[0]?.delta?.content;
-// 40. Update the row with new content
-      rowId = await updateRowWithGPTResponse(rowId, accumulatedContent);
+      // Update row with user_id
+      rowId = await updateRowWithGPTResponse(rowId, accumulatedContent, user_id);
     }
   }
 };
+
 // 41. Define createRowForGPTResponse function
-const createRowForGPTResponse = async () => {
-// 42. Generate a unique stream ID
-  const generateUniqueStreamId = () => {
-    return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  };
-  const streamId = generateUniqueStreamId();
-// 43. Create the payload
+const createRowForGPTResponse = async (user_id) => {
+  const streamId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   const payload = { type: "GPT", content: "" };
-// 44. Insert into database
-  const { data, error } = await supabase.from("message_history").insert([{ payload }]).select("id");
-// 45. Return the ID and stream ID
+  const { data, error } = await supabase
+    .from("message_history")
+    .insert([{ payload, user_id }])
+    .select("id");
   return { id: data ? data[0].id : null, streamId };
 };
+
 // 46. Define updateRowWithGPTResponse function
-const updateRowWithGPTResponse = async (prevRowId, content) => {
-// 47. Create the payload
+const updateRowWithGPTResponse = async (prevRowId, content, user_id) => {
   const payload = { type: "GPT", content };
-// 48. Delete the previous row
   await supabase.from("message_history").delete().eq("id", prevRowId);
-// 49. Insert updated data
-  const { data } = await supabase.from("message_history").insert([{ payload }]).select("id");
-// 50. Return the new row ID
+  const { data } = await supabase
+    .from("message_history")
+    .insert([{ payload, user_id }])
+    .select("id");
   return data ? data[0].id : null;
 };
+
 // 51. Define generateFollowup function
 async function generateFollowup(message) {
 // 52. Create chat completion with OpenAI API
@@ -249,12 +251,14 @@ async function generateFollowup(message) {
 }
 // 54. Define POST function for API endpoint
 export async function POST(req, res) {
-// 55. Get message from request payload
-  const { message, internetSearchEnabled } = await req.json();
-// 56. Send query payload
-  sendPayload({ type: "Query", content: message });
-// 57. Start the search engine to find sources based on the query
-  await searchEngineForSources(message, internetSearchEnabled);
+  const { message, internetSearchEnabled, user_id } = await req.json();
+  
+  if (!user_id) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  await sendPayload({ type: "Query", content: message }, user_id);
+  await searchEngineForSources(message, internetSearchEnabled, user_id);
 
   return Response.json({ "message": "Processing request" });
 }

@@ -16,41 +16,76 @@ export default function AISearch() {
   const [inputValue, setInputValue] = useState("");
   const [messageHistory, setMessageHistory] = useState([]);
   const [internetSearchEnabled, setInternetSearchEnabled] = useState(false);
-// 5. Auto-scroll to last message
+  const [session, setSession] = useState(null);
+
+  // Auto scroll to the end of the messages
   useEffect(() => {
     setTimeout(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, 0);
   }, [messageHistory]);
-// 6. Fetch message history from Supabase
+
+  // Add session check on component mount
   useEffect(() => {
-// 7. Handle new inserts into the table
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Update message history fetch with user_id
+  useEffect(() => {
+    if (!session?.user?.id) return;
+
     const handleInserts = (payload) => {
+      if (payload.new.user_id !== session.user.id) return;
+      
       setMessageHistory((prevMessages) => {
         const lastMessage = prevMessages[prevMessages.length - 1];
         const isSameType = lastMessage?.payload?.type === "GPT" && payload.new.payload.type === "GPT";
         return isSameType ? [...prevMessages.slice(0, -1), payload.new] : [...prevMessages, payload.new];
       });
     };
-// 8. Subscribe to Supabase channel for real-time updates
+
     supabase
       .channel("message_history")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "message_history" }, handleInserts)
+      .on(
+        "postgres_changes",
+        { 
+          event: "INSERT", 
+          schema: "public", 
+          table: "message_history",
+          filter: `user_id=eq.${session.user.id}`
+        },
+        handleInserts
+      )
       .subscribe();
-// 9. Fetch existing message history from Supabase
+
     supabase
       .from("message_history")
       .select("*")
+      .eq('user_id', session.user.id)
       .order("created_at", { ascending: true })
       .then(({ data: message_history, error }) =>
         error ? console.log("error", error) : setMessageHistory(message_history)
       );
-  }, []);
-// 10. Function to send a message
+  }, [session?.user?.id]);
+
+  // Update sendMessage to include user_id
   const sendMessage = (messageToSend) => {
+    if (!session?.user?.id) return;
+    
     const message = messageToSend || inputValue;
-    console.log("message", message);
-    const body = JSON.stringify({ message: message, internetSearchEnabled });
+    const body = JSON.stringify({ 
+      message, 
+      internetSearchEnabled,
+      user_id: session.user.id 
+    });
     setInputValue("");
     fetch("/api/aisearch", {
       method: "POST",
