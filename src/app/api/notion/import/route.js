@@ -38,7 +38,7 @@ export async function POST(req) {
     });
 
     const results = [];
-    for (const page of response.results.slice(0, 2)) {
+    for (const page of response.results.slice(0, 4)) {
       const pageContent = await fetchNotionPageContent(notion, page.id);
       const tags = await generateTags(pageContent);
       const checksum = crypto.createHash('sha256').update(pageContent).digest('hex');
@@ -93,7 +93,7 @@ export async function POST(req) {
         await supabase
           .from('page_sections')
           .insert({
-            page_id: newPage.id,
+            document_id: newPage.id,
             context: section.pageContent,
             token_count: section.pageContent.split(/\s+/).length,
             embedding: embeddingResponse.data[0].embedding

@@ -6,6 +6,8 @@ import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/Button';
 import { ArrowCircleRight, ChatCenteredDots, Stack, GitBranch, X } from "@phosphor-icons/react";
 import { motion } from 'framer-motion';
+import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
+import { openai } from 'openai';
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(false);
@@ -93,8 +95,35 @@ export default function SettingsPage() {
           body: JSON.stringify({ session: session }),
         });
         const data = await response.json();
+        
         if (data.success) {
           setNotionDocuments(data.documents);
+          
+          // Process each document for embeddings
+          for (const doc of data.documents) {
+            const textSplitter = new RecursiveCharacterTextSplitter({
+              chunkSize: 1000,
+              chunkOverlap: 200,
+            });
+            
+            const sections = await textSplitter.createDocuments([doc.text]);
+            
+            for (const section of sections) {
+              const embeddingResponse = await openai.embeddings.create({
+                model: "text-embedding-ada-002",
+                input: section.pageContent,
+              });
+
+              await supabase
+                .from('page_sections')
+                .insert({
+                  document_id: doc.id,
+                  context: section.pageContent,
+                  token_count: section.pageContent.split(/\s+/).length,
+                  embedding: embeddingResponse.data[0].embedding
+                });
+            }
+          }
         } else {
           console.error('Error importing Notion documents:', data.error);
         }
