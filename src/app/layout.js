@@ -14,17 +14,25 @@ const geistMono = localFont({
 });
 
 export const metadata = {
-  title: "Brainex",
+  title: "Brainex - A virtual assistant for all your knowledge work.",
   description: "The second brain killer app.",
 };
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <span className="flex h-screen overflow-hidden" style={{ backgroundColor: "var(--surface-color-2)" }}>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
+        <span
+          className="flex h-screen overflow-hidden"
+          style={{ backgroundColor: "var(--surface-color-2)" }}
+        >
           <Navbar />
-          <main className="flex-1 overflow-y-auto ml-16" style={{ backgroundColor: "var(--surface-color-2)" }}>
+          <main
+            className="flex-1 overflow-y-auto ml-16"
+            style={{ backgroundColor: "var(--surface-color-2)" }}
+          >
             {children}
           </main>
         </span>
