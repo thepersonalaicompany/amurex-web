@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabaseClient';
 export default function NotionCallbackPage() {
   const router = useRouter();
 
+  useEffect(() => {
     const handleNotionCallback = async () => {
       const urlParams = new URLSearchParams(window.location.search);
       const code = urlParams.get('code');
@@ -58,7 +59,8 @@ export default function NotionCallbackPage() {
       }
     };
 
-  handleNotionCallback();
+    handleNotionCallback();
+  }, []); // Empty dependency array means this effect runs once when component mounts
 
   return (
     <div>

@@ -75,7 +75,7 @@ export default function SettingsPage() {
         });
         const data = await response.json();
         if (data.url) {
-          window.location.href = data.url; // Redirect to Google OAuth flow
+          router.push(data.url);
         } else {
           console.error('Error starting Google OAuth flow:', data.error);
         }
