@@ -284,3 +284,6 @@ const MessageHandler = memo(({ message = { type: '', content: '' }, sendMessage 
   const Component = COMPONENT_MAP[message.type];
   return Component ? <Component content={message.content} sendMessage={sendMessage} /> : null;
 });
+
+// Add this line after the component definition
+MessageHandler.displayName = 'MessageHandler';
