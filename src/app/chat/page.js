@@ -4,11 +4,7 @@ import React, { useEffect, useRef, useState, memo } from "react";
 import { ArrowCircleRight, ChatCenteredDots, Stack, GitBranch } from "@phosphor-icons/react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { createClient } from "@supabase/supabase-js";
-// 2. Initialize Supabase client
-const SUPABASE_URL = "https://frapvehupbokwugjzvni.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZyYXB2ZWh1cGJva3d1Z2p6dm5pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjkzNDM1MDcsImV4cCI6MjA0NDkxOTUwN30.XDIFWfGSdECyN1Q-7xeSkmhHJCgLisaTj7Dfgn6pr5U";
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+import { supabase } from '@/lib/supabaseClient';
 // 3. Home component
 export default function AISearch() {
 // 4. Initialize states and refs
@@ -288,5 +284,3 @@ const MessageHandler = memo(({ message = { type: '', content: '' }, sendMessage 
   const Component = COMPONENT_MAP[message.type];
   return Component ? <Component content={message.content} sendMessage={sendMessage} /> : null;
 });
-
-MessageHandler.displayName = 'MessageHandler';
