@@ -4,10 +4,10 @@ import { OpenAIEmbeddings } from "@langchain/openai";
 import { MemoryVectorStore } from "langchain/vectorstores/memory";
 import { BraveSearch } from "@langchain/community/tools/brave_search";
 import OpenAI from "openai";
-import { cheerio } from "cheerio";
+import * as cheerio from "cheerio";
 import { createClient } from "@supabase/supabase-js";
 // 2. Initialize OpenAI and Supabase clients
-const openai = new OpenAI();
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const embeddings = new OpenAIEmbeddings();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
 // 3. Send payload to Supabase table
