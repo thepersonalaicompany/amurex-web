@@ -7,7 +7,11 @@ import { Button } from '@/components/ui/Button';
 import { ArrowCircleRight, ChatCenteredDots, Stack, GitBranch, X } from "@phosphor-icons/react";
 import { motion } from 'framer-motion';
 import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
-import { openai } from 'openai';
+import OpenAI from 'openai';
+
+const openai = new OpenAI({
+  apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY, // This needs to be your OpenAI API key
+});
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(false);
