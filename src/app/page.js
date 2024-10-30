@@ -208,11 +208,11 @@ export default function HomePage() {
 
 
   const handleNotionConnect = () => {
-    router.push('/api/notion');
+    router.push('/api/notion/auth');
   };
 
   const handleGoogleDocsConnect = () => {
-    router.push('/api/auth/google');
+    router.push('/api/google/auth');
   };
 
   useEffect(() => {

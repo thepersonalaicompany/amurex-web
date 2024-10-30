@@ -52,7 +52,7 @@ export default function SettingsPage() {
   };
 
   const handleNotionConnect = () => {
-    router.push('/api/notion');
+    router.push('/api/notion/auth');
   };
 
   const handleGoogleDocsConnect = async () => {
@@ -60,7 +60,7 @@ export default function SettingsPage() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        const response = await fetch('/api/auth/google', {
+        const response = await fetch('/api/google/auth', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -105,6 +105,33 @@ export default function SettingsPage() {
     }
   }, [notionConnected]);
 
+  const importGoogleDocs = useCallback(async () => {
+    console.log('importGoogleDocs', googleDocsConnected);
+    if (googleDocsConnected) {
+      const { data: { session } } = await supabase.auth.getSession();
+      try {
+        console.log('Importing Google docs');
+        const response = await fetch('/api/google/import', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ session: session }),
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+          // Handle successful import
+          console.log('Google Docs imported successfully');
+        } else {
+          console.error('Error importing Google docs:', data.error);
+        }
+      } catch (error) {
+        console.error('Error importing Google docs:', error);
+      }
+    }
+  }, [googleDocsConnected]);
+
   return (
     <div className="container mx-auto px-4 py-8 min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
       <div className="max-w-3xl mx-auto">
@@ -140,6 +167,14 @@ export default function SettingsPage() {
                 >
                   <Stack size={24} className="mr-2" />
                   Import Notion Documents
+                </Button>
+                <Button 
+                  onClick={importGoogleDocs} 
+                  variant="default"
+                  className="w-full py-3 text-lg"
+                >
+                  <Stack size={24} className="mr-2" />
+                  Import Google Docs
                 </Button>
               </div>
             </div>
