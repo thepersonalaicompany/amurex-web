@@ -8,7 +8,7 @@ import * as cheerio from "cheerio";
 import { createClient } from "@supabase/supabase-js";
 // 2. Initialize OpenAI and Supabase clients
 const openai = new OpenAI({ apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY });
-const supabase = createClient({ supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL, supabaseKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY });
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 const embeddings = new OpenAIEmbeddings();
 // 3. Send payload to Supabase table
 async function sendPayload(content, user_id) {
