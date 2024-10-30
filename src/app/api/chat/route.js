@@ -105,7 +105,7 @@ async function searchEngineForSources(message, internetSearchEnabled, user_id) {
     function normalizeData(docs) {
       return JSON.parse(docs)
         .filter((doc) => doc.title && doc.link && !doc.link.includes("brave.com"))
-        .slice(0, 4)
+        .slice(0, 6)
         .map(({ title, link }) => ({ title, link }));
     }
     const normalizedData = normalizeData(docs);
