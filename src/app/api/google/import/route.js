@@ -63,7 +63,7 @@ export async function POST(req) {
 
     const results = [];
     console.log('Response:', response.data.files.length);
-    for (const file of response.data.files.slice(0, 1)) {
+    for (const file of response.data.files.slice(0, 5)) {
       const doc = await docs.documents.get({ documentId: file.id });
       const content = doc.data.body.content
         .map(item => item.paragraph?.elements?.map(e => e.textRun?.content).join(''))
@@ -107,25 +107,31 @@ export async function POST(req) {
         .select()
         .single();
 
-      console.log('New Doc:', newDoc);
-      console.log('New Doc Error:', newDocError);
-
       const sections = await textSplitter.createDocuments([content]);
 
       for (const section of sections) {
+        console.log("iterating");
         const embeddingResponse = await openai.embeddings.create({
           model: "text-embedding-ada-002",
           input: section.pageContent,
         });
 
-        await supabase
-          .from('page_sections')
+
+        try {
+          const { data: newSection, error: newSectionError } = await supabase
+            .from('page_sections')
           .insert({
             document_id: newDoc.id,
-            content: section.pageContent,
+            context: section.pageContent,
             token_count: section.pageContent.split(/\s+/).length,
             embedding: embeddingResponse.data[0].embedding
           });
+
+        console.log('New Section:', newSection);
+          console.log('New Section Error:', newSectionError);
+        } catch (error) {
+          console.error('Error inserting section:', error);
+        }
       }
 
       results.push({ id: newDoc.id, status: 'created' });
