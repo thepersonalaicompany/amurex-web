@@ -7,6 +7,17 @@ import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
 
 const openai = new OpenAI(process.env.OPENAI_API_KEY);
 
+async function generateTags(text) {
+  const tagsResponse = await openai.chat.completions.create({
+    model: "gpt-4",
+    messages: [
+      { role: "system", content: "You are a helpful assistant that generates relevant tags for a given text. Provide the tags as a comma-separated list without numbers or bullet points." },
+      { role: "user", content: `Generate 20 relevant tags for the following text, separated by commas:\n\n${text.substring(0, 1000)}` }
+    ],
+  });
+  return tagsResponse.choices[0].message.content.split(',').map(tag => tag.trim());
+}
+
 export async function POST(req) {
   try {
     const { session } = await req.json();
@@ -41,7 +52,7 @@ export async function POST(req) {
     // List documents
     const response = await drive.files.list({
       q: "mimeType='application/vnd.google-apps.document'",
-      fields: 'files(id, name)',
+      fields: 'files(id, name, modifiedTime, mimeType)',
       pageSize: 10
     });
 
@@ -51,7 +62,8 @@ export async function POST(req) {
     });
 
     const results = [];
-    for (const file of response.data.files) {
+    console.log('Response:', response.data.files.length);
+    for (const file of response.data.files.slice(0, 1)) {
       const doc = await docs.documents.get({ documentId: file.id });
       const content = doc.data.body.content
         .map(item => item.paragraph?.elements?.map(e => e.textRun?.content).join(''))
@@ -73,18 +85,30 @@ export async function POST(req) {
       }
 
       // Generate embeddings and store new document
-      const { data: newDoc } = await supabase
+      const tags = await generateTags(content);
+      console.log('Tags:', tags);
+
+      const { data: newDoc, error: newDocError } = await supabase
         .from('documents')
         .insert({
           title: file.name,
           text: content,
           url: `https://docs.google.com/document/d/${file.id}`,
-          source: 'google_docs',
+          type: 'google_docs',
           user_id: session.user.id,
-          checksum: checksum
+          checksum: checksum,
+          tags: tags,
+          meta: {
+            lastModified: file.modifiedTime,
+            mimeType: file.mimeType,
+            documentId: file.id
+          }
         })
         .select()
         .single();
+
+      console.log('New Doc:', newDoc);
+      console.log('New Doc Error:', newDocError);
 
       const sections = await textSplitter.createDocuments([content]);
 
