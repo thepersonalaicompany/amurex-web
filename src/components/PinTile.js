@@ -41,10 +41,10 @@ export const PinTile = ({ pin }) => {
                 {pin.type === "notion" && (
                   <FileText className="w-16 h-16 text-blue-600" />
                 )}
-                {pin.type === "google" && (
+                {(pin.type === "google" || pin.type === "google_docs") && (
                   <FileType2 className="w-16 h-16 text-green-600" />
                 )}
-                {pin.type !== "notion" && pin.type !== "google" && (
+                {pin.type !== "notion" && pin.type !== "google" && pin.type !== "google_docs" && (
                   <div className="text-2xl font-bold text-gray-600">Document</div>
                 )}
               </div>
@@ -54,7 +54,7 @@ export const PinTile = ({ pin }) => {
                   Notion
                 </div>
               )}
-              {pin.type === "google" && (
+              {( pin.type === "google" || pin.type === "google_docs" ) && (
                 <div className="absolute top-2 right-2 bg-green-100 rounded-full px-2 py-1 text-xs font-semibold text-green-600">
                   Google
                 </div>
