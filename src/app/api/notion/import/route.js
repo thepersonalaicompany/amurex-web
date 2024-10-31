@@ -38,7 +38,7 @@ export async function POST(req) {
     });
 
     const results = [];
-    for (const page of response.results.slice(0, 4)) {
+    for (const page of response.results) {
       const pageContent = await fetchNotionPageContent(notion, page.id);
       const tags = await generateTags(pageContent);
       const checksum = crypto.createHash('sha256').update(pageContent).digest('hex');

@@ -63,7 +63,7 @@ export async function POST(req) {
 
     const results = [];
     console.log('Response:', response.data.files.length);
-    for (const file of response.data.files.slice(0, 5)) {
+    for (const file of response.data.files) {
       const doc = await docs.documents.get({ documentId: file.id });
       const content = doc.data.body.content
         .map(item => item.paragraph?.elements?.map(e => e.textRun?.content).join(''))

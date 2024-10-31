@@ -12,6 +12,9 @@ export default function SettingsPage() {
   const [notionConnected, setNotionConnected] = useState(false);
   const [googleDocsConnected, setGoogleDocsConnected] = useState(false);
   const [notionDocuments, setNotionDocuments] = useState([]);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importSource, setImportSource] = useState('');
+  const [importProgress, setImportProgress] = useState(0);
   const router = useRouter();
 
   useEffect(() => {
@@ -80,11 +83,11 @@ export default function SettingsPage() {
   };
 
   const importNotionDocuments = useCallback(async () => {
-    console.log('importNotionDocuments', notionConnected);
     if (notionConnected) {
+      setIsImporting(true);
+      setImportSource('Notion');
       const { data: { session } } = await supabase.auth.getSession();
       try {
-        console.log('Importing Notion documents');
         const response = await fetch('/api/notion/import', {
           method: 'POST',
           headers: {
@@ -101,16 +104,22 @@ export default function SettingsPage() {
         }
       } catch (error) {
         console.error('Error importing Notion documents:', error);
+      } finally {
+        setTimeout(() => {
+          setIsImporting(false);
+          setImportSource('');
+          setImportProgress(0);
+        }, 1000);
       }
     }
   }, [notionConnected]);
 
   const importGoogleDocs = useCallback(async () => {
-    console.log('importGoogleDocs', googleDocsConnected);
     if (googleDocsConnected) {
+      setIsImporting(true);
+      setImportSource('Google Docs');
       const { data: { session } } = await supabase.auth.getSession();
       try {
-        console.log('Importing Google docs');
         const response = await fetch('/api/google/import', {
           method: 'POST',
           headers: {
@@ -121,13 +130,18 @@ export default function SettingsPage() {
         const data = await response.json();
         
         if (data.success) {
-          // Handle successful import
           console.log('Google Docs imported successfully');
         } else {
           console.error('Error importing Google docs:', data.error);
         }
       } catch (error) {
         console.error('Error importing Google docs:', error);
+      } finally {
+        setTimeout(() => {
+          setIsImporting(false);
+          setImportSource('');
+          setImportProgress(0);
+        }, 1000);
       }
     }
   }, [googleDocsConnected]);
@@ -186,6 +200,7 @@ export default function SettingsPage() {
           </Button>
         </motion.div>
       </div>
+      <ImportingModal isOpen={isImporting} source={importSource} onClose={() => setIsImporting(false)} />
     </div>
   );
 }
@@ -204,5 +219,34 @@ function IntegrationButton({ onClick, connected, label, icon }) {
       {icon}
       <span className="ml-2">{connected ? `${label} Connected` : `Connect ${label}`}</span>
     </Button>
+  );
+}
+
+function ImportingModal({ isOpen, source, onClose }) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <motion.div 
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        className="bg-white rounded-lg p-6 max-w-sm w-full mx-4 relative"
+      >
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 transition-colors"
+        >
+          <X size={24} />
+        </button>
+        <div className="text-center">
+          <div className="mb-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+          </div>
+          <h3 className="text-lg font-semibold mb-2">Importing {source}</h3>
+          <p className="text-gray-600">This may take a while depending on the number of documents.</p>
+          <p className="text-gray-600">Feel free to close this window and continue using the app.</p>
+        </div>
+      </motion.div>
+    </div>
   );
 }
