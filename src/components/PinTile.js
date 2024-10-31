@@ -7,7 +7,13 @@ export const PinTile = ({ pin }) => {
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
   const handleClick = () => {
-    setIsPopoverOpen(true);
+    if (pin.type === "notion" || pin.type === "google") {
+      // Open external URLs in a new tab
+      window.open(pin.url, '_blank');
+    } else {
+      // Open internal documents in the modal
+      setIsPopoverOpen(true);
+    }
   };
 
   const handleClose = () => {
