@@ -17,7 +17,7 @@ const geistMono = localFont({
 
 export const metadata = {
   title: "Brainex - A virtual assistant for all your knowledge work.",
-  description: "The second brain killer app.",
+  description: "The virtual butler for your knowledge work.",
 };
 
 export default function RootLayout({ children }) {

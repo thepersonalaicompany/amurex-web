@@ -100,9 +100,11 @@ export default function SettingsPage() {
         if (data.success) {
           setNotionDocuments(data.documents);
         } else {
+          console.log('Data:', data);
           console.error('Error importing Notion documents:', data.error);
         }
       } catch (error) {
+          console.log('Error:', error);
         console.error('Error importing Notion documents:', error);
       } finally {
         setTimeout(() => {
