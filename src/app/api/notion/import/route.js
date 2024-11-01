@@ -7,6 +7,11 @@ import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
 
 const openai = new OpenAI(process.env.OPENAI_API_KEY);
 
+export const config = {
+  maxDuration: 300 // 5 minutes
+};
+
+
 export async function POST(req) {
   try {
     const { session } = await req.json();

@@ -7,6 +7,11 @@ import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
 
 const openai = new OpenAI(process.env.OPENAI_API_KEY);
 
+export const config = {
+  maxDuration: 300 // 5 minutes
+};
+
+
 async function generateTags(text) {
   const tagsResponse = await openai.chat.completions.create({
     model: "gpt-4",
