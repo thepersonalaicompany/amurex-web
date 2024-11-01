@@ -10,6 +10,8 @@ export function PinPopover({ pin, onClose }) {
   const [currentTagPage, setCurrentTagPage] = useState(0);
 
   useEffect(() => {
+    console.log('PinPopover mounted');
+    console.log('Pin:', pin);
     const handleClickOutside = (event) => {
       if (popoverRef.current && !popoverRef.current.contains(event.target)) {
         onClose();
@@ -65,7 +67,7 @@ export function PinPopover({ pin, onClose }) {
       <div ref={popoverRef} className="bg-white rounded-lg p-6 w-full sm:w-3/4 h-full sm:h-3/4 flex flex-col sm:flex-row">
         <div className="w-full sm:w-3/4 pr-4 overflow-y-auto">
           <h2 className="text-2xl font-bold mb-4">{pin.title}</h2>
-          <p>{pin.content || 'No content available'}</p>
+          <p>{pin.text || 'No content available'}</p>
         </div>
         <div className="w-full sm:w-1/4 mt-4 sm:mt-0 sm:pl-4 sm:border-l">
           <h3 className="text-xl font-semibold mb-2">Tags</h3>
