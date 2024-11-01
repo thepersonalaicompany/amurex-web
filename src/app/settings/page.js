@@ -225,8 +225,6 @@ function IntegrationButton({ onClick, connected, label, icon }) {
 }
 
 function ImportingModal({ isOpen, source, onClose }) {
-  if (!isOpen) return null;
-
   useEffect(() => {
     const handleEscapeKey = (event) => {
       if (event.key === 'Escape') {
@@ -239,6 +237,8 @@ function ImportingModal({ isOpen, source, onClose }) {
       document.removeEventListener('keydown', handleEscapeKey);
     };
   }, [onClose]);
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
