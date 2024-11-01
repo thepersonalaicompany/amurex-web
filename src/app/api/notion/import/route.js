@@ -22,6 +22,7 @@ export async function POST(req) {
 
     
     if (userError || !user.notion_access_token) {
+      console.log('User Error:', userError);
       return NextResponse.json({ success: false, error: 'Notion not connected' }, { status: 400 });
     }
 
@@ -31,11 +32,15 @@ export async function POST(req) {
       filter: { property: 'object', value: 'page' }
     });
 
+    console.log('Response:', response.results.length);
+
 
     const textSplitter = new RecursiveCharacterTextSplitter({
       chunkSize: 1000,
       chunkOverlap: 200,
     });
+
+    console.log('Response:', response.results.length);
 
     const results = [];
     for (const page of response.results) {
