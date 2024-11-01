@@ -59,6 +59,7 @@ export async function POST(req) {
         text,
         tags,
         checksum,
+        created_at: new Date().toISOString(),
         meta: {
           type: 'manual',
           created_at: new Date().toISOString()

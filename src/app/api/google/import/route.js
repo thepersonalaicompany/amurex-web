@@ -98,6 +98,7 @@ export async function POST(req) {
           user_id: session.user.id,
           checksum: checksum,
           tags: tags,
+          created_at: new Date().toISOString(),
           meta: {
             lastModified: file.modifiedTime,
             mimeType: file.mimeType,

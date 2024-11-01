@@ -71,6 +71,7 @@ export async function POST(req) {
           user_id: session.user.id,
           type: 'notion',
           checksum,
+          created_at: new Date().toISOString(),
           meta: {
             title: page.properties.title?.title[0]?.plain_text || 'Untitled',
             type: 'notion',
