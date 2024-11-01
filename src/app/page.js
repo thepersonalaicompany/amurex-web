@@ -138,8 +138,9 @@ export default function HomePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           url: publicUrl,
-          title: title, // Use the first line as title
-          text: content || title, // Use remaining content or title if no content
+          title: title,
+          text: content || title,
+          created_at: new Date().toISOString(),
           session
         }),
       });
@@ -153,7 +154,8 @@ export default function HomePage() {
           type: "note",
           size: ["small", "medium", "large"][Math.floor(Math.random() * 3)],
           tags: [],
-          url: publicUrl
+          url: publicUrl,
+          created_at: new Date().toISOString()
         };
         setPins(prevPins => [newNote, ...prevPins]);
         console.log('Note saved successfully');
