@@ -114,6 +114,11 @@ export default function HomePage() {
   const handleSaveNote = useCallback(async (noteText) => {
     try {
       const filename = `note_${Date.now()}.txt`;
+      
+      // Split the note into title and content
+      const lines = noteText.split('\n');
+      const title = lines[0] || 'Untitled Note';
+      const content = lines.slice(1).join('\n').trim();
 
       const { data, error: uploadError } = await supabase.storage
         .from('notes')
@@ -133,8 +138,8 @@ export default function HomePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           url: publicUrl,
-          title: noteText.substring(0, 50) + '...', 
-          text: noteText,
+          title: title, // Use the first line as title
+          text: content || title, // Use remaining content or title if no content
           session
         }),
       });
@@ -143,7 +148,7 @@ export default function HomePage() {
       if (responseData.success) {
         const newNote = {
           id: responseData.documentId,
-          title: noteText.substring(0, 50) + '...',
+          title: title,
           image: "/placeholder.svg?height=300&width=200",
           type: "note",
           size: ["small", "medium", "large"][Math.floor(Math.random() * 3)],
