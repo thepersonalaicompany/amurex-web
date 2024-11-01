@@ -7,7 +7,7 @@ export const PinTile = ({ pin }) => {
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
   const handleClick = () => {
-    if (pin.type === "notion" || pin.type === "google") {
+    if (pin.type === "notion" || pin.type === "google" || pin.type === "google_docs") {
       // Open external URLs in a new tab
       window.open(pin.url, '_blank');
     } else {
