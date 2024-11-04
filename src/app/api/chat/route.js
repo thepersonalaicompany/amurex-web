@@ -181,12 +181,12 @@ const getGPTResults = async (inputString, user_id) => {
   let accumulatedContent = "";
 // 34. Open a streaming connection with OpenAI
   const stream = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
+    model: "gpt-4",
     messages: [
       {
         role: "system",
         content:
-          "You are a answer generator, you will receive top results of similarity search, they are optional to use depending how well they help answer the query.",
+          "You are a search engine across all your documents, you will receive top results of similarity search, they are optional to use depending how well they help answer the query. Be sure to use them when relevant.",
       },
       { role: "user", content: inputString },
     ],
