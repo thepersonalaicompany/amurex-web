@@ -98,46 +98,93 @@ export default function AISearch() {
   };
 // 12. Render home component
   return (
-    <div className="flex h-screen">
-{/* 13. Create main container with flex and screen height */}
-      <div className="flex-grow h-screen flex flex-col justify-between mx-auto max-w-4xl">
-{/* 14. Map over message history to display each message */}
-        {messageHistory.map((message, index) => (
-          <>
-            <MessageHandler key={index} message={message.payload} sendMessage={sendMessage} />
-          </>
-        ))}
-{/* 15. Include InputArea for message input and sending */}
-<button
-  onClick={() => setInternetSearchEnabled(!internetSearchEnabled)}
-  className={`mb-2 px-4 py-2 rounded ${
-    internetSearchEnabled ? 'bg-green-500' : 'bg-gray-300'
-  } text-white`}
->
-  {internetSearchEnabled ? 'Internet Search Enabled' : 'Search on the Internet'}
-</button>
-        <InputArea inputValue={inputValue} setInputValue={setInputValue} sendMessage={sendMessage} />
-{/* 16. Add a ref for the end of messages to enable auto-scroll */}
-        <div ref={messagesEndRef} />
+    <div className="flex h-screen" style={{ backgroundColor: "var(--surface-color-2)" }}>
+      <div className="flex-grow h-screen flex flex-col">
+        {messageHistory.length === 0 ? (
+          <div className="flex-1 flex flex-col items-center justify-center px-4">
+            <h1 
+              className="text-6xl mb-8 font-serif"
+              style={{ 
+                fontFamily: "var(--font-louize), serif",
+                color: "var(--color)"
+              }}
+            >
+              Search Anything
+            </h1>
+            <div className="w-full max-w-2xl">
+              <div className="flex flex-col gap-4">
+                <button
+                  onClick={() => setInternetSearchEnabled(!internetSearchEnabled)}
+                  className={`w-full px-4 py-2 rounded-lg transition-colors ${
+                    internetSearchEnabled 
+                      ? 'bg-opacity-10 text-blue-600 bg-blue-600'
+                      : 'bg-opacity-10 text-gray-600 bg-gray-600'
+                  }`}
+                  style={{ borderColor: "var(--line-color)" }}
+                >
+                  {internetSearchEnabled ? 'Internet Search Enabled' : 'Search Local Documents Only'}
+                </button>
+                <InputArea 
+                  inputValue={inputValue} 
+                  setInputValue={setInputValue} 
+                  sendMessage={sendMessage}
+                  className="scale-110"
+                />
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="flex-grow h-screen flex flex-col justify-between mx-auto max-w-4xl">
+            {messageHistory.map((message, index) => (
+              <MessageHandler key={index} message={message.payload} sendMessage={sendMessage} />
+            ))}
+            <div className="sticky bottom-0 bg-opacity-80 backdrop-blur-sm p-4" style={{ backgroundColor: "var(--surface-color-2)" }}>
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={() => setInternetSearchEnabled(!internetSearchEnabled)}
+                  className={`px-4 py-2 rounded-lg transition-colors ${
+                    internetSearchEnabled 
+                      ? 'bg-opacity-10 text-blue-600 bg-blue-600'
+                      : 'bg-opacity-10 text-gray-600 bg-gray-600'
+                  }`}
+                >
+                  {internetSearchEnabled ? 'Internet Search Enabled' : 'Search Local Documents Only'}
+                </button>
+                <InputArea inputValue={inputValue} setInputValue={setInputValue} sendMessage={sendMessage} />
+              </div>
+            </div>
+            <div ref={messagesEndRef} />
+          </div>
+        )}
       </div>
     </div>
   );
 }
 /* 17. Export InputArea component */
-export function InputArea({ inputValue, setInputValue, sendMessage }) {
-/* 18. Render input and send button */
+export function InputArea({ inputValue, setInputValue, sendMessage, className = '' }) {
   return (
-    <div className="flex items-center py-3">
-{/* 19. Create input box for message */}
+    <div className={`flex items-center ${className}`}>
       <input
         type="text"
-        className="flex-1 p-2 border rounded-l-md focus:outline-none focus:border-blue-500"
+        placeholder="Type your search..."
+        className="flex-1 p-4 rounded-l-lg focus:outline-none transition-colors"
+        style={{ 
+          backgroundColor: "var(--surface-color)",
+          borderColor: "var(--line-color)",
+          color: "var(--color)"
+        }}
         value={inputValue}
         onChange={(e) => setInputValue(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && sendMessage()}
       />
-{/* 20. Create send button */}
-      <button onClick={() => sendMessage()} className="bg-blue-500 text-white p-2 rounded-r-md hover:bg-blue-600">
+      <button 
+        onClick={() => sendMessage()} 
+        className="p-4 rounded-r-lg transition-colors hover:bg-opacity-80"
+        style={{ 
+          backgroundColor: "var(--surface-color)",
+          color: "var(--color)"
+        }}
+      >
         <ArrowCircleRight size={25} />
       </button>
     </div>
