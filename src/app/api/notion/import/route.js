@@ -47,6 +47,7 @@ export async function POST(req) {
 
     const results = [];
     for (const page of response.results) {
+      console.log('Processing page:', page);
       const pageContent = await fetchNotionPageContent(notion, page.id);
       const tags = await generateTags(pageContent);
       const checksum = crypto.createHash('sha256').update(pageContent).digest('hex');
@@ -56,19 +57,23 @@ export async function POST(req) {
         .from('documents')
         .select('id')
         .eq('checksum', checksum)
+        .eq('user_id', session.user.id)
         .single();
+
 
       if (existingPage) {
         results.push({ id: existingPage.id, status: 'existing' });
         continue;
       }
 
+      console.log('Creating new page:', page.properties?.name?.title?.[0]?.plain_text || page.properties?.title?.title?.[0]?.plain_text || 'Untitled');
+
       // Create new page
       const { data: newPage, error: pageError } = await supabase
         .from('documents')
         .insert({
           url: page.url,
-          title: page.properties.title?.title[0]?.plain_text || 'Untitled',
+          title: page.properties?.name?.title?.[0]?.plain_text || page.properties?.title?.title?.[0]?.plain_text || 'Untitled',
           text: pageContent,
           tags: tags,
           user_id: session.user.id,
@@ -76,7 +81,7 @@ export async function POST(req) {
           checksum,
           created_at: new Date().toISOString(),
           meta: {
-            title: page.properties.title?.title[0]?.plain_text || 'Untitled',
+            title: page.properties?.name?.title?.[0]?.plain_text || page.properties?.title?.title?.[0]?.plain_text || 'Untitled',
             type: 'notion',
             created_at: new Date().toISOString(),
             tags: tags
