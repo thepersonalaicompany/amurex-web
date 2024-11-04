@@ -42,9 +42,6 @@ export function Navbar() {
         <Button variant="ghost" size="icon" onClick={() => router.push('/chat')}>
           <MessageCircle className="h-6 w-6" style={{ color: "var(--color-4)" }} />
         </Button>
-        <Button variant="ghost" size="icon" onClick={() => router.push('/upload')}>
-          <Plus className="h-6 w-6" style={{ color: "var(--color-4)" }} />
-        </Button>
         <Button variant="ghost" size="icon" onClick={() => router.push('/settings')}>
           <Settings className="h-6 w-6" style={{ color: "var(--color-4)" }} />
         </Button>
