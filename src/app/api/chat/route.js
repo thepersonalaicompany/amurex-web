@@ -85,7 +85,7 @@ async function aiSearch(query, user_id) {
 }
 
 // 5. Search engine for sources
-async function searchEngineForSources(message, internetSearchEnabled, user_id, sendChunk) {
+async function searchEngineForSources(message, internetSearchEnabled, user_id) {
   let combinedResults = [];
 
   // Perform Supabase document search
@@ -181,12 +181,12 @@ const getGPTResults = async (inputString, user_id) => {
   let accumulatedContent = "";
 // 34. Open a streaming connection with OpenAI
   const stream = await openai.chat.completions.create({
-    model: "gpt-4",
+    model: "gpt-4o-mini",
     messages: [
       {
         role: "system",
         content:
-          "You are a search engine across all your documents, you will receive top results of similarity search, they are optional to use depending how well they help answer the query. Be sure to use them when relevant.",
+          "You are a answer generator, you will receive top results of similarity search, they are optional to use depending how well they help answer the query.",
       },
       { role: "user", content: inputString },
     ],
@@ -252,67 +252,15 @@ async function generateFollowup(message) {
   return chatCompletion.choices[0].message.content;
 }
 // 54. Define POST function for API endpoint
-export async function POST(req) {
+export async function POST(req, res) {
   const { message, internetSearchEnabled, user_id } = await req.json();
   
   if (!user_id) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const encoder = new TextEncoder();
-  const stream = new ReadableStream({
-    async start(controller) {
-      try {
-        // Helper function to send chunks
-        const sendChunk = (data) => {
-          controller.enqueue(encoder.encode(JSON.stringify(data) + '\n'));
-        };
+  await sendPayload({ type: "Query", content: message }, user_id);
+  await searchEngineForSources(message, internetSearchEnabled, user_id);
 
-        // Send initial query
-        await sendChunk({ type: "Query", content: message });
-
-        // Process sources if internet search is enabled
-        await searchEngineForSources(message, internetSearchEnabled, user_id, sendChunk);
-
-        // Get GPT response
-        const stream = await openai.chat.completions.create({
-          model: "gpt-4",
-          messages: [
-            {
-              role: "system",
-              content: "You are a search engine across all your documents, you will receive top results of similarity search, they are optional to use depending how well they help answer the query. Be sure to use them when relevant.",
-            },
-            { role: "user", content: message },
-          ],
-          stream: true,
-        });
-
-        sendChunk({ type: "Heading", content: "Answer" });
-        let accumulatedContent = "";
-
-        for await (const part of stream) {
-          if (part.choices[0]?.delta?.content) {
-            accumulatedContent += part.choices[0].delta.content;
-            sendChunk({ type: "GPT", content: accumulatedContent });
-          }
-        }
-
-        // Generate and send follow-up questions
-        const followUpResult = await generateFollowup(message);
-        sendChunk({ type: "FollowUp", content: followUpResult });
-
-        controller.close();
-      } catch (error) {
-        controller.error(error);
-      }
-    }
-  });
-
-  return new Response(stream, {
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
-    },
-  });
+  return Response.json({ "message": "Processing request" });
 }

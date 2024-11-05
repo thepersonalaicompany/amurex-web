@@ -14,7 +14,14 @@ export default function AISearch() {
   const [internetSearchEnabled, setInternetSearchEnabled] = useState(false);
   const [session, setSession] = useState(null);
 
-  // Keep session check
+  // Auto scroll to the end of the messages
+  useEffect(() => {
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 0);
+  }, [messageHistory]);
+
+  // Add session check on component mount
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -27,9 +34,33 @@ export default function AISearch() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Only fetch initial message history
+  // Update message history fetch with user_id
   useEffect(() => {
     if (!session?.user?.id) return;
+
+    const handleInserts = (payload) => {
+      if (payload.new.user_id !== session.user.id) return;
+      
+      setMessageHistory((prevMessages) => {
+        const lastMessage = prevMessages[prevMessages.length - 1];
+        const isSameType = lastMessage?.payload?.type === "GPT" && payload.new.payload.type === "GPT";
+        return isSameType ? [...prevMessages.slice(0, -1), payload.new] : [...prevMessages, payload.new];
+      });
+    };
+
+    supabase
+      .channel("message_history")
+      .on(
+        "postgres_changes",
+        { 
+          event: "INSERT", 
+          schema: "public", 
+          table: "message_history",
+          filter: `user_id=eq.${session.user.id}`
+        },
+        handleInserts
+      )
+      .subscribe();
 
     supabase
       .from("message_history")
@@ -41,69 +72,31 @@ export default function AISearch() {
       );
   }, [session?.user?.id]);
 
-  const sendMessage = async (messageToSend) => {
+  // Update sendMessage to include user_id
+  const sendMessage = (messageToSend) => {
     if (!session?.user?.id) return;
     
     const message = messageToSend || inputValue;
+    const body = JSON.stringify({ 
+      message, 
+      internetSearchEnabled,
+      user_id: session.user.id 
+    });
     setInputValue("");
-    
-    // Add user message immediately
-    setMessageHistory(prev => [...prev, {
-      payload: { type: 'Query', content: message },
-      user_id: session.user.id
-    }]);
-
-    try {
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          message, 
-          internetSearchEnabled,
-          user_id: session.user.id 
-        }),
-      });
-
-      if (!response.ok) throw new Error('Stream response was not ok');
-      
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        
-        const chunk = decoder.decode(value);
-        const lines = chunk.split('\n').filter(line => line.trim());
-        
-        for (const line of lines) {
-          try {
-            const data = JSON.parse(line);
-            setMessageHistory(prev => {
-              const lastMessage = prev[prev.length - 1];
-              if (lastMessage?.payload?.type === data.type) {
-                return [...prev.slice(0, -1), { payload: data, user_id: session.user.id }];
-              }
-              return [...prev, { payload: data, user_id: session.user.id }];
-            });
-          } catch (e) {
-            console.error('Error parsing JSON:', e);
-          }
-        }
-      }
-    } catch (err) {
-      console.error("Error:", err);
-    }
+    fetch("/api/chat", {
+      method: "POST",
+      body,
+      headers: {
+        "Content-Type": "application/json",
+      },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        console.log("data", data);
+      })
+      .catch((err) => console.log("err", err));
   };
-
-  // Auto scroll to the end of the messages
-  useEffect(() => {
-    setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, 0);
-  }, [messageHistory]);
-
-  // 12. Render home component
+// 12. Render home component
   return (
     <div className="flex h-screen" style={{ backgroundColor: "var(--surface-color-2)" }}>
       <div className="flex-grow h-screen flex flex-col">
