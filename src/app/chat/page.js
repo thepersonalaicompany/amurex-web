@@ -13,6 +13,8 @@ export default function AISearch() {
   const [messageHistory, setMessageHistory] = useState([]);
   const [internetSearchEnabled, setInternetSearchEnabled] = useState(false);
   const [session, setSession] = useState(null);
+  const [searchResults, setSearchResults] = useState(null);
+  const [isSearching, setIsSearching] = useState(false);
 
   // Auto scroll to the end of the messages
   useEffect(() => {
@@ -77,31 +79,49 @@ export default function AISearch() {
     if (!session?.user?.id) return;
     
     const message = messageToSend || inputValue;
-    const body = JSON.stringify({ 
-      message, 
-      internetSearchEnabled,
-      user_id: session.user.id 
-    });
     setInputValue("");
+    setIsSearching(true);
+    
+    // Add the user's query to the results immediately
+    setSearchResults({
+      query: message,
+      sources: [],
+      vectorResults: []
+    });
+
     fetch("/api/chat", {
       method: "POST",
-      body,
+      body: JSON.stringify({ 
+        message, 
+        internetSearchEnabled,
+        user_id: session.user.id 
+      }),
       headers: {
         "Content-Type": "application/json",
       },
     })
       .then((res) => res.json())
       .then((data) => {
-        console.log("data", data);
+        if (data.success) {
+          setSearchResults({
+            query: message,
+            sources: data.results.sources,
+            vectorResults: data.results.vectorResults,
+            answer: data.results.answer
+          });
+        } else {
+          console.error("Error:", data.error);
+        }
       })
-      .catch((err) => console.log("err", err));
+      .catch((err) => console.log("err", err))
+      .finally(() => setIsSearching(false));
   };
 // 12. Render home component
   return (
     <div className="flex h-screen" style={{ backgroundColor: "var(--surface-color-2)" }}>
       <div className="flex-grow h-screen flex flex-col">
-        {messageHistory.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center px-4">
+        <div className="flex-1 flex flex-col items-center justify-center px-4">
+          {!searchResults && !isSearching && (
             <h1 
               className="text-6xl mb-8 font-serif"
               style={{ 
@@ -111,51 +131,69 @@ export default function AISearch() {
             >
               Search Anything
             </h1>
-            <div className="w-full max-w-2xl">
-              <div className="flex flex-col gap-4">
-                <button
-                  onClick={() => setInternetSearchEnabled(!internetSearchEnabled)}
-                  className={`w-full px-4 py-2 rounded-lg transition-colors ${
-                    internetSearchEnabled 
-                      ? 'bg-opacity-10 text-blue-600 bg-blue-600'
-                      : 'bg-opacity-10 text-gray-600 bg-gray-600'
-                  }`}
-                  style={{ borderColor: "var(--line-color)" }}
-                >
-                  {internetSearchEnabled ? 'Internet Search Enabled' : 'Search Local Documents Only'}
-                </button>
-                <InputArea 
-                  inputValue={inputValue} 
-                  setInputValue={setInputValue} 
-                  sendMessage={sendMessage}
-                  className="scale-110"
-                />
-              </div>
+          )}
+          
+          <div className="w-full max-w-2xl">
+            <div className="flex flex-col gap-4">
+              <button
+                onClick={() => setInternetSearchEnabled(!internetSearchEnabled)}
+                className={`w-full px-4 py-2 rounded-lg transition-colors ${
+                  internetSearchEnabled 
+                    ? 'bg-opacity-10 text-blue-600 bg-blue-600'
+                    : 'bg-opacity-10 text-gray-600 bg-gray-600'
+                }`}
+                style={{ borderColor: "var(--line-color)" }}
+              >
+                {internetSearchEnabled ? 'Internet Search Enabled' : 'Search Local Documents Only'}
+              </button>
+              <InputArea 
+                inputValue={inputValue} 
+                setInputValue={setInputValue} 
+                sendMessage={sendMessage}
+                className="scale-110"
+              />
             </div>
           </div>
-        ) : (
-          <div className="flex-grow h-screen flex flex-col justify-between mx-auto max-w-4xl">
-            {messageHistory.map((message, index) => (
-              <MessageHandler key={index} message={message.payload} sendMessage={sendMessage} />
-            ))}
-            <div className="sticky bottom-0 bg-opacity-80 backdrop-blur-sm p-4" style={{ backgroundColor: "var(--surface-color-2)" }}>
-              <div className="flex flex-col gap-2">
-                <button
-                  onClick={() => setInternetSearchEnabled(!internetSearchEnabled)}
-                  className={`px-4 py-2 rounded-lg transition-colors ${
-                    internetSearchEnabled 
-                      ? 'bg-opacity-10 text-blue-600 bg-blue-600'
-                      : 'bg-opacity-10 text-gray-600 bg-gray-600'
-                  }`}
-                >
-                  {internetSearchEnabled ? 'Internet Search Enabled' : 'Search Local Documents Only'}
-                </button>
-                <InputArea inputValue={inputValue} setInputValue={setInputValue} sendMessage={sendMessage} />
-              </div>
+
+          {isSearching && (
+            <div className="w-full max-w-4xl mt-8 text-center">
+              <div className="animate-pulse text-lg">Searching...</div>
             </div>
-            <div ref={messagesEndRef} />
-          </div>
-        )}
+          )}
+
+          {searchResults && !isSearching && (
+            <div className="w-full max-w-4xl mt-8">
+              <Query content={searchResults.query} />
+              
+              {searchResults.answer && (
+                <div className="mt-4">
+                  <Heading content="Answer" />
+                  <div className="bg-white rounded-lg p-4">
+                    <GPT content={searchResults.answer} />
+                  </div>
+                </div>
+              )}
+              
+              {searchResults.sources && searchResults.sources.length > 0 && (
+                <Sources content={searchResults.sources} />
+              )}
+              
+              {searchResults.vectorResults && searchResults.vectorResults.length > 0 && (
+                <div className="mt-4">
+                  <Heading content="Relevant Content" />
+                  {searchResults.vectorResults.map((result, index) => (
+                    <div key={index} className="bg-white rounded-lg p-4 mt-2">
+                      <GPT content={result[0].pageContent} />
+                      <div className="text-sm text-gray-500 mt-2">
+                        Source: {result[0].metadata.annotationPosition}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

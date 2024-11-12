@@ -125,17 +125,13 @@ async function searchEngineForSources(message, internetSearchEnabled, user_id) {
     combinedResults = [...combinedResults, ...normalizedData];
   }
 
-  await sendPayload({ type: "Sources", content: combinedResults }, user_id);
-
   let vectorCount = 0;
   const fetchAndProcess = async (item) => {
     try {
       let htmlContent;
       if (item.text) {
-        // If the item has text (from Supabase), use it directly
         htmlContent = item.text;
       } else {
-        // Otherwise, fetch the content from the URL
         const timer = new Promise((_, reject) =>
           setTimeout(() => reject(new Error("Timeout")), 1500)
         );
@@ -164,25 +160,29 @@ async function searchEngineForSources(message, internetSearchEnabled, user_id) {
   };
 
   const results = await Promise.all(combinedResults.map(fetchAndProcess));
-
-  while (vectorCount < 4) {
-    vectorCount++;
-  }
-
   const successfulResults = results.filter((result) => result !== null);
-  const topResult =
-    successfulResults.length > 4
-      ? successfulResults.slice(0, 4)
-      : successfulResults;
+  const topResult = successfulResults.length > 4 ? successfulResults.slice(0, 4) : successfulResults;
 
-  await sendPayload(
-    { type: "VectorCreation", content: `Finished Scanning Sources.` },
-    user_id
-  );
-  triggerLLMAndFollowup(
-    `Query: ${message}, Top Results: ${JSON.stringify(topResult)}`,
-    user_id
-  );
+  // After getting search results, generate GPT response
+  const gptResponse = await openai.chat.completions.create({
+    model: "gpt-4",
+    messages: [
+      {
+        role: "system",
+        content: "You are a helpful assistant. Use the provided search results to answer the user's query. If the search results don't contain relevant information, provide a general response based on your knowledge.",
+      },
+      {
+        role: "user",
+        content: `Query: ${message}\n\nSearch Results: ${JSON.stringify(topResult)}`,
+      },
+    ],
+  });
+
+  return {
+    sources: combinedResults,
+    vectorResults: topResult,
+    answer: gptResponse.choices[0].message.content
+  };
 }
 // 25. Define fetchPageContent function
 async function fetchPageContent(link) {
@@ -279,7 +279,7 @@ async function generateFollowup(message) {
         content: `Generate a 4 follow up questions based on this input ""${message}"" `,
       },
     ],
-    model: "gpt-4o-mini",
+    model: "gpt-4",
   });
   // 53. Return the content of the chat completion
   return chatCompletion.choices[0].message.content;
@@ -292,9 +292,24 @@ export async function POST(req, res) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  await sendPayload({ type: "Query", content: message }, user_id);
-  await searchEngineForSources(message, internetSearchEnabled, user_id);
-
-  return Response.json({ message: "Processing request" });
+  try {
+    const results = await searchEngineForSources(message, internetSearchEnabled, user_id);
+    
+    return Response.json({ 
+      success: true,
+      message: "Search completed",
+      results: {
+        sources: results.sources,
+        vectorResults: results.vectorResults,
+        answer: results.answer
+      }
+    });
+  } catch (error) {
+    console.error('Error processing search:', error);
+    return Response.json({ 
+      success: false, 
+      error: error.message 
+    }, { status: 500 });
+  }
 }
 
