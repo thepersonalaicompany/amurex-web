@@ -149,14 +149,14 @@ export default function SettingsPage() {
   }, [googleDocsConnected]);
 
   return (
-    <div className="container mx-auto px-4 py-8 min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
+    <div className="container mx-auto px-4 py-8 min-h-screen ">
       <div className="max-w-3xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <h1 className="text-4xl font-bold mb-8 text-center text-blue-600">Settings</h1>
+          <h1 className="text-4xl font-bold mb-8 text-center ">Settings</h1>
           <div className="mb-8">
             <div className="bg-white rounded-lg shadow-md p-6 mb-8">
               <h2 className="text-2xl font-semibold mb-6 flex items-center">
