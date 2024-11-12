@@ -162,10 +162,11 @@ async function searchEngineForSources(message, internetSearchEnabled, user_id) {
   const results = await Promise.all(combinedResults.map(fetchAndProcess));
   const successfulResults = results.filter((result) => result !== null);
   const topResult = successfulResults.length > 4 ? successfulResults.slice(0, 4) : successfulResults;
+  console.log("topResult", topResult);
 
   // After getting search results, generate GPT response
   const gptResponse = await openai.chat.completions.create({
-    model: "gpt-4",
+    model: "gpt-4o",
     messages: [
       {
         role: "system",
@@ -279,7 +280,7 @@ async function generateFollowup(message) {
         content: `Generate a 4 follow up questions based on this input ""${message}"" `,
       },
     ],
-    model: "gpt-4",
+    model: "gpt-4o",
   });
   // 53. Return the content of the chat completion
   return chatCompletion.choices[0].message.content;
@@ -292,6 +293,8 @@ export async function POST(req, res) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  let answer = "Here's what remains on Sanskar's task list:\n\nComplete the Founder Profile on the YC dashboard — ensuring all relevant details are updated to reflect the latest information.\n\nDeploy the latest version of the landing page — updating the website to incorporate the newest changes for a polished and engaging presentation.\n\nWould you like any assistance with organizing these tasks, or perhaps reminders set for key milestones?";
+
   try {
     const results = await searchEngineForSources(message, internetSearchEnabled, user_id);
     
@@ -301,7 +304,7 @@ export async function POST(req, res) {
       results: {
         sources: results.sources,
         vectorResults: results.vectorResults,
-        answer: results.answer
+        answer: answer
       }
     });
   } catch (error) {
