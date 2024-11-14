@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -13,6 +13,11 @@ export default function SignIn() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const router = useRouter();
+
+  // Check if we're in a Chrome extension environment
+  const isExtension = useEffect(() => {
+    return window.chrome && chrome.runtime && chrome.runtime.id;
+  }, []);
 
   const handleSignIn = async (e) => {
     e.preventDefault();
@@ -27,7 +32,30 @@ export default function SignIn() {
     if (error) {
       setMessage(error.message);
     } else {
-      // The redirect will be handled automatically by Supabase
+      // Store the session data in localStorage
+      const sessionData = {
+        user: data.user,
+        session: data.session,
+        timestamp: new Date().getTime()
+      };
+      const session = sessionData.session;
+      localStorage.setItem('brainex_session', JSON.stringify(session));
+
+      // If we're in a Chrome extension environment, send message back
+      if (isExtension) {
+        try {
+          window.postMessage(
+            { 
+              type: 'BRAINEX_SIGNIN_SUCCESS', 
+              payload: session
+            }, 
+            '*'
+          );
+        } catch (err) {
+          console.error('Error sending message to extension:', err);
+        }
+      }
+
       router.push("/");
       setMessage("Signing in...");
     }

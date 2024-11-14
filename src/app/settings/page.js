@@ -45,12 +45,32 @@ export default function SettingsPage() {
 
   const handleLogout = async () => {
     setLoading(true);
+    
+    // Clear local storage
+    localStorage.removeItem('brainex_session');
+    
+    // If in extension environment, send message to clear extension storage
+    if (window.chrome && chrome.runtime && chrome.runtime.id) {
+      try {
+        window.postMessage(
+          { 
+            type: 'BRAINEX_LOGOUT',
+          }, 
+          '*'
+        );
+      } catch (err) {
+        console.error('Error sending logout message to extension:', err);
+      }
+    }
+
+    // Sign out from Supabase
     const { error } = await supabase.auth.signOut();
     if (error) {
       console.error('Error logging out:', error);
     } else {
       router.push('/signin');
     }
+    
     setLoading(false);
   };
 
