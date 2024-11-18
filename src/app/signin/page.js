@@ -93,10 +93,6 @@ export default function SignIn() {
           <h2 className="text-4xl font-semibold mb-4 text-white">
             Get Started with Us
           </h2>
-          <p className="mb-8 text-white">
-            Complete these easy steps to register your account.
-          </p>
-
           <div className="space-y-4">
             <div className="flex items-center bg-white bg-opacity-20 p-4 rounded-lg">
               <span className="w-3 h-3 rounded-full bg-white text-purple-600 flex items-center justify-center mr-3">
