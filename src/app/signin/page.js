@@ -91,7 +91,7 @@ export default function SignIn() {
             {/* <span className="text-xl text-white">Amurex</span> */}
           </div>
           <h2 className="text-4xl font-semibold mb-4 text-white">
-            Get Started with Us
+          Welcome to Amurex
           </h2>
           <div className="space-y-4">
             <div className="flex items-center bg-white bg-opacity-20 p-4 rounded-lg">
