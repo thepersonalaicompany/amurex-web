@@ -5,7 +5,7 @@ import { supabase } from "@/lib/supabaseClient";
 // import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
 
 export default function SignIn() {
@@ -14,10 +14,6 @@ export default function SignIn() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const extensionId = searchParams.get("extensionId");
-  const isExtensionFlow =
-    searchParams.get("extension") === "true" || !!extensionId;
 
   // Check if we're in a Chrome extension environment
   const isExtension = useEffect(() => {
