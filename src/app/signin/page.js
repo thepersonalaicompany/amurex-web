@@ -13,11 +13,17 @@ export default function SignIn() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [isExtensionAuth, setIsExtensionAuth] = useState(false);
   const router = useRouter();
 
   // Check if we're in a Chrome extension environment
   const isExtension = useEffect(() => {
     return window.chrome && chrome.runtime && chrome.runtime.id;
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setIsExtensionAuth(params.get("extension") === "true");
   }, []);
 
   const handleSignIn = async (e) => {
@@ -48,23 +54,9 @@ export default function SignIn() {
         sameSite: "strict",
       });
 
-      // If we're in a Chrome extension environment, send message back
-      if (isExtension) {
-        try {
-          window.postMessage(
-            {
-              type: "BRAINEX_SIGNIN_SUCCESS",
-              payload: session,
-              extensionId: extensionId,
-            },
-            "*"
-          );
-          setMessage(
-            "Extension connected successfully! You can close this window."
-          );
-        } catch (err) {
-          console.error("Error sending message to extension:", err);
-        }
+      if (isExtensionAuth) {
+        // Close the tab after successful authentication
+        window.close();
       } else {
         router.push("/");
         setMessage("Signing in...");
@@ -91,7 +83,7 @@ export default function SignIn() {
             {/* <span className="text-xl text-white">Amurex</span> */}
           </div>
           <h2 className="text-4xl font-semibold mb-4 text-white">
-          Welcome to Amurex
+            Welcome to Amurex
           </h2>
           <div className="space-y-4">
             <div className="flex items-center bg-white bg-opacity-20 p-4 rounded-lg">

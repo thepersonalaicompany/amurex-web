@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/Button';
 import { ArrowCircleRight, ChatCenteredDots, Stack, GitBranch, X } from "@phosphor-icons/react";
 import { motion } from 'framer-motion';
+import Cookies from 'js-cookie';
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(false);
@@ -46,8 +47,9 @@ export default function SettingsPage() {
   const handleLogout = async () => {
     setLoading(true);
     
-    // Clear local storage
+    // Clear local storage and cookies
     localStorage.removeItem('brainex_session');
+    Cookies.remove('brainex_session');
     
     // If in extension environment, send message to clear extension storage
     if (window.chrome && chrome.runtime && chrome.runtime.id) {
