@@ -5,7 +5,6 @@ import { supabase } from "@/lib/supabaseClient";
 import { Input } from "@/components/ui/Input";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Navbar } from "@/components/Navbar";
 
 export default function SignUp() {
   const [email, setEmail] = useState("");
@@ -50,7 +49,6 @@ export default function SignUp() {
 
   return (
     <>
-    <Navbar />
     <div className="flex min-h-screen">
       {/* Left Panel */}
       <div
