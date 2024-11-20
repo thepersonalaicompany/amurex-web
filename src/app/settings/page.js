@@ -48,10 +48,12 @@ export default function SettingsPage() {
     setLoading(true);
     
     // Clear local storage and cookies
+    console.log('Clearing cookies');
     localStorage.removeItem('brainex_session');
     Cookies.remove('brainex_session', { 
-      domain: 'brainex.vercel.app',
-      path: '/'
+      path: '/',
+      sameSite: 'strict',
+      secure: process.env.NODE_ENV === 'production'
     });
     
     // If in extension environment, send message to clear extension storage
