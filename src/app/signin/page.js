@@ -83,7 +83,7 @@ export default function SignIn() {
             {/* <span className="text-xl text-white">Amurex</span> */}
           </div>
           <h2 className="text-4xl font-semibold mb-4 text-white">
-            Welcome to Amurex
+            Your AI executive assistant.
           </h2>
           <div className="space-y-4">
             <div className="flex items-center bg-white bg-opacity-20 p-4 rounded-lg">
@@ -124,7 +124,7 @@ export default function SignIn() {
             Welcome Back
           </h1>
           <p className="text-gray-600 mb-8">
-            Enter your email and password to access your account
+            Sign in to get access to your personal AI assistant.
           </p>
 
           <form onSubmit={handleSignIn} className="space-y-6">
