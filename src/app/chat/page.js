@@ -5,6 +5,7 @@ import { ArrowCircleRight, ChatCenteredDots, Stack, GitBranch } from "@phosphor-
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { supabase } from '@/lib/supabaseClient';
+import { Navbar } from '@/components/Navbar';
 // 3. Home component
 export default function AISearch() {
 // 4. Initialize states and refs
@@ -118,6 +119,8 @@ export default function AISearch() {
   };
 // 12. Render home component
   return (
+    <>
+    <Navbar />
     <div className="flex h-screen" style={{ backgroundColor: "var(--surface-color-2)" }}>
       <div className="flex-grow h-screen flex flex-col">
         <div className="flex-1 flex flex-col items-center justify-center px-4">
@@ -196,6 +199,7 @@ export default function AISearch() {
         </div>
       </div>
     </div>
+    </>
   );
 }
 /* 17. Export InputArea component */

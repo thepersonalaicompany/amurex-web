@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/Input";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
+import { Navbar } from "@/components/Navbar";
 
 export default function SignIn() {
   const [email, setEmail] = useState("");
@@ -67,6 +68,8 @@ export default function SignIn() {
   };
 
   return (
+    <>
+    <Navbar />
     <div className="flex min-h-screen">
       {/* Left Panel */}
       <div
@@ -197,5 +200,6 @@ export default function SignIn() {
         </div>
       </div>
     </div>
+    </>
   );
 }

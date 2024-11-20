@@ -1,7 +1,6 @@
 
 import localFont from "next/font/local";
 import "./globals.css";
-import { Navbar } from "@/components/Navbar";
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { Analytics } from "@vercel/analytics/react"
 import { Noto_Serif } from 'next/font/google';
@@ -39,7 +38,6 @@ export default function RootLayout({ children }) {
             className="flex h-screen overflow-hidden"
             // style={{ backgroundColor: "var(--surface-color-2)" }}
           >
-            <Navbar />
             <main
               className={ `flex-1 overflow-y-auto` }
 

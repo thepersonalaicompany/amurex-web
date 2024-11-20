@@ -12,6 +12,7 @@ import FocusedEditor from '@/components/FocusedEditor';
 import { Loader } from '@/components/Loader';
 import localFont from 'next/font/local';
 import { IntegrationsModal } from '@/components/IntegrationsModal';
+import { Navbar } from '@/components/Navbar';
 
 const louizeFont = localFont({
   src: './fonts/Louize.ttf',
@@ -250,6 +251,8 @@ export default function HomePage() {
   }
 
   return (
+    <>
+      <Navbar />
       <div className={`${louizeFont.variable} flex flex-col h-screen ml-16`} style={{ backgroundColor: "var(--surface-color-2)" }}>
       <div className="sticky top-0 z-40 w-full bg-opacity-90 backdrop-blur-sm" style={{ backgroundColor: "var(--surface-color-2)" }}>
         <div className="w-full py-4 px-8 flex justify-between items-center">
@@ -309,5 +312,6 @@ export default function HomePage() {
         />
       )}
     </div>
+    </>
   );
 }

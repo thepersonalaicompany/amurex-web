@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { ArrowCircleRight, ChatCenteredDots, Stack, GitBranch, X } from "@phosphor-icons/react";
 import { motion } from 'framer-motion';
 import Cookies from 'js-cookie';
-
+import { Navbar } from '@/components/Navbar';
 export default function SettingsPage() {
   const [loading, setLoading] = useState(false);
   const [notionConnected, setNotionConnected] = useState(false);
@@ -176,6 +176,8 @@ export default function SettingsPage() {
   }, [googleDocsConnected]);
 
   return (
+    <>
+    {/* <Navbar /> */}
     <div className="container mx-auto px-4 py-8 min-h-screen ">
       <div className="max-w-3xl mx-auto">
         <motion.div
@@ -231,6 +233,7 @@ export default function SettingsPage() {
       </div>
       <ImportingModal isOpen={isImporting} source={importSource} onClose={() => setIsImporting(false)} />
     </div>
+    </>
   );
 }
 
