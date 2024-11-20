@@ -28,14 +28,16 @@ export async function POST(req) {
     
     const scopes = [
       'https://www.googleapis.com/auth/documents.readonly',
-      'https://www.googleapis.com/auth/drive.readonly'
+      'https://www.googleapis.com/auth/drive.readonly',
+      'https://www.googleapis.com/auth/calendar.readonly',
+      'https://www.googleapis.com/auth/calendar.events.readonly'
     ];
 
     const url = oauth2Client.generateAuthUrl({
       access_type: 'offline',
       scope: scopes,
       prompt: 'consent',
-      state: userId // Pass the userId as state
+      state: userId
     });
 
     return NextResponse.json({ success: true, url });

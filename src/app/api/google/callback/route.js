@@ -28,7 +28,7 @@ export async function GET(req) {
         state: state
       });
     } else {
-      return NextResponse.json({ success: false, error: 'Failed to connect Google Docs' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'Failed to connect Google services' }, { status: 400 });
     }
   } catch (error) {
     console.error('Error in Google callback:', error);
@@ -41,24 +41,20 @@ export async function POST(req) {
     const { access_token, refresh_token, state, userId } = await req.json();
     console.log('access_token', access_token);
 
+    const updateFields = {
+      google_access_token: access_token,
+      google_refresh_token: refresh_token,
+      google_docs_connected: true,
+      calendar_access_token: access_token,
+      calendar_refresh_token: refresh_token,
+      calendar_connected: true
+    };
+
     const { data, error } = await supabase
       .from('users')
-      .update({
-        google_access_token: access_token,
-        google_refresh_token: refresh_token,
-        google_docs_connected: true
-      })
+      .update(updateFields)
       .eq('id', userId)
       .select();
-    
-    const { data: newData, error: newError } = await supabase
-      .from('users')
-      .select();
-
-    console.log('New Data:', newData);
-
-    console.log('Data:', data);
-    console.log('Error:', error);
 
     if (error) {
       console.error('Error updating user:', error);

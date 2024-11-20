@@ -4,29 +4,26 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 
-export default function GoogleCallbackPage() {
+export default function GoogleCalendarCallbackPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const handleGoogleCallback = async () => {
+    const handleGoogleCalendarCallback = async () => {
       const urlParams = new URLSearchParams(window.location.search);
       const code = urlParams.get('code');
-      const state = urlParams.get('state'); // This contains the userId we passed
+      const state = urlParams.get('state');
       const { data: { session } } = await supabase.auth.getSession();
       const userId = session.user.id;
 
       if (code) {
         try {
-          const response = await fetch(`/api/google/callback?code=${code}&state=${state}`);
-          console.log('Making api call');
-
+          const response = await fetch(`/api/google/calendar/callback?code=${code}&state=${state}`);
           const data = await response.json();
 
           if (data.success) {
             const { access_token, refresh_token } = data;
-            console.log('access_token', access_token);
 
-            const updateResponse = await fetch('/api/google/callback', {
+            const updateResponse = await fetch('/api/google/calendar/callback', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -35,34 +32,33 @@ export default function GoogleCallbackPage() {
                 access_token,
                 refresh_token,
                 state,
-                userId,
-                type: state.includes('calendar') ? 'calendar' : 'docs'
+                userId
               }),
             });
 
             const updateData = await updateResponse.json();
             if (updateData.success) {
-              console.log(state.includes('calendar') ? 'Google Calendar connected successfully' : 'Google Docs connected successfully');
+              console.log('Google Calendar connected successfully');
               window.history.replaceState({}, document.title, window.location.pathname);
-              router.push('/settings'); // Redirect to settings page to see the updated state
+              router.push('/settings');
             } else {
               console.error('Error updating user:', updateData.error);
             }
           } else {
-            console.error('Error connecting Google Docs:', data.error);
+            console.error('Error connecting Google Calendar:', data.error);
           }
         } catch (error) {
-          console.error('Error handling Google callback:', error);
+          console.error('Error handling Google Calendar callback:', error);
         }
       }
     };
 
-    handleGoogleCallback();
+    handleGoogleCalendarCallback();
   }, [router]);
 
   return (
     <div>
-      <h1>Connecting to Google Docs...</h1>
+      <h1>Connecting to Google Calendar...</h1>
     </div>
   );
 }

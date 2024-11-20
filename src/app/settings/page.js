@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/Button';
-import { ArrowCircleRight, ChatCenteredDots, Stack, GitBranch, X } from "@phosphor-icons/react";
+import { ArrowCircleRight, ChatCenteredDots, Stack, GitBranch, Calendar, X } from "@phosphor-icons/react";
 import { motion } from 'framer-motion';
 import Cookies from 'js-cookie';
 import { Navbar } from '@/components/Navbar';
@@ -12,6 +12,7 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(false);
   const [notionConnected, setNotionConnected] = useState(false);
   const [googleDocsConnected, setGoogleDocsConnected] = useState(false);
+  const [calendarConnected, setCalendarConnected] = useState(false);
   const [notionDocuments, setNotionDocuments] = useState([]);
   const [isImporting, setIsImporting] = useState(false);
   const [importSource, setImportSource] = useState('');
@@ -29,7 +30,7 @@ export default function SettingsPage() {
       if (session) {
       const { data: user, error } = await supabase
         .from('users')
-        .select('notion_connected, google_docs_connected')
+        .select('notion_connected, google_docs_connected, calendar_connected')
         .eq('id', session.user.id)
         .single();
       console.log('user', user);
@@ -37,6 +38,7 @@ export default function SettingsPage() {
       if (user) {
           setNotionConnected(user.notion_connected);
           setGoogleDocsConnected(user.google_docs_connected);
+          setCalendarConnected(user.calendar_connected);
         }
       }
     } catch (error) {
@@ -106,6 +108,29 @@ export default function SettingsPage() {
       }
     } catch (error) {
       console.error('Error connecting Google Docs:', error);
+    }
+  };
+
+  const handleCalendarConnect = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const response = await fetch('/api/google/auth', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ userId: session.user.id }),
+        });
+        const data = await response.json();
+        if (data.url) {
+          router.push(data.url);
+        } else {
+          console.error('Error starting Google OAuth flow:', data.error);
+        }
+      }
+    } catch (error) {
+      console.error('Error connecting Google services:', error);
     }
   };
 
@@ -201,9 +226,14 @@ export default function SettingsPage() {
                 />
                 <IntegrationButton
                   onClick={handleGoogleDocsConnect}
-                  connected={googleDocsConnected}
-                  label="Google Docs"
+                  connected={googleDocsConnected && calendarConnected}
+                  label="Google Services"
                   icon={<ArrowCircleRight size={24} />}
+                  description={
+                    googleDocsConnected && calendarConnected
+                      ? "Google Docs & Calendar Connected"
+                      : "Connect Google Docs & Calendar"
+                  }
                 />
                 <Button 
                   onClick={importNotionDocuments} 
@@ -237,7 +267,7 @@ export default function SettingsPage() {
   );
 }
 
-function IntegrationButton({ onClick, connected, label, icon }) {
+function IntegrationButton({ onClick, connected, label, icon, description }) {
   return (
     <Button 
       onClick={onClick} 
@@ -250,6 +280,7 @@ function IntegrationButton({ onClick, connected, label, icon }) {
     >
       {icon}
       <span className="ml-2">{connected ? `${label} Connected` : `Connect ${label}`}</span>
+      {description && <p className="text-sm text-gray-600">{description}</p>}
     </Button>
   );
 }
