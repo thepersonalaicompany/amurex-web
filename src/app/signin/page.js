@@ -59,7 +59,7 @@ export default function SignIn() {
   };
 
   return (
-    <div 
+    <div
       className="flex min-h-screen items-center justify-center p-4 md:p-0"
       style={{
         backgroundImage: "url(/sign-background.png)",
@@ -70,26 +70,29 @@ export default function SignIn() {
     >
       <div className="w-full max-w-[95%] md:max-w-md">
         <div className="flex justify-center items-center mb-6 md:mb-8">
-          <img 
-            src="/amurex.png" 
+          <img
+            src="/amurex.png"
             alt="Amurex logo"
-            className="w-8 h-8 md:w-10 md:h-10 border-2 border-white rounded-full" 
+            className="w-8 h-8 md:w-10 md:h-10 border-2 border-white rounded-full"
           />
           <p className="text-white text-base md:text-lg font-semibold pl-2">
             Amurex
           </p>
         </div>
-        
+
         <div className="w-full rounded-lg bg-[#0E0F0F] p-6 md:p-8 backdrop-blur-sm shadow-lg">
           <div className="text-center mb-6 md:mb-8">
-            <h1 className="font-serif text-3xl md:text-4xl mb-2 text-white" style={{ fontFamily: "var(--font-noto-serif)" }}>
+            <h1
+              className="font-serif text-3xl md:text-4xl mb-2 text-white"
+              style={{ fontFamily: "var(--font-noto-serif)" }}
+            >
               Welcome
             </h1>
             <p className="text-gray-400 text-sm md:text-base">
               Sign in to get access to Amurex.
             </p>
           </div>
-          
+
           <hr className="mb-6 border-gray-800" />
 
           <form onSubmit={handleSignIn} className="space-y-4 md:space-y-6">
@@ -126,7 +129,10 @@ export default function SignIn() {
                   className="h-4 w-4 rounded border-gray-700 bg-[#262727]"
                   id="remember"
                 />
-                <label htmlFor="remember" className="ml-2 text-sm text-gray-400">
+                <label
+                  htmlFor="remember"
+                  className="ml-2 text-sm text-gray-400"
+                >
                   Remember me
                 </label>
               </div>
@@ -136,7 +142,11 @@ export default function SignIn() {
             </div>
 
             {message && (
-              <p className={`text-xs md:text-sm ${message.includes('error') ? 'text-red-500' : 'text-green-500'}`}>
+              <p
+                className={`text-xs md:text-sm ${
+                  message.includes("error") ? "text-red-500" : "text-green-500"
+                }`}
+              >
                 {message}
               </p>
             )}
@@ -151,8 +161,11 @@ export default function SignIn() {
           </form>
 
           <p className="mt-4 md:mt-6 text-center text-xs md:text-sm text-gray-400">
-            Don't have an account?{" "}
-            <Link href="/signup" className="text-white font-light hover:underline">
+            Don&apos;t have an account?{" "}
+            <Link
+              href="/signup"
+              className="text-white font-light hover:underline"
+            >
               Sign Up
             </Link>
           </p>
