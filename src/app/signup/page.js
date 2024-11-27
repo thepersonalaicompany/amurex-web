@@ -48,69 +48,42 @@ export default function SignUp() {
   };
 
   return (
-    <>
-    <div className="flex min-h-screen">
-      {/* Left Panel */}
-      <div
-        className="hidden md:flex md:w-1/2 bg-cover bg-center flex-col justify-center items-center"
-        style={{
-          backgroundImage: "url(/signin-background-dark.png)",
-          backgroundSize: "contain",
-          backgroundRepeat: "no-repeat",
-          backgroundPosition: "center",
-        }}
-      >
-        <div className="max-w-md">
-          <div className="flex items-center mb-8">
-          </div>
-          <h2 className="text-4xl font-semibold mb-4 text-white">
-            Welcome to Amurex
-          </h2>
-          <div className="space-y-4">
-            <div className="flex items-center bg-white bg-opacity-20 p-4 rounded-lg">
-              <span className="w-3 h-3 rounded-full bg-white text-purple-600 flex items-center justify-center mr-3">
-                &nbsp;
-              </span>
-              <span className="text-white">Capture Moments</span>
-            </div>
-
-            <div className="flex items-center bg-white bg-opacity-20 p-4 rounded-lg">
-              <span className="w-3 h-3 rounded-full bg-white text-purple-600 flex items-center justify-center mr-3">
-                &nbsp;
-              </span>
-              <span className="text-white">Retreive Insights</span>
-            </div>
-
-            <div className="flex items-center bg-white bg-opacity-20 p-4 rounded-lg">
-              <span className="w-3 h-3 rounded-full bg-white text-purple-600 flex items-center justify-center mr-3">
-                &nbsp;
-              </span>
-              <span className="text-white">Create Actions</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Right Panel */}
-      <div className="w-full md:w-1/2 flex flex-col items-center justify-center relative">
-        <div className="absolute top-[5vh] left-1/2 transform -translate-x-1/2">
-          Amurex
-        </div>
-
-        <div className="w-full max-w-md rounded-lg p-8">
-          <h1
-            className="font-serif text-4xl mb-2"
-            style={{ fontFamily: "var(--font-noto-serif)" }}
-          >
-            Create Account
-          </h1>
-          <p className="text-gray-600 mb-8">
-            Enter your details to create your account
+    <div 
+      className="flex min-h-screen items-center justify-center p-4 md:p-0"
+      style={{
+        backgroundImage: "url(/sign-background.png)",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+      }}
+    >
+      <div className="w-full max-w-[95%] md:max-w-md">
+        <div className="flex justify-center items-center mb-6 md:mb-8">
+          <img 
+            src="/amurex.png" 
+            alt="Amurex logo"
+            className="w-8 h-8 md:w-10 md:h-10 border-2 border-white rounded-full" 
+          />
+          <p className="text-white text-base md:text-lg font-semibold pl-2">
+            Amurex
           </p>
+        </div>
+        
+        <div className="w-full rounded-lg bg-[#0E0F0F] p-6 md:p-8 backdrop-blur-sm shadow-lg">
+          <div className="text-center mb-6 md:mb-8">
+            <h1 className="font-serif text-3xl md:text-4xl mb-2 text-white" style={{ fontFamily: "var(--font-noto-serif)" }}>
+              Sign Up
+            </h1>
+            <p className="text-gray-400 text-sm md:text-base">
+              Enter your details to create your account
+            </p>
+          </div>
+          
+          <hr className="mb-6 border-gray-800" />
 
-          <form onSubmit={handleSignUp} className="space-y-6">
+          <form onSubmit={handleSignUp} className="space-y-4 md:space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium font-semibold text-white mb-1">
                 Email
               </label>
               <Input
@@ -118,12 +91,12 @@ export default function SignUp() {
                 placeholder="Enter your email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full p-3 bg-gray-50"
+                className="w-full py-3 md:py-4 px-3 bg-[#262727] text-white border border-[#262727] text-sm md:text-base"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium font-semibold text-white mb-1">
                 Password
               </label>
               <Input
@@ -131,12 +104,15 @@ export default function SignUp() {
                 placeholder="Choose a password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full p-3 bg-gray-50"
+                className="w-full py-3 md:py-4 px-3 bg-[#262727] text-white border border-[#262727] text-sm md:text-base"
               />
+              <p className="mt-1 text-xs md:text-sm text-gray-400 py-2 md:py-4">
+                Must be at least 8 characters
+              </p>
             </div>
 
             {message && (
-              <p className={`text-sm ${message.includes('error') ? 'text-red-500' : 'text-green-500'}`}>
+              <p className={`text-xs md:text-sm ${message.includes('error') ? 'text-red-500' : 'text-green-500'}`}>
                 {message}
               </p>
             )}
@@ -144,24 +120,20 @@ export default function SignUp() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-black text-white p-3 rounded-lg hover:bg-white hover:text-black border border-black transition-all duration-200"
+              className="w-full bg-white text-[#0E0F0F] p-2.5 md:p-3 text-sm md:text-base font-semibold rounded-lg hover:bg-[#0E0F0F] hover:text-white hover:border-white border border-[#0E0F0F] transition-all duration-200"
             >
-              {loading ? "Creating Account..." : "Create Account"}
+              {loading ? "Creating Account..." : "Sign Up"}
             </button>
           </form>
 
-          <p className="mt-6 text-center text-gray-600">
+          <p className="mt-4 md:mt-6 text-center text-xs md:text-sm text-gray-400">
             Already have an account?{" "}
-            <Link
-              href="/signin"
-              className="text-black font-semibold hover:underline"
-            >
+            <Link href="/signin" className="text-white font-light hover:underline">
               Sign In
             </Link>
           </p>
         </div>
       </div>
     </div>
-    </>
   );
 }
