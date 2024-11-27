@@ -21,10 +21,13 @@ export default function SignIn() {
     const params = new URLSearchParams(window.location.search);
     setIsExtensionAuth(params.get("extension") === "true");
     setIsWelcome(params.get("welcome") === "true");
-    if (params.get("welcome") === "true") {
+    if (params.get("welcome") === "true" && isExtensionAuth) {
+      signupRedirect += "?welcome=true&extension=true";
+    }
+    else if (params.get("welcome") === "true") {
       signupRedirect += "?welcome=true";
     }
-    if (params.get("extension") === "true") {
+    else if (isExtensionAuth) {
       signupRedirect += "?extension=true";
     }
   }, []);
