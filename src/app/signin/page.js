@@ -13,11 +13,20 @@ export default function SignIn() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [isExtensionAuth, setIsExtensionAuth] = useState(false);
+  const [isWelcome, setIsWelcome] = useState(false);
   const router = useRouter();
+  let signupRedirect = "/signup";
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     setIsExtensionAuth(params.get("extension") === "true");
+    setIsWelcome(params.get("welcome") === "true");
+    if (params.get("welcome") === "true") {
+      signupRedirect += "?welcome=true";
+    }
+    if (params.get("extension") === "true") {
+      signupRedirect += "?extension=true";
+    }
   }, []);
 
   const handleSignIn = async (e) => {
@@ -50,7 +59,11 @@ export default function SignIn() {
       if (isExtensionAuth) {
         window.close();
       } else {
-        router.push("/");
+        if (isWelcome) {
+          router.push("/welcome");
+        } else {
+          router.push("/settings");
+        }
         setMessage("Signing in...");
       }
     }
@@ -163,7 +176,7 @@ export default function SignIn() {
           <p className="mt-4 md:mt-6 text-center text-xs md:text-sm text-gray-400">
             Don&apos;t have an account?{" "}
             <Link
-              href="/signup"
+              href={signupRedirect}
               className="text-white font-light hover:underline"
             >
               Sign Up

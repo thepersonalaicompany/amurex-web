@@ -13,6 +13,18 @@ export default function SignUp() {
   const [message, setMessage] = useState("");
   const router = useRouter();
 
+  let signinRedirect = "/signin";
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("welcome") === "true") {
+      signinRedirect += "?welcome=true";
+    }
+    if (params.get("extension") === "true") {
+      signinRedirect += "?extension=true";
+    }
+  }, []);
+
   const createUserEntry = async (userId) => {
     const { data, error } = await supabase
       .from('users')
@@ -128,7 +140,7 @@ export default function SignUp() {
 
           <p className="mt-4 md:mt-6 text-center text-xs md:text-sm text-gray-400">
             Already have an account?{" "}
-            <Link href="/signin" className="text-white font-light hover:underline">
+            <Link href={signinRedirect} className="text-white font-light hover:underline">
               Sign In
             </Link>
           </p>
