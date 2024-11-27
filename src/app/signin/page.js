@@ -48,7 +48,7 @@ export default function SignIn() {
       const session = sessionData.session;
 
       // Set cookie with secure options
-      Cookies.set("brainex_session", JSON.stringify(session), {
+      Cookies.set("amurex_session", JSON.stringify(session), {
         expires: 7, // 7 days
         secure: process.env.NODE_ENV === "production",
         sameSite: "strict",

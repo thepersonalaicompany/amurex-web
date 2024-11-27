@@ -23,8 +23,8 @@ const notoSerif = Noto_Serif({
 });
 
 export const metadata = {
-  title: "Brainex - A virtual assistant for all your knowledge work.",
-  description: "The virtual butler for your knowledge work.",
+  title: "Amurex - Your AI meeting copilot.",
+  description: "Your AI meeting copilot.",
 };
 
 export default function RootLayout({ children }) {

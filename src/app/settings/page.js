@@ -51,8 +51,8 @@ export default function SettingsPage() {
     
     // Clear local storage and cookies
     console.log('Clearing cookies');
-    localStorage.removeItem('brainex_session');
-    Cookies.remove('brainex_session', { 
+    localStorage.removeItem('amurex_session');
+    Cookies.remove('amurex_session', { 
       path: '/',
       sameSite: 'strict',
       secure: process.env.NODE_ENV === 'production'
@@ -63,7 +63,7 @@ export default function SettingsPage() {
       try {
         window.postMessage(
           { 
-            type: 'BRAINEX_LOGOUT',
+            type: 'AMUREX_LOGOUT',
           }, 
           '*'
         );
