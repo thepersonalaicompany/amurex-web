@@ -218,7 +218,7 @@ export default function SettingsPage() {
                 Integrations
               </h2>
               <div className="space-y-6">
-                <IntegrationButton
+                {/* <IntegrationButton
                   onClick={handleNotionConnect}
                   connected={notionConnected}
                   label="Notion"
@@ -234,22 +234,24 @@ export default function SettingsPage() {
                       ? "Google Docs & Calendar Connected"
                       : "Connect Google Docs & Calendar"
                   }
-                />
+                /> */}
                 <Button 
                   onClick={importNotionDocuments} 
                   variant="default"
                   className="w-full py-3 text-lg"
+                  disabled={true}
                 >
                   <Stack size={24} className="mr-2" />
-                  Import Notion Documents
+                  Import Notion Documents(Coming Soon)
                 </Button>
                 <Button 
                   onClick={importGoogleDocs} 
                   variant="default"
                   className="w-full py-3 text-lg"
+                  disabled={true}
                 >
                   <Stack size={24} className="mr-2" />
-                  Import Google Docs
+                  Import Google Docs(Coming Soon)
                 </Button>
               </div>
             </div>
