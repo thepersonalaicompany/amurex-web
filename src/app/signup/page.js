@@ -63,7 +63,7 @@ export default function SignUp() {
     <div 
       className="flex min-h-screen items-center justify-center p-4 md:p-0"
       style={{
-        backgroundImage: "url(/sign-background.png)",
+        backgroundImage: "url(/sign-background.webp)",
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundRepeat: "no-repeat",
