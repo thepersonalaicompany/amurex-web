@@ -1,5 +1,7 @@
 "use client";
 
+import { track } from "@vercel/analytics";
+
 export default function Welcome() {
   return (
     <div
@@ -46,10 +48,19 @@ export default function Welcome() {
                 2. Start a meeting to see Amurex in action.
               </p>
               <form className="space-y-4 md:space-y-6 w-full flex">
-                <a
+              <a
                   className="w-full bg-white text-[#0E0F0F] p-2.5 md:p-3 text-sm md:text-base font-semibold rounded-lg hover:bg-[#0E0F0F] hover:text-white hover:border-white border border-[#0E0F0F] transition-all duration-200 text-center flex items-center justify-center gap-2"
-                  href="https://meet.new"
-                  target="_blank"
+                  onClick={() => {
+                    track('welcome_meeting_created');
+                    
+                    // Create link to open Google Meet
+                    const link = document.createElement('a');
+                    link.target = '_blank';
+                    link.href = 'https://meet.new';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                  }}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 87.5 72">
                     <path fill="#0066da" d="M0 51.5V66c0 3.315 2.685 6 6 6h14.5l3-10.96-3-9.54-9.95-3z"/>
