@@ -64,9 +64,7 @@ export default function SignIn() {
       } else {
         if (isWelcome) {
           router.push("/welcome");
-        } else {
-          router.push("/settings");
-        }
+        } 
         setMessage("Signing in...");
       }
     }
