@@ -62,9 +62,7 @@ export default function SignIn() {
       if (isExtensionAuth) {
         window.close();
       } else {
-        if (isWelcome) {
-          router.push("/welcome");
-        } 
+        router.push("/welcome");
         setMessage("Signing in...");
       }
     }
