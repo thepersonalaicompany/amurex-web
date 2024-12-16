@@ -52,6 +52,8 @@ export default function SignUp() {
     console.log("This is the data", data);
 
 
+
+
     if (error) {
       setMessage(error.message);
     } else if (data.user) {
@@ -72,6 +74,29 @@ export default function SignUp() {
       setMessage(
         "Account created successfully!"
       );
+
+      // Send email to external endpoint
+      try {
+        const response = await fetch("https://api.amurex.ai/send_user_email", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ 
+            "email": email,
+            "type": "signup"
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to send email to external endpoint");
+        }
+
+        console.log("Email sent successfully to external endpoint");
+      } catch (err) {
+        console.error("Error sending email to external endpoint:", err);
+      }
+
       router.push("/welcome");
     } else {
       setMessage("An unexpected error occurred. Please try again.");
