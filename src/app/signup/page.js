@@ -12,16 +12,21 @@ export default function SignUp() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const router = useRouter();
 
   let signinRedirect = "/signin";
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("welcome") === "true") {
+    if (params.get("welcome") === "true" && params.get("extension") === "true") {
+      signinRedirect += "?welcome=true&extension=true";
+    }
+    else if (params.get("welcome") === "true") {
       signinRedirect += "?welcome=true";
     }
-    if (params.get("extension") === "true") {
+    else if (params.get("extension") === "true") {
       signinRedirect += "?extension=true";
     }
   }, []);
@@ -47,6 +52,12 @@ export default function SignUp() {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        data: {
+          first_name: firstName,
+          last_name: lastName,
+        },
+      },
     });
 
     console.log("This is the data", data);
@@ -143,13 +154,40 @@ export default function SignUp() {
           <hr className="mb-6 border-gray-800" />
 
           <form onSubmit={handleSignUp} className="space-y-4 md:space-y-6">
+          <div className="flex gap-4">
+              <div className="flex-1">
+                <label className="block text-sm font-medium font-semibold text-white mb-1">
+                  First Name
+                </label>
+                <Input
+                  type="text"
+                  placeholder="John"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  className="w-full py-3 md:py-4 px-3 bg-[#262727] text-white border border-[#262727] text-sm md:text-base"
+                />
+              </div>
+              <div className="flex-1">
+                <label className="block text-sm font-medium font-semibold text-white mb-1">
+                  Last Name
+                </label>
+                <Input
+                  type="text"
+                  placeholder="Doe"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  className="w-full py-3 md:py-4 px-3 bg-[#262727] text-white border border-[#262727] text-sm md:text-base"
+                />
+              </div>
+            </div>
+
             <div>
               <label className="block text-sm font-medium font-semibold text-white mb-1">
                 Email
               </label>
               <Input
                 type="email"
-                placeholder="Enter your email"
+                placeholder="john.doe@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full py-3 md:py-4 px-3 bg-[#262727] text-white border border-[#262727] text-sm md:text-base"
@@ -162,7 +200,7 @@ export default function SignUp() {
               </label>
               <Input
                 type="password"
-                placeholder="Choose a password"
+                placeholder="********"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full py-3 md:py-4 px-3 bg-[#262727] text-white border border-[#262727] text-sm md:text-base"
