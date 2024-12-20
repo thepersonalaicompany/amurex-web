@@ -15,12 +15,9 @@ export default function ResetPassword() {
     setLoading(true);
     setMessage("");
 
-    console.log("This is the origin", window.location.origin);
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/update-password`,
     });
-
-    console.log("This is the error", error);
 
     if (error) {
       setMessage(error.message);
