@@ -148,9 +148,9 @@ export default function SignIn() {
                   Remember me
                 </label>
               </div>
-              {/* <button type="button" className="text-sm text-gray-400 hover:text-white">
-                Forgot Password
-              </button> */}
+              <Link href="/reset-password" className="text-sm text-gray-400 hover:text-white">
+                Forgot Password?
+              </Link>
             </div>
 
             {message && (
