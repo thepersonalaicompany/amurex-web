@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from "@/components/ui/card";
-import { MessageSquare, FileText, Cloud } from 'lucide-react';
+import { MessageSquare, FileText, Cloud, Github, Bug } from 'lucide-react';
 import Cookies from 'js-cookie';
 import { X } from "@phosphor-icons/react";
 
@@ -276,18 +276,44 @@ export default function SettingsPage() {
                   </div>
                 </div>
               </div>
+
+              {/* Report a bug */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <h2 className="text-xl font-semibold flex items-center gap-2 text-white">
+                      <Bug className="w-5 h-5 text-purple-500" />
+                      Encounter an issue?
+                    </h2>
+                    <p className="text-sm text-zinc-400">
+                      Help us improve by reporting issues
+                    </p>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    className="bg-zinc-800 hover:bg-zinc-700 text-white whitespace-nowrap flex items-center"
+                    onClick={() => window.open('https://github.com/thepersonalaicompany/amurex/issues/new', '_blank')}
+                  >
+                    <Github className="w-5 h-5 text-purple-500 mr-2" />
+                    Report Issue
+                  </Button>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Button 
-          variant="destructive" 
-          className="w-full bg-red-500 hover:bg-red-600 text-white py-3 text-lg"
-          onClick={handleLogout}
-          disabled={loading}
-        >
-          {loading ? 'Logging out...' : 'Logout'}
-        </Button>
+        <div className="flex flex-col gap-4">
+
+          <Button 
+            variant="destructive" 
+            className="w-full bg-red-500 hover:bg-red-600 text-white py-6 text-lg"
+            onClick={handleLogout}
+            disabled={loading}
+          >
+            {loading ? 'Logging out...' : 'Logout'}
+          </Button>
+        </div>
       </div>
       <ImportingModal isOpen={isImporting} source={importSource} onClose={() => setIsImporting(false)} />
     </div>
