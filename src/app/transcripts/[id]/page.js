@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ArrowLeft, FileText, Calendar, Clock, Download, Share2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { Switch } from "@/components/ui/switch"
+import { supabase } from "@/lib/supabaseClient"
 
 const messages = [
   {
@@ -26,6 +28,36 @@ const messages = [
 
 export default function TranscriptDetail({ params }) {
   const router = useRouter()
+  const [memoryEnabled, setMemoryEnabled] = useState(false)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchMemoryStatus()
+  }, [])
+
+  const fetchMemoryStatus = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        router.push('/signin')
+        return
+      }
+
+      const { data, error } = await supabase
+        .from('users')
+        .select('memory_enabled')
+        .eq('id', session.user.id)
+        .single()
+
+      if (error) throw error
+      setMemoryEnabled(data?.memory_enabled || false)
+    } catch (error) {
+      console.error('Error fetching memory status:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const transcript = {
     id: params.id,
     title: "Team Meeting - Q4 Goals Review",
@@ -48,6 +80,15 @@ export default function TranscriptDetail({ params }) {
           </Link>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-4 text-zinc-400 text-sm">
+              <div className="flex items-center gap-2 border-r border-zinc-800 pr-4">
+                <span className="text-zinc-400">Memory</span>
+                <Switch 
+                  checked={memoryEnabled}
+                  disabled={true}
+                  className="data-[state=checked]:bg-purple-500"
+                  aria-label="Toggle memory"
+                />
+              </div>
               <span className="flex items-center gap-1">
                 <Calendar className="h-4 w-4" />
                 {transcript.date}

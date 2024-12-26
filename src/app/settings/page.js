@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
 import { MessageSquare, FileText, Cloud, Github, Bug } from 'lucide-react';
 import Cookies from 'js-cookie';
 import { X } from "@phosphor-icons/react";
@@ -18,6 +19,7 @@ export default function SettingsPage() {
   const [isImporting, setIsImporting] = useState(false);
   const [importSource, setImportSource] = useState('');
   const [importProgress, setImportProgress] = useState(0);
+  const [memoryEnabled, setMemoryEnabled] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -31,7 +33,7 @@ export default function SettingsPage() {
       if (session) {
       const { data: user, error } = await supabase
         .from('users')
-        .select('notion_connected, google_docs_connected, calendar_connected')
+        .select('notion_connected, google_docs_connected, calendar_connected, memory_enabled')
         .eq('id', session.user.id)
         .single();
       console.log('user', user);
@@ -40,6 +42,7 @@ export default function SettingsPage() {
           setNotionConnected(user.notion_connected);
           setGoogleDocsConnected(user.google_docs_connected);
           setCalendarConnected(user.calendar_connected);
+          setMemoryEnabled(user.memory_enabled);
         }
       }
     } catch (error) {
@@ -201,6 +204,23 @@ export default function SettingsPage() {
     }
   }, [googleDocsConnected]);
 
+  const handleMemoryToggle = async (checked) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const { error } = await supabase
+          .from('users')
+          .update({ memory_enabled: checked })
+          .eq('id', session.user.id);
+
+        if (error) throw error;
+        setMemoryEnabled(checked);
+      }
+    } catch (error) {
+      console.error('Error updating memory settings:', error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-black text-white p-4 md:p-8">
       <div className="max-w-2xl mx-auto space-y-6">
@@ -221,13 +241,11 @@ export default function SettingsPage() {
                       Keep your notes synced across devices
                     </p>
                   </div>
-                  <Button 
-                    variant="outline" 
-                    className="bg-zinc-700 text-zinc-300 hover:bg-zinc-600 cursor-not-allowed"
+                  <Switch 
+                    checked={memoryEnabled}
+                    onCheckedChange={handleMemoryToggle}
                     disabled={true}
-                  >
-                    Coming Soon
-                  </Button>
+                  />
                 </div>
                 <div className="text-sm text-zinc-400">
                   Feature coming soon
