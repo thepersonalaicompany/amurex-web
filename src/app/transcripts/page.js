@@ -1,63 +1,80 @@
 "use client";
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { FileText, Search, Calendar, Clock } from 'lucide-react'
 import Link from 'next/link'
-
-const transcripts = [
-  {
-    id: 1,
-    title: "Team Meeting - Q4 Goals Review",
-    date: "2024-12-24",
-    time: "10:00 AM",
-    duration: "1h 30m",
-  },
-  {
-    id: 2,
-    title: "Client Presentation - Product Demo",
-    date: "2024-12-23",
-    time: "2:00 PM",
-    duration: "45m",
-  },
-  {
-    id: 3,
-    title: "Marketing Strategy Session",
-    date: "2024-12-22",
-    time: "11:00 AM",
-    duration: "2h",
-  },
-  {
-    id: 4,
-    title: "Product Development Sync",
-    date: "2024-12-21",
-    time: "3:30 PM",
-    duration: "1h",
-  },
-  {
-    id: 5,
-    title: "HR Policy Update Meeting",
-    date: "2024-12-20",
-    time: "9:00 AM",
-    duration: "1h 15m",
-  },
-  {
-    id: 6,
-    title: "Financial Quarter Review",
-    date: "2024-12-19",
-    time: "2:30 PM",
-    duration: "2h 30m",
-  },
-]
+import { supabase } from '@/lib/supabaseClient'
 
 export default function TranscriptList() {
   const [searchTerm, setSearchTerm] = useState('')
+  const [transcripts, setTranscripts] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchTranscripts()
+  }, [])
+
+  const fetchTranscripts = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return
+      const user_id = session.user.id;
+      console.log("This is the user id", user_id)
+
+      const { data, error } = await supabase
+        .from('late_meeting')
+        .select(`
+          id,
+          meeting_id,
+          transcript,
+          summary,
+          action_items,
+          created_at,
+          meeting_start_time
+        `)
+        .contains('user_ids', [user_id])
+        .order('created_at', { ascending: false })
+        .not('transcript', 'is', null)
+
+      if (error) throw error
+      console.log("This is the data", data)
+
+      const formattedTranscripts = data.map(meeting => ({
+        id: meeting.id,
+        title: meeting.meeting_id || 'Untitled Meeting',
+        date: new Date(meeting.created_at).toISOString().split('T')[0],
+        time: new Date(meeting.meeting_start_time * 1000).toLocaleTimeString('en-US', {
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true
+        }),
+        summary: meeting.summary,
+        transcript: meeting.transcript,
+        action_items: meeting.action_items
+      }))
+
+      setTranscripts(formattedTranscripts)
+    } catch (error) {
+      console.error('Error fetching transcripts:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const filteredTranscripts = transcripts.filter(transcript =>
     transcript.title.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-white">Loading transcripts...</div>
+      </div>
+    )
+  }
+
   return (
-    <div className="min-h-screen bg-[#09090B]">
+    <div className="min-h-screen bg-black">
       <div className="p-6 max-w-7xl mx-auto">
         <h1 className="text-3xl font-bold mb-6 text-white">Transcripts</h1>
         
@@ -91,7 +108,6 @@ export default function TranscriptList() {
                         <Clock className="h-4 w-4" />
                         <span>{transcript.time}</span>
                       </div>
-                      <span className="text-purple-500 text-sm">{transcript.duration}</span>
                     </div>
                   </div>
                 </div>

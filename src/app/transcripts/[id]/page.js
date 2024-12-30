@@ -1,39 +1,74 @@
 "use client";
 
 import { useState, useEffect } from 'react'
-import { ArrowLeft, FileText, Calendar, Clock, Download, Share2 } from 'lucide-react'
+import { ArrowLeft, Download, Share2, Clock, Calendar, CheckCircle2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { Button } from "@/components/ui/Button"
+import { Card } from "@/components/ui/card"
 import { Switch } from "@/components/ui/switch"
 import { supabase } from "@/lib/supabaseClient"
-
-const messages = [
-  {
-    role: "user",
-    content: "Can you summarize the key points from today's meeting?"
-  },
-  {
-    role: "assistant",
-    content: "Here are the main points discussed:\n\n1. Q4 revenue targets exceeded by 15%\n2. New product launch scheduled for March\n3. Team expansion plans approved\n4. Customer satisfaction scores improved by 20%"
-  },
-  {
-    role: "user",
-    content: "What were the specific revenue numbers?"
-  },
-  {
-    role: "assistant",
-    content: "The Q4 revenue was $2.8M, compared to the target of $2.4M. This represents a 15% increase over the projected numbers and a 25% year-over-year growth."
-  }
-]
 
 export default function TranscriptDetail({ params }) {
   const router = useRouter()
   const [memoryEnabled, setMemoryEnabled] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [transcript, setTranscript] = useState(null)
+  const [messages, setMessages] = useState([])
 
   useEffect(() => {
     fetchMemoryStatus()
+    fetchTranscript()
   }, [])
+
+  const fetchTranscript = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        router.push('/signin')
+        return
+      }
+
+      const { data, error } = await supabase
+        .from('late_meeting')
+        .select(`
+          id,
+          meeting_id,
+          transcript,
+          summary,
+          action_items,
+          created_at,
+          meeting_start_time
+        `)
+        .eq('id', params.id)
+        .single()
+
+      if (error) throw error
+
+      if (data) {
+        setTranscript({
+          id: data.id,
+          title: data.meeting_id || 'Untitled Meeting',
+          date: new Date(data.created_at).toISOString().split('T')[0],
+          time: new Date(data.meeting_start_time * 1000).toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+          }),
+          summary: data.summary,
+          action_items: data.action_items
+        })
+        
+        if (data.transcript) {
+          setMessages(data.transcript)
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching transcript:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const fetchMemoryStatus = async () => {
     try {
@@ -53,127 +88,109 @@ export default function TranscriptDetail({ params }) {
       setMemoryEnabled(data?.memory_enabled || false)
     } catch (error) {
       console.error('Error fetching memory status:', error)
-    } finally {
-      setLoading(false)
     }
   }
 
-  const transcript = {
-    id: params.id,
-    title: "Team Meeting - Q4 Goals Review",
-    date: "2024-12-24",
-    time: "10:00 AM",
-    duration: "1h 30m",
-    summary: "Quarterly review meeting discussing Q4 performance, upcoming product launch, team growth, and customer satisfaction improvements. Key achievements include exceeding revenue targets and improved customer metrics."
+  if (loading || !transcript) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-white">Loading transcript...</div>
+      </div>
+    )
   }
 
   return (
-    <div className="min-h-screen bg-[#09090B]">
-      <div className="p-6 max-w-7xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <Link 
-            href="/transcripts"
-            className="text-purple-400 hover:text-purple-300 transition-colors flex items-center gap-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Transcripts
-          </Link>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-4 text-zinc-400 text-sm">
-              <div className="flex items-center gap-2 border-r border-zinc-800 pr-4">
-                <span className="text-zinc-400">Memory</span>
+    <div className="min-h-screen bg-black">
+      <header className="sticky top-0 z-10 bg-black/50 backdrop-blur-sm border-b border-zinc-800">
+        <div className="max-w-6xl mx-auto px-4 py-3">
+          <div className="flex items-center justify-between">
+            <Link 
+              href="/transcripts" 
+              className="flex items-center text-purple-400 hover:text-purple-300 transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Transcripts
+            </Link>
+            
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-zinc-400">Memory</span>
                 <Switch 
                   checked={memoryEnabled}
                   disabled={true}
-                  className="data-[state=checked]:bg-purple-500"
-                  aria-label="Toggle memory"
                 />
               </div>
-              <span className="flex items-center gap-1">
+              
+              <div className="flex items-center gap-2 text-sm text-zinc-400">
                 <Calendar className="h-4 w-4" />
-                {transcript.date}
-              </span>
-              <span className="flex items-center gap-1">
-                <Clock className="h-4 w-4" />
-                {transcript.time}
-              </span>
-            </div>
-            <div className="flex items-center gap-2 ml-4">
-              <button className="p-2 text-zinc-400 hover:text-purple-400 transition-colors">
-                <Download className="h-4 w-4" />
-              </button>
-              <button className="p-2 text-zinc-400 hover:text-purple-400 transition-colors">
-                <Share2 className="h-4 w-4" />
-              </button>
+                <span>{transcript.date}</span>
+                <Clock className="h-4 w-4 ml-2" />
+                <span>{transcript.time}</span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  className="text-zinc-400 hover:text-white"
+                >
+                  <Download className="h-4 w-4" />
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  className="text-zinc-400 hover:text-white"
+                >
+                  <Share2 className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </div>
         </div>
+      </header>
 
-        <div className="bg-[#09090B] rounded-lg">
-          <div className="p-6 border-b border-zinc-800">
-            <div className="flex items-center gap-3">
-              <div className="text-purple-400">
-                <FileText className="h-5 w-5" />
-              </div>
-              <h1 className="text-2xl font-bold text-white">
-                {transcript.title}
-              </h1>
-            </div>
-          </div>
-          
-          <div className="p-6 space-y-6">
-            {transcript.summary && (
-              <div className="bg-[#27272A] rounded-lg p-4">
-                <h2 className="text-purple-400 font-medium mb-2">Summary</h2>
-                <p className="text-zinc-300">{transcript.summary}</p>
-              </div>
-            )}
+      <main className="max-w-6xl mx-auto px-4 py-8">
+        <div className="space-y-8">
+          <h1 className="text-2xl font-semibold text-white">{transcript.title}</h1>
 
-            <div>
-              <h2 className="text-purple-400 font-medium mb-3">Action Items</h2>
-              <ul className="space-y-2 text-zinc-300">
-                <li className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 bg-purple-400 rounded-full"></span>
-                  Schedule product launch planning meeting
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 bg-purple-400 rounded-full"></span>
-                  Review team expansion budget
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 bg-purple-400 rounded-full"></span>
-                  Prepare Q1 2025 targets
-                </li>
-              </ul>
-            </div>
+          {transcript.summary && (
+            <section>
+              <h2 className="text-lg font-medium text-purple-400 mb-4">Summary</h2>
+              <Card className="bg-zinc-900/50 border-zinc-800">
+                <div className="p-4">
+                  <p className="text-zinc-300">{transcript.summary}</p>
+                </div>
+              </Card>
+            </section>
+          )}
 
-            <div>
-              <h2 className="text-purple-400 font-medium mb-3">Meeting Notes</h2>
-              <div className="space-y-4">
-                {messages.map((message, index) => (
-                  <div 
-                    key={index}
-                    className={`p-4 rounded-lg ${
-                      message.role === "user" 
-                        ? "bg-[#27272A]" 
-                        : "bg-[#2D2D3D]"
-                    }`}
-                  >
-                    <p className={`text-sm mb-2 ${
-                      message.role === "user" 
-                        ? "text-zinc-400"
-                        : "text-purple-400"
-                    }`}>
-                      {message.role === "user" ? "You" : "Assistant"}
-                    </p>
-                    <p className="text-zinc-200 whitespace-pre-line">{message.content}</p>
+          {transcript.action_items && (
+            <section>
+              <h2 className="text-lg font-medium text-purple-400 mb-4">Action Items</h2>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 group">
+                  <div className="relative">
+                    <div className="absolute inset-0 bg-purple-500/20 rounded-full transform scale-150 opacity-0 group-hover:opacity-100 transition-all"></div>
+                    <CheckCircle2 className="h-5 w-5 text-purple-500" />
                   </div>
-                ))}
+                  <span className="text-zinc-300">{transcript.action_items}</span>
+                </div>
               </div>
-            </div>
-          </div>
+            </section>
+          )}
+
+          <section>
+            <h2 className="text-lg font-medium text-purple-400 mb-4">Transcripts</h2>
+            <Card className="bg-zinc-900/50 border-zinc-800">
+              <div className="p-4">
+                <div className="text-zinc-300 whitespace-pre-line">
+                  {messages}
+                </div>
+              </div>
+            </Card>
+          </section>
         </div>
-      </div>
+      </main>
     </div>
   )
 } 
