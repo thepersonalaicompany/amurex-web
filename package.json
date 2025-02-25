@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@langchain/community": "^0.3.9",
+    "@mixedbread-ai/sdk": "^2.2.11",
     "@notionhq/client": "^2.2.15",
     "@phosphor-icons/react": "^2.1.7",
     "@radix-ui/react-slot": "^1.1.1",

@@ -6,13 +6,17 @@ import { BraveSearch } from "@langchain/community/tools/brave_search";
 import OpenAI from "openai";
 import * as cheerio from "cheerio";
 import { createClient } from "@supabase/supabase-js";
+import { MixedbreadAIClient } from "@mixedbread-ai/sdk";
 // 2. Initialize OpenAI and Supabase clients
 const openai = new OpenAI({ apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY });
+const mxbai = new MixedbreadAIClient({
+    apiKey: process.env.MIXEDBREAD_API_KEY,
+    maxRetries: 3,
+});
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
-const embeddings = new OpenAIEmbeddings();
 // 3. Send payload to Supabase table
 async function sendPayload(content, user_id) {
   await supabase
@@ -41,56 +45,27 @@ async function rephraseInput(inputString) {
   return gptAnswer.choices[0].message.content;
 }
 
-async function aiSearch(query, user_id) {
-  const embeddingResponse = await openai.embeddings.create({
-    model: "text-embedding-ada-002",
-    input: query,
+async function searchMemory(query, user_id) {
+  const model = "mixedbread-ai/mxbai-embed-large-v1";
+  
+  // Get query embedding
+  const queryEmbeddingResponse = await mxbai.embeddings({
+    model,
+    input: [query],
   });
-  const queryEmbedding = embeddingResponse.data[0].embedding;
+  const queryEmbedding = queryEmbeddingResponse.data[0].embedding;
 
-  // Search in page_sections using the match_page_sections function
-  const { data: sections, error: sectionsError } = await supabase.rpc(
-    "match_page_sections",
+  // Search using search_memory_chunks RPC
+  const { data: chunks, error } = await supabase.rpc(
+    "search_memory_centroids",
     {
       query_embedding: queryEmbedding,
-      similarity_threshold: 0.3,
-      match_count: 5,
-      user_id: user_id,
+      input_user_id: user_id,
     }
   );
 
-  if (sectionsError) throw sectionsError;
-
-  // Get unique document IDs from the matching sections
-  const documentIds = [
-    ...new Set(sections.map((section) => section.document_id)),
-  ];
-
-  // Fetch the corresponding documents
-  const { data: documents, error: documentsError } = await supabase
-    .from("documents")
-    .select("id, url, title, meta, tags, text")
-    .in("id", documentIds)
-    .eq("user_id", user_id);
-
-  if (documentsError) throw documentsError;
-
-  // Combine the results
-  const results = documents.map((doc) => ({
-    id: doc.id,
-    title: doc.title,
-    url: doc.url,
-    content: doc.text,
-    tags: doc.tags,
-    relevantSections: sections
-      .filter((section) => section.document_id === doc.id)
-      .map((section) => ({
-        context: section.context,
-        similarity: section.similarity,
-      })),
-  }));
-
-  return { results };
+  if (error) throw error;
+  return chunks;
 }
 
 // 5. Search engine for sources
@@ -98,11 +73,11 @@ async function searchEngineForSources(message, internetSearchEnabled, user_id) {
   let combinedResults = [];
 
   // Perform Supabase document search
-  const supabaseResults = await aiSearch(message, user_id);
-  const supabaseData = supabaseResults.results.map((doc) => ({
+  const supabaseResults = await searchMemory(message, user_id);
+  const supabaseData = supabaseResults.map((doc) => ({
     title: doc.title,
     link: doc.url,
-    text: doc.content,
+    text: doc.text,
     relevantSections: doc.relevantSections,
   }));
   combinedResults = [...combinedResults, ...supabaseData];
@@ -148,7 +123,7 @@ async function searchEngineForSources(message, internetSearchEnabled, user_id) {
       const vectorStore = await MemoryVectorStore.fromTexts(
         splitText,
         { annotationPosition: item.link },
-        embeddings
+        mxbai
       );
       vectorCount++;
       return await vectorStore.similaritySearch(message, 1);
@@ -287,28 +262,95 @@ async function generateFollowup(message) {
 }
 // 54. Define POST function for API endpoint
 export async function POST(req, res) {
-  const { message, internetSearchEnabled, user_id } = await req.json();
+  const { message, user_id } = await req.json();
 
   if (!user_id) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let answer = "Here's what remains on Sanskar's task list:\n\nComplete the Founder Profile on the YC dashboard — ensuring all relevant details are updated to reflect the latest information.\n\nDeploy the latest version of the landing page — updating the website to incorporate the newest changes for a polished and engaging presentation.\n\nWould you like any assistance with organizing these tasks, or perhaps reminders set for key milestones?";
-
   try {
-    const results = await searchEngineForSources(message, internetSearchEnabled, user_id);
-    
-    return Response.json({ 
-      success: true,
-      message: "Search completed",
-      results: {
-        sources: results.sources,
-        vectorResults: results.vectorResults,
-        answer: answer
-      }
+    // Search memory chunks
+    const memoryChunks = await searchMemory(message, user_id);
+    console.log("memoryChunks", memoryChunks);
+    const formattedChunks = memoryChunks.map(item => item.content);
+    const sources = memoryChunks.map(item => ({
+      text: item.content,
+      meeting_id: item.meeting_id,
+      url: item.meeting_id ? `/meetings/${item.meeting_id}` : null
+    }));
+
+    // Create streaming response
+    const stream = new TransformStream();
+    const writer = stream.writable.getWriter();
+    const encoder = new TextEncoder();
+
+
+    console.log("formattedChunks", formattedChunks);
+    // Start the streaming process
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content: "You are a helpful assistant. Use the provided memory chunks to answer the user's query. If the chunks don't contain relevant information, let the user know you couldn't find specific information about their query. Chunks are in a very bad structure, so try to understand as much as you can. Be confident in your answer. Don't say 'I'm not sure' or 'I don't know'.",
+        },
+        {
+          role: "user",
+          content: `Query: ${message}\n\nMemory Chunks: ${JSON.stringify(formattedChunks)}`,
+        },
+      ],
+      stream: true,
     });
+
+    // Process the stream
+    (async () => {
+      try {
+        // Send sources first
+        const sourcesPayload = JSON.stringify({
+          success: true,
+          sources: sources,
+          chunk: ''
+        });
+        await writer.write(encoder.encode(sourcesPayload + '\n'));
+
+        for await (const chunk of completion) {
+          const content = chunk.choices[0]?.delta?.content || '';
+          if (content) {
+            const payload = JSON.stringify({
+              success: true,
+              chunk: content,
+            });
+            await writer.write(encoder.encode(payload + '\n'));
+          }
+        }
+
+        // Send final message
+        const finalPayload = JSON.stringify({
+          success: true,
+          done: true,
+        });
+        await writer.write(encoder.encode(finalPayload + '\n'));
+      } catch (error) {
+        const errorPayload = JSON.stringify({
+          success: false,
+          error: error.message,
+        });
+        await writer.write(encoder.encode(errorPayload + '\n'));
+      } finally {
+        await writer.close();
+      }
+    })();
+
+    return new Response(stream.readable, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      },
+    });
+
   } catch (error) {
-    console.error('Error processing search:', error);
+    console.error('Error processing query:', error);
     return Response.json({ 
       success: false, 
       error: error.message 
