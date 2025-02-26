@@ -1,18 +1,12 @@
 // 1. Import Dependencies
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
-import { OpenAIEmbeddings } from "@langchain/openai";
 import { MemoryVectorStore } from "langchain/vectorstores/memory";
 import { BraveSearch } from "@langchain/community/tools/brave_search";
 import OpenAI from "openai";
 import * as cheerio from "cheerio";
 import { createClient } from "@supabase/supabase-js";
-import { MixedbreadAIClient } from "@mixedbread-ai/sdk";
 // 2. Initialize OpenAI and Supabase clients
 const openai = new OpenAI({ apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY });
-const mxbai = new MixedbreadAIClient({
-    apiKey: process.env.MIXEDBREAD_API_KEY,
-    maxRetries: 3,
-});
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -46,14 +40,22 @@ async function rephraseInput(inputString) {
 }
 
 async function searchMemory(query, user_id) {
-  const model = "mixedbread-ai/mxbai-embed-large-v1";
-  
-  // Get query embedding
-  const queryEmbeddingResponse = await mxbai.embeddings({
-    model,
-    input: [query],
+  // Get query embedding from Mistral API
+  const response = await fetch('https://api.mistral.ai/v1/embeddings', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${process.env.MISTRAL_API_KEY}`
+    },
+    body: JSON.stringify({
+      input: [query],
+      model: "mistral-embed",
+      encoding_format: "float"
+    })
   });
-  const queryEmbedding = queryEmbeddingResponse.data[0].embedding;
+
+  const embedData = await response.json();
+  const queryEmbedding = embedData.data[0].embedding;
 
   // Search using search_memory_chunks RPC
   const { data: chunks, error } = await supabase.rpc(
@@ -120,10 +122,28 @@ async function searchEngineForSources(message, internetSearchEnabled, user_id) {
         chunkSize: 200,
         chunkOverlap: 0,
       }).splitText(htmlContent);
-      const vectorStore = await MemoryVectorStore.fromTexts(
+
+      // Get embeddings for each chunk of text
+      const response = await fetch('https://api.mistral.ai/v1/embeddings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.MISTRAL_API_KEY}`
+        },
+        body: JSON.stringify({
+          input: splitText,
+          model: "mistral-embed",
+          encoding_format: "float"
+        })
+      });
+
+      const embedData = await response.json();
+      const vectors = embedData.data.map(d => d.embedding);
+
+      const vectorStore = await MemoryVectorStore.fromVectors(
+        vectors,
         splitText,
-        { annotationPosition: item.link },
-        mxbai
+        { annotationPosition: item.link }
       );
       vectorCount++;
       return await vectorStore.similaritySearch(message, 1);
@@ -269,8 +289,16 @@ export async function POST(req, res) {
   }
 
   try {
+    // Start timing
+    const searchStart = performance.now();
+    
     // Search memory chunks
     const memoryChunks = await searchMemory(message, user_id);
+    
+    // End timing and log
+    const searchEnd = performance.now();
+    console.log(`Memory search completed in ${searchEnd - searchStart}ms`);
+    
     console.log("memoryChunks", memoryChunks);
     const formattedChunks = memoryChunks.map(item => item.content);
     const sources = memoryChunks.map(item => ({
@@ -357,4 +385,3 @@ export async function POST(req, res) {
     }, { status: 500 });
   }
 }
-

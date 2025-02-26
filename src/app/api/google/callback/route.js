@@ -1,38 +1,64 @@
 import { NextResponse } from 'next/server';
 import { google } from 'googleapis';
-import { supabase } from '@/lib/supabaseClient';
-
-const oauth2Client = new google.auth.OAuth2(
-  process.env.GOOGLE_CLIENT_ID,
-  process.env.GOOGLE_CLIENT_SECRET,
-  process.env.GOOGLE_REDIRECT_URI
-);
+import { createClient } from '@supabase/supabase-js';
 
 export async function GET(req) {
-  const { searchParams } = new URL(req.url);
-  const code = searchParams.get('code');
-  const state = searchParams.get('state');
-
-  if (!code) {
-    return NextResponse.json({ success: false, error: 'No code provided' }, { status: 400 });
-  }
-
+  console.log('Callback route hit');
   try {
-    const { tokens } = await oauth2Client.getToken(code);
-    
-    if (tokens.access_token) {
-      return NextResponse.json({
-        success: true,
-        access_token: tokens.access_token,
-        refresh_token: tokens.refresh_token,
-        state: state
-      });
-    } else {
-      return NextResponse.json({ success: false, error: 'Failed to connect Google services' }, { status: 400 });
+    const searchParams = req.nextUrl.searchParams;
+    const code = searchParams.get('code');
+    const state = searchParams.get('state');
+
+    console.log('Code:', code);
+    console.log('State:', state);
+
+    if (!code) {
+      throw new Error('No code provided');
     }
+
+    const oauth2Client = new google.auth.OAuth2(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+      process.env.GOOGLE_REDIRECT_URI
+    );
+
+    // Get tokens from Google
+    const { tokens } = await oauth2Client.getToken(code);
+    console.log('Got tokens from Google');
+
+    // Create Supabase client with service role
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+
+    // Update the user's tokens in Supabase
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({
+        google_access_token: tokens.access_token,
+        google_refresh_token: tokens.refresh_token,
+        google_token_expiry: new Date(tokens.expiry_date).toISOString(),
+        google_docs_connected: true
+      })
+      .eq('id', state);
+
+    if (updateError) {
+      console.error('Supabase update error:', updateError);
+      throw updateError;
+    }
+
+    // Redirect back to the settings page with success
+    return NextResponse.redirect(
+      `${process.env.NEXT_PUBLIC_APP_URL}/settings?connection=success`
+    );
+
   } catch (error) {
-    console.error('Error in Google callback:', error);
-    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+    console.error('Callback error:', error);
+    // Redirect with error
+    return NextResponse.redirect(
+      `${process.env.NEXT_PUBLIC_APP_URL}/settings?error=${encodeURIComponent(error.message)}`
+    );
   }
 }
 

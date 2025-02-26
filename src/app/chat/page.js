@@ -311,9 +311,6 @@ export const Sources = ({ content = [] }) => {
     );
   }
 
-
-  console.log("MEETINGS", meetings);
-  
   return (
     <div>
       <div className="text-[#9334E9] font-medium mb-3 lg:text-xl text-md flex items-center gap-2">
@@ -330,7 +327,7 @@ export const Sources = ({ content = [] }) => {
                 ) : (
                   <img src="https://www.svgrepo.com/show/303180/microsoft-teams-logo.svg" alt="Microsoft Teams" className="w-8" />
                 )}
-                Platform: {meetings[meeting_id]?.platform}, Meeting ID: {meeting_id}
+                {meetings[meeting_id]?.platform === 'google' ? 'Google Meet' : 'Microsoft Teams'}, Meeting ID: {meetings[meeting_id]?.meeting_id}
               </div>
               <div className="text-zinc-500 text-xs">
                 <ReactMarkdown>{text}</ReactMarkdown>

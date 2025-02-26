@@ -2,67 +2,35 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabaseClient';
+import { useSearchParams } from 'next/navigation';
+import { toast } from 'react-hot-toast';
 
 export default function GoogleCallbackPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
-    const handleGoogleCallback = async () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const code = urlParams.get('code');
-      const state = urlParams.get('state'); // This contains the userId we passed
-      const { data: { session } } = await supabase.auth.getSession();
-      const userId = session.user.id;
+    const connection = searchParams.get('connection');
+    const error = searchParams.get('error');
 
-      if (code) {
-        try {
-          const response = await fetch(`/api/google/callback?code=${code}&state=${state}`);
-          console.log('Making api call');
-
-          const data = await response.json();
-
-          if (data.success) {
-            const { access_token, refresh_token } = data;
-            console.log('access_token', access_token);
-
-            const updateResponse = await fetch('/api/google/callback', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                access_token,
-                refresh_token,
-                state,
-                userId,
-                type: state.includes('calendar') ? 'calendar' : 'docs'
-              }),
-            });
-
-            const updateData = await updateResponse.json();
-            if (updateData.success) {
-              console.log(state.includes('calendar') ? 'Google Calendar connected successfully' : 'Google Docs connected successfully');
-              window.history.replaceState({}, document.title, window.location.pathname);
-              router.push('/settings'); // Redirect to settings page to see the updated state
-            } else {
-              console.error('Error updating user:', updateData.error);
-            }
-          } else {
-            console.error('Error connecting Google Docs:', data.error);
-          }
-        } catch (error) {
-          console.error('Error handling Google callback:', error);
-        }
-      }
-    };
-
-    handleGoogleCallback();
-  }, [router]);
+    if (connection === 'success') {
+      toast.success('Google Docs connected successfully!');
+      router.push('/settings');
+    } else if (error) {
+      toast.error(`Connection failed: ${error}`);
+      router.push('/settings');
+    } else {
+      // If no status parameters, redirect to settings
+      router.push('/settings');
+    }
+  }, [router, searchParams]);
 
   return (
-    <div>
-      <h1>Connecting to Google Docs...</h1>
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="text-center">
+        <h1 className="text-xl font-semibold mb-2">Connecting to Google...</h1>
+        <p className="text-gray-500">Please wait while we complete the connection.</p>
+      </div>
     </div>
   );
 }
