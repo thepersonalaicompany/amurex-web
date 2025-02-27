@@ -116,8 +116,32 @@ export default function SettingsPage() {
     setLoading(false);
   };
 
-  const handleNotionConnect = () => {
-    router.push('/api/notion/auth');
+  const handleNotionConnect = async () => {
+    console.log('Starting Notion connection flow...');
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const response = await fetch('/api/notion/auth', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ userId: session.user.id }),
+        });
+        const data = await response.json();
+        if (data.url) {
+          console.log('Setting pendingNotionImport flag before OAuth redirect');
+          localStorage.setItem('pendingNotionImport', 'true');
+          router.push(data.url);
+        } else {
+          console.error('Error starting Notion OAuth flow:', data.error);
+          toast.error('Failed to connect Notion');
+        }
+      }
+    } catch (error) {
+      console.error('Error connecting Notion:', error);
+      toast.error('Failed to connect Notion');
+    }
   };
 
   const handleGoogleDocsConnect = async () => {
@@ -209,7 +233,6 @@ export default function SettingsPage() {
       setIsImporting(true);
       setImportSource('Google Docs');
       
-      // Get the ACTUAL session token
       const { data: { session } } = await supabase.auth.getSession();
       const accessToken = session?.access_token;
 
@@ -230,19 +253,6 @@ export default function SettingsPage() {
         
         if (data.success) {
           console.log('Google Docs import initiated:', data);
-          
-          // Send email notification
-          await fetch('/api/notifications/email', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              userEmail: session.user.email,
-              importResults: data.documents
-            }),
-          });
-          
           toast.success('Import complete! Check your email for details.');
         } else {
           console.error('Error importing Google docs:', data.error);
@@ -260,23 +270,28 @@ export default function SettingsPage() {
     }
   }, [googleDocsConnected]);
 
-  // Add this effect to check for pending imports on component mount
+  // Update the useEffect to check for pending imports as well
   useEffect(() => {
     const checkPendingImports = async () => {
       console.log('Checking for pending imports...');
-      const pendingImport = localStorage.getItem('pendingGoogleDocsImport');
-      console.log('Pending import flag:', pendingImport);
-      console.log('Google Docs connected:', googleDocsConnected);
+      const pendingGoogleImport = localStorage.getItem('pendingGoogleDocsImport');
+      const pendingNotionImport = localStorage.getItem('pendingNotionImport');
       
-      if (pendingImport === 'true' && googleDocsConnected) {
-        console.log('Found pending import, starting Google Docs import...');
+      if (pendingGoogleImport === 'true' && googleDocsConnected) {
+        console.log('Found pending Google import, starting Google Docs import...');
         localStorage.removeItem('pendingGoogleDocsImport');
         await importGoogleDocs();
+      }
+
+      if (pendingNotionImport === 'true' && notionConnected) {
+        console.log('Found pending Notion import, starting Notion import...');
+        localStorage.removeItem('pendingNotionImport');
+        await importNotionDocuments();
       }
     };
 
     checkPendingImports();
-  }, [googleDocsConnected, importGoogleDocs]);
+  }, [googleDocsConnected, notionConnected, importGoogleDocs, importNotionDocuments]);
 
   const handleMemoryToggle = async (checked) => {
     try {
@@ -297,23 +312,62 @@ export default function SettingsPage() {
 
   const handleGoogleCallback = useCallback(async () => {
     console.log('Handling Google callback');
-    const searchParams = new URLSearchParams(window.location.search);
-    const connection = searchParams.get('connection');
+    const code = searchParams.get('code');
     const error = searchParams.get('error');
+    const state = searchParams.get('state');
 
-    if (connection === 'success') {
-      toast.success('Google Docs connected successfully!');
-      // Refresh the page or update the state as needed
-      router.refresh();
+    if (code) {
+      try {
+        // Get current session
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        // Exchange code for tokens
+        const response = await fetch('/api/google/callback', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ 
+            code,
+            state,
+            userId: session?.user?.id 
+          }),
+        });
+
+        const data = await response.json();
+        
+        if (data.success) {
+          await checkIntegrations(); // Refresh integration status
+          toast.success('Google Docs connected successfully!');
+          
+          // Trigger import if there's a pending import flag
+          const pendingImport = localStorage.getItem('pendingGoogleDocsImport');
+          if (pendingImport === 'true') {
+            console.log('Starting import after successful connection...');
+            localStorage.removeItem('pendingGoogleDocsImport');
+            await importGoogleDocs();
+          }
+        } else {
+          console.error('Connection failed:', data.error);
+          toast.error('Failed to connect Google Docs');
+        }
+      } catch (err) {
+        console.error('Error in Google callback:', err);
+        toast.error('Failed to connect Google Docs');
+      }
     }
+    
     if (error) {
       toast.error(`Connection failed: ${error}`);
     }
-  }, []);
+  }, [searchParams, importGoogleDocs, checkIntegrations]);
 
+  // Update the useEffect to run handleGoogleCallback when code is present
   useEffect(() => {
-    handleGoogleCallback();
-  }, []); // Run once on mount
+    if (searchParams.get('code')) {
+      handleGoogleCallback();
+    }
+  }, [searchParams, handleGoogleCallback]);
 
   return (
     <div className="flex min-h-screen bg-black text-white">
@@ -399,10 +453,12 @@ export default function SettingsPage() {
                       </div>
                       <Button 
                         variant="outline" 
-                        className="bg-zinc-900 text-zinc-300 hover:bg-zinc-800 border-zinc-800"
-                        disabled={true}
+                        className={`bg-zinc-900 text-zinc-300 hover:bg-zinc-800 border-zinc-800 ${
+                          notionConnected ? 'bg-green-900 hover:bg-green-800' : ''
+                        }`}
+                        onClick={handleNotionConnect}
                       >
-                        Coming Soon
+                        {notionConnected ? 'Connected' : 'Connect'}
                       </Button>
                     </div>
                   </CardContent>

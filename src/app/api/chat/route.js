@@ -39,24 +39,7 @@ async function rephraseInput(inputString) {
   return gptAnswer.choices[0].message.content;
 }
 
-async function searchMemory(query, user_id) {
-  // Get query embedding from Mistral API
-  const response = await fetch('https://api.mistral.ai/v1/embeddings', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${process.env.MISTRAL_API_KEY}`
-    },
-    body: JSON.stringify({
-      input: [query],
-      model: "mistral-embed",
-      encoding_format: "float"
-    })
-  });
-
-  const embedData = await response.json();
-  const queryEmbedding = embedData.data[0].embedding;
-
+async function searchMemory(queryEmbedding, user_id) {
   // Search using search_memory_chunks RPC
   const { data: chunks, error } = await supabase.rpc(
     "search_memory_centroids",
@@ -68,6 +51,21 @@ async function searchMemory(query, user_id) {
 
   if (error) throw error;
   return chunks;
+}
+
+async function searchDocuments(queryEmbedding, user_id, enabledSources) {
+  console.log("queryEmbedding", queryEmbedding);
+  // Search using search_closest_chunks RPC
+  const { data: documents, error } = await supabase.rpc(
+    "search_closest_chunks",
+    {
+      query_embedding: queryEmbedding,
+      input_user_id: user_id,
+    }
+  );
+
+  if (error) throw error;
+  return documents || []; // Ensure we return an empty array if no documents found
 }
 
 // 5. Search engine for sources
@@ -282,7 +280,7 @@ async function generateFollowup(message) {
 }
 // 54. Define POST function for API endpoint
 export async function POST(req, res) {
-  const { message, user_id } = await req.json();
+  const { message, user_id, googleDocsEnabled, notionEnabled, memorySearchEnabled } = await req.json();
 
   if (!user_id) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
@@ -292,39 +290,94 @@ export async function POST(req, res) {
     // Start timing
     const searchStart = performance.now();
     
-    // Search memory chunks
-    const memoryChunks = await searchMemory(message, user_id);
+    // Create unified list of enabled sources
+    const enabledSources = [
+      ...(googleDocsEnabled ? ['google_docs'] : []),
+      ...(notionEnabled ? ['notion'] : []),
+      ...(memorySearchEnabled ? ['memory'] : [])
+    ];
+
+    if (enabledSources.length === 0) {
+      return Response.json({ 
+        success: false, 
+        error: "No sources enabled for search" 
+      }, { status: 400 });
+    }
+
+    // Get embedding for query
+    const response = await fetch('https://api.mistral.ai/v1/embeddings', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.MISTRAL_API_KEY}`
+      },
+      body: JSON.stringify({
+        input: [message],
+        model: "mistral-embed",
+        encoding_format: "float"
+      })
+    });
+  
+    const embedData = await response.json();
+    const queryEmbedding = embedData.data[0].embedding;
+    
+    // Get all relevant sources based on enabled types
+    const [memoryChunks, documentChunks] = await Promise.all([
+      enabledSources.includes('memory') ? searchMemory(queryEmbedding, user_id) : [],
+      enabledSources.some(source => ['google_docs', 'notion'].includes(source)) 
+        ? searchDocuments(queryEmbedding, user_id, enabledSources.filter(source => source !== 'memory'))
+        : []
+    ]);
     
     // End timing and log
     const searchEnd = performance.now();
-    console.log(`Memory search completed in ${searchEnd - searchStart}ms`);
+    console.log(`Search completed in ${searchEnd - searchStart}ms`);
     
-    console.log("memoryChunks", memoryChunks);
-    const formattedChunks = memoryChunks.map(item => item.content);
-    const sources = memoryChunks.map(item => ({
-      text: item.content,
-      meeting_id: item.meeting_id,
-      url: item.meeting_id ? `/meetings/${item.meeting_id}` : null
-    }));
+    // Format all chunks uniformly
+    const formattedChunks = [
+      ...memoryChunks.map(item => item.content),
+      ...documentChunks.map(doc => doc.selected_chunks || []).flat()
+    ];
+
+    // Prepare unified sources list
+    const sources = [
+      ...memoryChunks.map(item => ({
+        text: item.content,
+        meeting_id: item.meeting_id,
+        url: item.meeting_id ? `/meetings/${item.meeting_id}` : null
+      })),
+      ...documentChunks.map(doc => ({
+        text: doc.selected_chunks?.join('\n') || '',
+        title: doc.title,
+        url: doc.url,
+        type: doc.type
+      }))
+    ];
 
     // Create streaming response
     const stream = new TransformStream();
     const writer = stream.writable.getWriter();
     const encoder = new TextEncoder();
 
-
-    console.log("formattedChunks", formattedChunks);
+    console.log("documentChunks", documentChunks);
     // Start the streaming process
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
         {
           role: "system",
-          content: "You are a helpful assistant. Use the provided memory chunks to answer the user's query. If the chunks don't contain relevant information, let the user know you couldn't find specific information about their query. Chunks are in a very bad structure, so try to understand as much as you can. Be confident in your answer. Don't say 'I'm not sure' or 'I don't know'.",
+          content: "You are a helpful assistant. Use the provided document chunks to answer the user's query. If the chunks don't contain relevant information, let the user know you couldn't find specific information about their query. Be confident in your answer. Don't say 'I'm not sure' or 'I don't know'.",
         },
         {
           role: "user",
-          content: `Query: ${message}\n\nMemory Chunks: ${JSON.stringify(formattedChunks)}`,
+          content: `Query: ${message};
+          
+                  Retrieved chunks from online conversations: ${JSON.stringify(formattedChunks)}
+          
+                  Retrieved chunks from Google Docs (from files): ${JSON.stringify(documentChunks.map(doc => ({
+            title: doc.title,
+            content: doc.selected_chunks
+          })))}`,
         },
       ],
       stream: true,

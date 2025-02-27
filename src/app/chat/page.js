@@ -1,7 +1,7 @@
 "use client";
 // 1. Import required dependencies
 import React, { useEffect, useRef, useState, memo } from "react";
-import { ArrowCircleRight, ChatCenteredDots, Stack, GitBranch } from "@phosphor-icons/react";
+import { ArrowCircleRight, ChatCenteredDots, Stack, GitBranch, Link } from "@phosphor-icons/react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { supabase } from '@/lib/supabaseClient';
@@ -12,10 +12,15 @@ export default function AISearch() {
   const messagesEndRef = useRef(null);
   const [inputValue, setInputValue] = useState("");
   const [messageHistory, setMessageHistory] = useState([]);
-  const [internetSearchEnabled, setInternetSearchEnabled] = useState(false);
+  const [googleDocsEnabled, setGoogleDocsEnabled] = useState(true);
   const [session, setSession] = useState(null);
   const [searchResults, setSearchResults] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
+  const [memorySearchEnabled, setMemorySearchEnabled] = useState(true);
+  const [hasGoogleDocs, setHasGoogleDocs] = useState(false);
+  const [hasMeetings, setHasMeetings] = useState(false);
+  const [notionEnabled, setNotionEnabled] = useState(true);
+  const [hasNotion, setHasNotion] = useState(false);
 
   // Auto scroll to the end of the messages
   useEffect(() => {
@@ -75,14 +80,43 @@ export default function AISearch() {
       );
   }, [session?.user?.id]);
 
-  // Update sendMessage to include user_id
+  // Add useEffect to check connections
+  useEffect(() => {
+    if (!session?.user?.id) return;
+
+    // Check Google Docs connection
+    supabase
+      .from('users')
+      .select('google_docs_connected')
+      .eq('id', session.user.id)
+      .single()
+      .then(({ data }) => setHasGoogleDocs(!!data?.google_docs_connected));
+
+    // Check if user has any meetings
+    supabase
+      .from('late_meeting')
+      .select('id')
+      .contains('user_ids', [session.user.id])
+      .limit(1)
+      .then(({ data }) => setHasMeetings(!!data?.length));
+
+    // Check Notion connection
+    supabase
+      .from('users')
+      .select('notion_connected')
+      .eq('id', session.user.id)
+      .single()
+      .then(({ data }) => setHasNotion(!!data?.notion_connected));
+  }, [session?.user?.id]);
+
+  // Update sendMessage to check enabled sources
   const sendMessage = (messageToSend) => {
     if (!session?.user?.id) return;
     
     const message = messageToSend || inputValue;
     setInputValue("");
     setIsSearching(true);
-    
+
     setSearchResults({
       query: message,
       sources: [],
@@ -94,7 +128,9 @@ export default function AISearch() {
       method: "POST",
       body: JSON.stringify({ 
         message, 
-        internetSearchEnabled,
+        googleDocsEnabled,
+        notionEnabled,
+        memorySearchEnabled,
         user_id: session.user.id 
       }),
       headers: {
@@ -135,6 +171,7 @@ export default function AISearch() {
                     done: data.done || false
                   };
                 });
+                console.log("sources:", data.sources);
               } else {
                 console.error("Error:", data.error);
               }
@@ -169,19 +206,98 @@ export default function AISearch() {
                   <ChatCenteredDots className="h-5 w-5" />
                 </div>
                 <h1 className="text-2xl font-medium text-white">
-                  Search Your Meetings
+                  Search Your Knowledge
                 </h1>
               </div>
-              <button
-                onClick={() => setInternetSearchEnabled(!internetSearchEnabled)}
-                className={`px-4 py-2 inline-flex items-center justify-center gap-2 rounded-[8px] text-md font-medium border border-white/10 ${
-                  internetSearchEnabled 
-                    ? 'bg-[#9334E9] text-[#FAFAFA]'
-                    : 'text-[#FAFAFA]'
-                } cursor-pointer transition-all duration-200 whitespace-nowrap hover:bg-[#3c1671] hover:border-[#6D28D9]`}
-              >
-                {internetSearchEnabled ? 'Internet Search Enabled' : 'Search Local Documents Only'}
-              </button>
+              <div className="flex items-center gap-2">
+                {!hasGoogleDocs ? (
+                  <a 
+                    href="/settings"
+                    target="_blank"
+                    className="px-4 py-2 inline-flex items-center justify-center gap-2 rounded-[8px] text-md font-medium border border-white/10 cursor-pointer text-[#FAFAFA] opacity-80 hover:bg-[#3c1671] transition-all duration-200 whitespace-nowrap relative group"
+                  >
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/0/01/Google_Docs_logo_%282014-2020%29.svg" alt="Google Docs" className="w-4 h-4" />
+                    Google Docs
+                    <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-white text-black px-2 py-1 rounded text-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
+                      Connect Google Docs
+                    </span>
+                  </a>
+                ) : (
+                  <button
+                    onClick={() => setGoogleDocsEnabled(!googleDocsEnabled)}
+                    className={`px-4 py-2 inline-flex items-center justify-center gap-2 rounded-[8px] text-md font-medium border border-white/10 ${
+                      googleDocsEnabled ? 'bg-[#9334E9] text-[#FAFAFA]' : 'text-[#FAFAFA]'
+                    } transition-all duration-200 whitespace-nowrap hover:border-[#6D28D9]`}
+                  >
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/0/01/Google_Docs_logo_%282014-2020%29.svg" alt="Google Docs" className="w-4 h-4" />
+                    Google Docs
+                    {googleDocsEnabled && (
+                      <svg className="w-4 h-4 ml-1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                  </button>
+                )}
+
+                {!hasMeetings ? (
+                  <a 
+                    href="https://chromewebstore.google.com/detail/Amurex%20%28Early%20Preview%29/dckidmhhpnfhachdpobgfbjnhfnmddmc"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-4 py-2 inline-flex items-center justify-center gap-2 rounded-[8px] text-md font-medium border border-white/10 cursor-pointer text-[#FAFAFA] opacity-80 hover:bg-[#3c1671] transition-all duration-200 whitespace-nowrap relative group"
+                  >
+                    <ChatCenteredDots className="w-4 h-4" />
+                    Meetings
+                    <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-white text-black px-2 py-1 rounded text-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
+                      Connect Meetings
+                    </span>
+                  </a>
+                ) : (
+                  <button
+                    onClick={() => setMemorySearchEnabled(!memorySearchEnabled)}
+                    className={`px-4 py-2 inline-flex items-center justify-center gap-2 rounded-[8px] text-md font-medium border border-white/10 ${
+                      memorySearchEnabled ? 'bg-[#9334E9] text-[#FAFAFA]' : 'text-[#FAFAFA]'
+                    } transition-all duration-200 whitespace-nowrap hover:border-[#6D28D9]`}
+                  >
+                    <ChatCenteredDots className="w-4 h-4" />
+                    Meetings
+                    {memorySearchEnabled && (
+                      <svg className="w-4 h-4 ml-1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                  </button>
+                )}
+
+                {!hasNotion ? (
+                  <a 
+                    href="/settings"
+                    target="_blank"
+                    className="px-4 py-2 inline-flex items-center justify-center gap-2 rounded-[8px] text-md font-medium border border-white/10 cursor-pointer text-[#FAFAFA] opacity-80 hover:bg-[#3c1671] transition-all duration-200 whitespace-nowrap relative group"
+                  >
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png" alt="Notion" className="w-4 h-4" />
+                    Notion
+                    <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-white text-black px-2 py-1 rounded text-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
+                      Connect Notion
+                    </span>
+                  </a>
+                ) : (
+                  <button
+                    onClick={() => setNotionEnabled(!notionEnabled)}
+                    className={`px-4 py-2 inline-flex items-center justify-center gap-2 rounded-[8px] text-md font-medium border border-white/10 ${
+                      notionEnabled ? 'bg-[#9334E9] text-[#FAFAFA]' : 'text-[#FAFAFA]'
+                    } transition-all duration-200 whitespace-nowrap hover:border-[#6D28D9]`}
+                  >
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png" alt="Notion" className="w-4 h-4" />
+                    Notion
+                    {notionEnabled && (
+                      <svg className="w-4 h-4 ml-1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
@@ -262,30 +378,33 @@ export const Sources = ({ content = [] }) => {
         return;
       }
 
-      const meetingIds = content.map(source => source.meeting_id);
-      const { data, error } = await supabase
-        .from('late_meeting')
-        .select('id, meeting_id')
-        .in('id', meetingIds);
+      // Filter only meeting sources
+      const meetingSources = content.filter(source => source.meeting_id);
+      const meetingIds = meetingSources.map(source => source.meeting_id);
 
-      if (error) {
-        console.error('Error fetching meeting types:', error);
-        setIsLoading(false);
-        return;
+      if (meetingIds.length > 0) {
+        const { data, error } = await supabase
+          .from('late_meeting')
+          .select('id, meeting_id')
+          .in('id', meetingIds);
+
+        if (error) {
+          console.error('Error fetching meeting types:', error);
+          setIsLoading(false);
+          return;
+        }
+
+        // Create a map of meeting IDs and their types
+        const meetingMap = {};
+        data.forEach(meeting => {
+          meetingMap[meeting.id] = {
+            ...meeting,
+            platform: (meeting.meeting_id.includes('-') ? 'google' : 'teams')
+          };
+        });
+        setMeetings(meetingMap);
       }
-
-      console.log("DATA BLYAT", data);
-
-      // Create a map of meeting IDs and their types
-      const meetingMap = {};
-      data.forEach(meeting => {
-        meetingMap[meeting.id] = {
-          ...meeting,
-          platform: (meeting.meeting_id.includes('-') ? 'google' : 'teams')
-        };
-      });
-      console.log("MEETING MAP", meetingMap);
-      setMeetings(meetingMap);
+      
       setIsLoading(false);
     };
 
@@ -318,22 +437,46 @@ export const Sources = ({ content = [] }) => {
         <span>Sources</span>
       </div>
       <div className="grid grid-cols-1 gap-2">
-        {Array.isArray(content) && content.map(({ text, meeting_id }, index) => (
-          <a key={index} href={`/meetings/${meeting_id}`} className="block">
-            <div className="bg-black rounded-lg p-4 border border-zinc-800 hover:border-[#6D28D9] transition-colors">
-              <div className="text-zinc-300 text-sm font-medium mb-2 flex items-center gap-2">
-                {meetings[meeting_id]?.platform === 'google' ? (
-                  <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Google_Meet_icon_%282020%29.svg/1024px-Google_Meet_icon_%282020%29.svg.png?20221213135236" alt="Google Meet" className="w-8" />
-                ) : (
-                  <img src="https://www.svgrepo.com/show/303180/microsoft-teams-logo.svg" alt="Microsoft Teams" className="w-8" />
-                )}
-                {meetings[meeting_id]?.platform === 'google' ? 'Google Meet' : 'Microsoft Teams'}, Meeting ID: {meetings[meeting_id]?.meeting_id}
+        {Array.isArray(content) && content.map((source, index) => (
+          source.meeting_id ? (
+            // Meeting source
+            <a key={index} href={`/meetings/${source.meeting_id}`} target="_blank" rel="noopener noreferrer" className="block">
+              <div className="bg-black rounded-lg p-4 border border-zinc-800 hover:border-[#6D28D9] transition-colors h-[160px] relative">
+                <Link className="absolute top-4 right-4 w-4 h-4 text-zinc-500" />
+                <div className="text-zinc-300 text-sm font-medium mb-2 flex items-center gap-2">
+                  {meetings[source.meeting_id]?.platform === 'google' ? (
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Google_Meet_icon_%282020%29.svg/1024px-Google_Meet_icon_%282020%29.svg.png?20221213135236" alt="Google Meet" className="w-8" />
+                  ) : (
+                    <img src="https://www.svgrepo.com/show/303180/microsoft-teams-logo.svg" alt="Microsoft Teams" className="w-8" />
+                  )}
+                  {meetings[source.meeting_id]?.platform === 'google' ? 'Google Meet' : 'Microsoft Teams'}, Meeting ID: {meetings[source.meeting_id]?.meeting_id}
+                </div>
+                <div className="text-zinc-500 text-xs overflow-hidden line-clamp-4">
+                  <ReactMarkdown>{source.text}</ReactMarkdown>
+                </div>
               </div>
-              <div className="text-zinc-500 text-xs">
-                <ReactMarkdown>{text}</ReactMarkdown>
+            </a>
+          ) : (
+            // Document source
+            <a key={index} href={source.url} className="block" target="_blank" rel="noopener noreferrer">
+              <div className="bg-black rounded-lg p-4 border border-zinc-800 hover:border-[#6D28D9] transition-colors h-[160px] relative">
+                <Link className="absolute top-4 right-4 w-4 h-4 text-zinc-500" />
+                <div className="text-zinc-300 text-sm font-medium mb-2 flex items-center gap-2">
+                  {source.type === 'google_docs' ? (
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/0/01/Google_Docs_logo_%282014-2020%29.svg" alt="Google Docs" className="w-6" />
+                  ) : source.type === 'notion' ? (
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png" alt="Notion" className="w-6" />
+                  ) : (
+                    <Stack size={24} />
+                  )}
+                  <span className="truncate">Title: {source.title}</span>
+                </div>
+                <div className="text-zinc-500 text-xs overflow-hidden line-clamp-4">
+                  <ReactMarkdown>{source.text}</ReactMarkdown>
+                </div>
               </div>
-            </div>
-          </a>
+            </a>
+          )
         ))}
       </div>
     </div>
