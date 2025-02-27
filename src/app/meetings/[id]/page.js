@@ -573,61 +573,6 @@ export default function TranscriptDetail({ params }) {
               )}
 
               {transcript.summary && (
-                // <div>
-                //   <h2 className="text-[#9334E9] font-medium mb-3 lg:text-xl text-md">Meeting Summary</h2>
-                //   <div className="bg-black rounded-lg p-4 border border-zinc-800">
-                //     <div
-                //       className="notes-content text-zinc-300 whitespace-pre-line lg:text-base text-sm"
-                //       dangerouslySetInnerHTML={{
-                //         __html: transcript.summary
-                //           ? transcript.summary
-                //               .trim()
-                //               .split("\n")
-                //               .filter((line) => line.trim() !== "")
-                //               .map((line) =>
-                //                 line.startsWith("- ")
-                //                   ? `<li>${line.substring(2)}</li>` // Handle list items
-                //                   : line // Keep other lines as is
-                //                       .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-                //                       .replace(/\*(.*?)\*/g, "<em>$1</em>")
-                //                       .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2">$1</a>')
-                //               )
-                //               .join("\n") // Restore newlines
-                //               .replace(
-                //                 /(<li>.*?<\/li>)\n?(<li>.*?<\/li>)+/g,
-                //                 (list) => `<ul>${list}</ul>`
-                //               ) // Wrap consecutive list items
-                //               .replace(/\n/g, "<br>") // Convert remaining newlines to <br>
-                //           : "No meeting notes available."
-                //       }}
-                //     />
-                //   </div>
-                // </div>
-                
-                // New formatting
-                // <div>
-                //   <h2 className="text-[#9334E9] font-medium mb-3 lg:text-xl text-md">Meeting Summary</h2>
-                //   <div className="bg-black rounded-lg p-4 border border-zinc-800">
-                //     <div
-                //       className="notes-content text-zinc-300 whitespace-pre-line lg:text-base text-sm"
-                //       dangerouslySetInnerHTML={{
-                //         __html: transcript.summary
-                //           ? transcript.summary
-                //               .replace(/^### (.*$)/gim, '<strong>$1:</strong>') // Convert ### headers to bold
-                //               .replace(/^\*\*(.*?)\*\*$/gim, '<strong>$1</strong>') // Convert **bold** to <strong>
-                //               .replace(/^\- (.*$)/gim, '<li>- $1</li>') // Convert list items to <li> with a dash
-                //               .replace(/<\/li>\n<li>/gim, '</li><li>') // Remove newlines between <li> tags
-                //               .replace(/(<li>.*<\/li>)/gim, '<ul>$1</ul>') // Wrap <li> items in <ul>
-                //               .replace(/^\d+\.\s(.*$)/gim, '<ol><li>$1</li></ol>') // Convert numbered items to <ol><li>
-                //               .replace(/<\/ol>\n<ol>/gim, '') // Remove newlines between <ol> tags
-                //               .replace(/\n\n/g, '<br>') // Convert newlines to <br>
-                //               .replace(/(\*\*Date:\*\* )(\w+ \d{1,2}, \d{4})/g, '<strong>Date:</strong> $2, 01:46 AM') // Fix date format
-                //           : "No meeting notes available."
-                //       }}
-                //     />
-                //   </div>
-                // </div>
-
                 <div onClick={handleSummaryClick}>
                   <h2 className="text-[#9334E9] font-medium mb-3 lg:text-xl text-md">Meeting Summary</h2>
                   <div className="bg-black rounded-lg p-4 border border-zinc-800">

@@ -1,6 +1,5 @@
 // 1. Import Dependencies
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
-import { OpenAIEmbeddings } from "@langchain/openai";
 import { MemoryVectorStore } from "langchain/vectorstores/memory";
 import { BraveSearch } from "@langchain/community/tools/brave_search";
 import OpenAI from "openai";
@@ -12,7 +11,6 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
-const embeddings = new OpenAIEmbeddings();
 // 3. Send payload to Supabase table
 async function sendPayload(content, user_id) {
   await supabase
@@ -41,56 +39,33 @@ async function rephraseInput(inputString) {
   return gptAnswer.choices[0].message.content;
 }
 
-async function aiSearch(query, user_id) {
-  const embeddingResponse = await openai.embeddings.create({
-    model: "text-embedding-ada-002",
-    input: query,
-  });
-  const queryEmbedding = embeddingResponse.data[0].embedding;
-
-  // Search in page_sections using the match_page_sections function
-  const { data: sections, error: sectionsError } = await supabase.rpc(
-    "match_page_sections",
+async function searchMemory(queryEmbedding, user_id) {
+  // Search using search_memory_chunks RPC
+  const { data: chunks, error } = await supabase.rpc(
+    "search_memory_centroids",
     {
       query_embedding: queryEmbedding,
-      similarity_threshold: 0.3,
-      match_count: 5,
-      user_id: user_id,
+      input_user_id: user_id,
     }
   );
 
-  if (sectionsError) throw sectionsError;
+  if (error) throw error;
+  return chunks;
+}
 
-  // Get unique document IDs from the matching sections
-  const documentIds = [
-    ...new Set(sections.map((section) => section.document_id)),
-  ];
+async function searchDocuments(queryEmbedding, user_id, enabledSources) {
+  console.log("queryEmbedding", queryEmbedding);
+  // Search using search_closest_chunks RPC
+  const { data: documents, error } = await supabase.rpc(
+    "search_closest_chunks",
+    {
+      query_embedding: queryEmbedding,
+      input_user_id: user_id,
+    }
+  );
 
-  // Fetch the corresponding documents
-  const { data: documents, error: documentsError } = await supabase
-    .from("documents")
-    .select("id, url, title, meta, tags, text")
-    .in("id", documentIds)
-    .eq("user_id", user_id);
-
-  if (documentsError) throw documentsError;
-
-  // Combine the results
-  const results = documents.map((doc) => ({
-    id: doc.id,
-    title: doc.title,
-    url: doc.url,
-    content: doc.text,
-    tags: doc.tags,
-    relevantSections: sections
-      .filter((section) => section.document_id === doc.id)
-      .map((section) => ({
-        context: section.context,
-        similarity: section.similarity,
-      })),
-  }));
-
-  return { results };
+  if (error) throw error;
+  return documents || []; // Ensure we return an empty array if no documents found
 }
 
 // 5. Search engine for sources
@@ -98,11 +73,11 @@ async function searchEngineForSources(message, internetSearchEnabled, user_id) {
   let combinedResults = [];
 
   // Perform Supabase document search
-  const supabaseResults = await aiSearch(message, user_id);
-  const supabaseData = supabaseResults.results.map((doc) => ({
+  const supabaseResults = await searchMemory(message, user_id);
+  const supabaseData = supabaseResults.map((doc) => ({
     title: doc.title,
     link: doc.url,
-    text: doc.content,
+    text: doc.text,
     relevantSections: doc.relevantSections,
   }));
   combinedResults = [...combinedResults, ...supabaseData];
@@ -145,10 +120,28 @@ async function searchEngineForSources(message, internetSearchEnabled, user_id) {
         chunkSize: 200,
         chunkOverlap: 0,
       }).splitText(htmlContent);
-      const vectorStore = await MemoryVectorStore.fromTexts(
+
+      // Get embeddings for each chunk of text
+      const response = await fetch('https://api.mistral.ai/v1/embeddings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.MISTRAL_API_KEY}`
+        },
+        body: JSON.stringify({
+          input: splitText,
+          model: "mistral-embed",
+          encoding_format: "float"
+        })
+      });
+
+      const embedData = await response.json();
+      const vectors = embedData.data.map(d => d.embedding);
+
+      const vectorStore = await MemoryVectorStore.fromVectors(
+        vectors,
         splitText,
-        { annotationPosition: item.link },
-        embeddings
+        { annotationPosition: item.link }
       );
       vectorCount++;
       return await vectorStore.similaritySearch(message, 1);
@@ -287,32 +280,161 @@ async function generateFollowup(message) {
 }
 // 54. Define POST function for API endpoint
 export async function POST(req, res) {
-  const { message, internetSearchEnabled, user_id } = await req.json();
+  const { message, user_id, googleDocsEnabled, notionEnabled, memorySearchEnabled } = await req.json();
 
   if (!user_id) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let answer = "Here's what remains on Sanskar's task list:\n\nComplete the Founder Profile on the YC dashboard — ensuring all relevant details are updated to reflect the latest information.\n\nDeploy the latest version of the landing page — updating the website to incorporate the newest changes for a polished and engaging presentation.\n\nWould you like any assistance with organizing these tasks, or perhaps reminders set for key milestones?";
-
   try {
-    const results = await searchEngineForSources(message, internetSearchEnabled, user_id);
+    // Start timing
+    const searchStart = performance.now();
     
-    return Response.json({ 
-      success: true,
-      message: "Search completed",
-      results: {
-        sources: results.sources,
-        vectorResults: results.vectorResults,
-        answer: answer
-      }
+    // Create unified list of enabled sources
+    const enabledSources = [
+      ...(googleDocsEnabled ? ['google_docs'] : []),
+      ...(notionEnabled ? ['notion'] : []),
+      ...(memorySearchEnabled ? ['memory'] : [])
+    ];
+
+    if (enabledSources.length === 0) {
+      return Response.json({ 
+        success: false, 
+        error: "No sources enabled for search" 
+      }, { status: 400 });
+    }
+
+    // Get embedding for query
+    const response = await fetch('https://api.mistral.ai/v1/embeddings', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.MISTRAL_API_KEY}`
+      },
+      body: JSON.stringify({
+        input: [message],
+        model: "mistral-embed",
+        encoding_format: "float"
+      })
     });
+  
+    const embedData = await response.json();
+    const queryEmbedding = embedData.data[0].embedding;
+    
+    // Get all relevant sources based on enabled types
+    const [memoryChunks, documentChunks] = await Promise.all([
+      enabledSources.includes('memory') ? searchMemory(queryEmbedding, user_id) : [],
+      enabledSources.some(source => ['google_docs', 'notion'].includes(source)) 
+        ? searchDocuments(queryEmbedding, user_id, enabledSources.filter(source => source !== 'memory'))
+        : []
+    ]);
+    
+    // End timing and log
+    const searchEnd = performance.now();
+    console.log(`Search completed in ${searchEnd - searchStart}ms`);
+    
+    // Format all chunks uniformly
+    const formattedChunks = [
+      ...memoryChunks.map(item => item.content),
+      ...documentChunks.map(doc => doc.selected_chunks || []).flat()
+    ];
+
+    // Prepare unified sources list
+    const sources = [
+      ...memoryChunks.map(item => ({
+        text: item.content,
+        meeting_id: item.meeting_id,
+        url: item.meeting_id ? `/meetings/${item.meeting_id}` : null
+      })),
+      ...documentChunks.map(doc => ({
+        text: doc.selected_chunks?.join('\n') || '',
+        title: doc.title,
+        url: doc.url,
+        type: doc.type
+      }))
+    ];
+
+    // Create streaming response
+    const stream = new TransformStream();
+    const writer = stream.writable.getWriter();
+    const encoder = new TextEncoder();
+
+    console.log("documentChunks", documentChunks);
+    // Start the streaming process
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content: "You are a helpful assistant. Use the provided document chunks to answer the user's query. If the chunks don't contain relevant information, let the user know you couldn't find specific information about their query. Be confident in your answer. Don't say 'I'm not sure' or 'I don't know'.",
+        },
+        {
+          role: "user",
+          content: `Query: ${message};
+          
+                  Retrieved chunks from online conversations: ${JSON.stringify(formattedChunks)}
+          
+                  Retrieved chunks from Google Docs (from files): ${JSON.stringify(documentChunks.map(doc => ({
+            title: doc.title,
+            content: doc.selected_chunks
+          })))}`,
+        },
+      ],
+      stream: true,
+    });
+
+    // Process the stream
+    (async () => {
+      try {
+        // Send sources first
+        const sourcesPayload = JSON.stringify({
+          success: true,
+          sources: sources,
+          chunk: ''
+        });
+        await writer.write(encoder.encode(sourcesPayload + '\n'));
+
+        for await (const chunk of completion) {
+          const content = chunk.choices[0]?.delta?.content || '';
+          if (content) {
+            const payload = JSON.stringify({
+              success: true,
+              chunk: content,
+            });
+            await writer.write(encoder.encode(payload + '\n'));
+          }
+        }
+
+        // Send final message
+        const finalPayload = JSON.stringify({
+          success: true,
+          done: true,
+        });
+        await writer.write(encoder.encode(finalPayload + '\n'));
+      } catch (error) {
+        const errorPayload = JSON.stringify({
+          success: false,
+          error: error.message,
+        });
+        await writer.write(encoder.encode(errorPayload + '\n'));
+      } finally {
+        await writer.close();
+      }
+    })();
+
+    return new Response(stream.readable, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      },
+    });
+
   } catch (error) {
-    console.error('Error processing search:', error);
+    console.error('Error processing query:', error);
     return Response.json({ 
       success: false, 
       error: error.message 
     }, { status: 500 });
   }
 }
-

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,9 +10,17 @@ import { MessageSquare, FileText, Cloud, Github, Bug, LogOut } from 'lucide-reac
 import Cookies from 'js-cookie';
 import { X } from "@phosphor-icons/react";
 import { Navbar } from '@/components/Navbar'
+import { toast } from 'react-hot-toast';
+
+const PROVIDER_ICONS = {
+  google: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/768px-Google_%22G%22_logo.svg.png",
+  notion: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/Notion-logo.svg/2048px-Notion-logo.svg.png"
+};
 
 export default function SettingsPage() {
+  const [activeTab, setActiveTab] = useState('personalization');
   const [loading, setLoading] = useState(false);
+  const [userEmail, setUserEmail] = useState('');
   const [notionConnected, setNotionConnected] = useState(false);
   const [googleDocsConnected, setGoogleDocsConnected] = useState(false);
   const [calendarConnected, setCalendarConnected] = useState(false);
@@ -21,25 +29,45 @@ export default function SettingsPage() {
   const [importSource, setImportSource] = useState('');
   const [importProgress, setImportProgress] = useState(0);
   const [memoryEnabled, setMemoryEnabled] = useState(false);
+  const [createdAt, setCreatedAt] = useState('');
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     checkIntegrations();
   }, []);
+
+  useEffect(() => {
+    const connection = searchParams.get('connection');
+    const error = searchParams.get('error');
+
+    if (connection === 'success') {
+      toast.success('Google Docs connected successfully!');
+    }
+    if (error) {
+      toast.error(`Connection failed: ${error}`);
+    }
+  }, [searchParams]);
 
   const checkIntegrations = async () => {
     try {
       console.log('checkIntegrations');
       const { data: { session }, error } = await supabase.auth.getSession();
       if (session) {
-      const { data: user, error } = await supabase
-        .from('users')
-        .select('notion_connected, google_docs_connected, calendar_connected, memory_enabled')
-        .eq('id', session.user.id)
-        .single();
-      console.log('user', user);
+        const { data: user, error } = await supabase
+          .from('users')
+          .select('notion_connected, google_docs_connected, calendar_connected, memory_enabled, email, created_at')
+          .eq('id', session.user.id)
+          .single();
+        console.log('user', user);
 
-      if (user) {
+        if (user) {
+          setUserEmail(user.email);
+          setCreatedAt(new Date(user.created_at).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+          }));
           setNotionConnected(user.notion_connected);
           setGoogleDocsConnected(user.google_docs_connected);
           setCalendarConnected(user.calendar_connected);
@@ -88,12 +116,36 @@ export default function SettingsPage() {
     setLoading(false);
   };
 
-  const handleNotionConnect = () => {
-    router.push('/api/notion/auth');
+  const handleNotionConnect = async () => {
+    console.log('Starting Notion connection flow...');
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const response = await fetch('/api/notion/auth', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ userId: session.user.id }),
+        });
+        const data = await response.json();
+        if (data.url) {
+          console.log('Setting pendingNotionImport flag before OAuth redirect');
+          localStorage.setItem('pendingNotionImport', 'true');
+          router.push(data.url);
+        } else {
+          console.error('Error starting Notion OAuth flow:', data.error);
+          toast.error('Failed to connect Notion');
+        }
+      }
+    } catch (error) {
+      console.error('Error connecting Notion:', error);
+      toast.error('Failed to connect Notion');
+    }
   };
 
   const handleGoogleDocsConnect = async () => {
-    console.log('handleGoogleDocsConnect');
+    console.log('Starting Google Docs connection flow...');
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
@@ -106,6 +158,8 @@ export default function SettingsPage() {
         });
         const data = await response.json();
         if (data.url) {
+          console.log('Setting pendingGoogleDocsImport flag before OAuth redirect');
+          localStorage.setItem('pendingGoogleDocsImport', 'true');
           router.push(data.url);
         } else {
           console.error('Error starting Google OAuth flow:', data.error);
@@ -175,35 +229,69 @@ export default function SettingsPage() {
 
   const importGoogleDocs = useCallback(async () => {
     if (googleDocsConnected) {
+      console.log('Starting Google Docs import process...');
       setIsImporting(true);
       setImportSource('Google Docs');
+      
       const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+
       try {
         const response = await fetch('/api/google/import', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`
           },
-          body: JSON.stringify({ session: session }),
+          body: JSON.stringify({ 
+            userId: session.user.id,
+            accessToken: accessToken
+          }),
         });
+        
         const data = await response.json();
         
         if (data.success) {
-          console.log('Google Docs imported successfully');
+          console.log('Google Docs import initiated:', data);
+          toast.success('Import complete! Check your email for details.');
         } else {
           console.error('Error importing Google docs:', data.error);
+          toast.error('Import failed. Please try again.');
         }
       } catch (error) {
         console.error('Error importing Google docs:', error);
+        toast.error('Import failed. Please try again.');
       } finally {
-        setTimeout(() => {
-          setIsImporting(false);
-          setImportSource('');
-          setImportProgress(0);
-        }, 1000);
+        console.log('Import process completed');
+        setIsImporting(false);
+        setImportSource('');
+        setImportProgress(0);
       }
     }
   }, [googleDocsConnected]);
+
+  // Update the useEffect to check for pending imports as well
+  useEffect(() => {
+    const checkPendingImports = async () => {
+      console.log('Checking for pending imports...');
+      const pendingGoogleImport = localStorage.getItem('pendingGoogleDocsImport');
+      const pendingNotionImport = localStorage.getItem('pendingNotionImport');
+      
+      if (pendingGoogleImport === 'true' && googleDocsConnected) {
+        console.log('Found pending Google import, starting Google Docs import...');
+        localStorage.removeItem('pendingGoogleDocsImport');
+        await importGoogleDocs();
+      }
+
+      if (pendingNotionImport === 'true' && notionConnected) {
+        console.log('Found pending Notion import, starting Notion import...');
+        localStorage.removeItem('pendingNotionImport');
+        await importNotionDocuments();
+      }
+    };
+
+    checkPendingImports();
+  }, [googleDocsConnected, notionConnected, importGoogleDocs, importNotionDocuments]);
 
   const handleMemoryToggle = async (checked) => {
     try {
@@ -222,27 +310,121 @@ export default function SettingsPage() {
     }
   };
 
-  return (
-    <>
-    <Navbar />
-      <div className="min-h-screen bg-black text-white p-4 md:p-8">
-        <div className="max-w-2xl mx-auto space-y-6">
-          <h1 className="text-3xl font-semibold mb-8">Settings</h1>
+  const handleGoogleCallback = useCallback(async () => {
+    console.log('Handling Google callback');
+    const code = searchParams.get('code');
+    const error = searchParams.get('error');
+    const state = searchParams.get('state');
+
+    if (code) {
+      try {
+        // Get current session
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        // Exchange code for tokens
+        const response = await fetch('/api/google/callback', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ 
+            code,
+            state,
+            userId: session?.user?.id 
+          }),
+        });
+
+        const data = await response.json();
+        
+        if (data.success) {
+          await checkIntegrations(); // Refresh integration status
+          toast.success('Google Docs connected successfully!');
           
-          <Card className="bg-[#09090A] border-zinc-800">
-            <CardContent className="p-6 py-10">
-              <div className="space-y-8">
-                {/* Cloud Sync Section */}
-                <div className="space-y-4">
+          // Trigger import if there's a pending import flag
+          const pendingImport = localStorage.getItem('pendingGoogleDocsImport');
+          if (pendingImport === 'true') {
+            console.log('Starting import after successful connection...');
+            localStorage.removeItem('pendingGoogleDocsImport');
+            await importGoogleDocs();
+          }
+        } else {
+          console.error('Connection failed:', data.error);
+          toast.error('Failed to connect Google Docs');
+        }
+      } catch (err) {
+        console.error('Error in Google callback:', err);
+        toast.error('Failed to connect Google Docs');
+      }
+    }
+    
+    if (error) {
+      toast.error(`Connection failed: ${error}`);
+    }
+  }, [searchParams, importGoogleDocs, checkIntegrations]);
+
+  // Update the useEffect to run handleGoogleCallback when code is present
+  useEffect(() => {
+    if (searchParams.get('code')) {
+      handleGoogleCallback();
+    }
+  }, [searchParams, handleGoogleCallback]);
+
+  return (
+    <div className="flex min-h-screen bg-black text-white">
+      {/* Left App Navbar - the thin one */}
+      <div className="w-16 flex-shrink-0 bg-black border-r border-zinc-800">
+        <Navbar />
+      </div>
+      
+      {/* Main Settings Area */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Settings Sidebar */}
+        <div className="w-64 flex-shrink-0 bg-black p-4 border-r border-zinc-800 overflow-y-auto">
+          <h2 className="text-2xl font-medium text-white mb-6">Settings</h2>
+          <div className="text-md space-y-2">
+            <button
+              onClick={() => setActiveTab('personalization')}
+              className={`w-full text-left px-4 py-2 rounded-lg ${
+                activeTab === 'personalization' ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:bg-zinc-800'
+              }`}
+            >
+              Personalization
+            </button>
+            <button
+              onClick={() => setActiveTab('account')}
+              className={`w-full text-left px-4 py-2 rounded-lg ${
+                activeTab === 'account' ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:bg-zinc-800'
+              }`}
+            >
+              Account
+            </button>
+            <button
+              onClick={() => setActiveTab('feedback')}
+              className={`w-full text-left px-4 py-2 rounded-lg ${
+                activeTab === 'feedback' ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:bg-zinc-800'
+              }`}
+            >
+              Feedback
+            </button>
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="flex-1 p-8 bg-black overflow-y-auto">
+          {activeTab === 'personalization' && (
+            <div className="space-y-8">
+              <h1 className="text-2xl font-medium text-white">Personalization</h1>
+              
+              {/* Memory Toggle */}
+              <Card className="bg-black border-zinc-800">
+                <CardContent className="p-6">
                   <div className="flex items-center justify-between">
-                    <div className="space-y-1">
-                      <h2 className="text-xl font-semibold flex items-center gap-2 text-white">
+                    <div>
+                      <h2 className="text-lg font-semibold flex items-center gap-2 text-white">
                         <Cloud className="w-5 h-5 text-[#9334E9]" />
                         Memory
                       </h2>
-                      <p className="text-sm text-zinc-400">
-                        Keep your notes synced across devices
-                      </p>
+                      <p className="text-sm text-zinc-400">Keep your notes synced across devices</p>
                     </div>
                     <Switch 
                       checked={memoryEnabled}
@@ -250,118 +432,155 @@ export default function SettingsPage() {
                       className={memoryEnabled ? 'bg-[#9334E9]' : ''}
                     />
                   </div>
-                  <div className="text-sm text-zinc-400">
-                    Feature coming soon
-                  </div>
-                </div>
-                {/* Integrations Section */}
-                <div className="space-y-4">
-                  <h2 className="text-xl font-semibold flex items-center gap-2 text-white">
-                    <MessageSquare className="w-5 h-5 text-[#9334E9]" />
-                    Integrations
-                  </h2>
-                  
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between p-4 rounded-lg bg-zinc-800/50 border border-zinc-700">
+                </CardContent>
+              </Card>
+
+              {/* Integrations */}
+              <div className="space-y-4">
+                <Card className="bg-black border-zinc-800">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        <FileText className="w-6 h-6 text-[#9334E9]" />
+                        <img 
+                          src={PROVIDER_ICONS.notion} 
+                          alt="Notion" 
+                          className="w-6 h-6"
+                        />
                         <div>
-                          <h3 className="font-medium text-white">Import Notion Documents</h3>
+                          <h3 className="font-medium text-white text-lg">Connect Notion</h3>
                           <p className="text-sm text-zinc-400">Sync your Notion pages</p>
                         </div>
                       </div>
                       <Button 
                         variant="outline" 
-                        className="bg-zinc-700 text-zinc-300 hover:bg-zinc-600 cursor-not-allowed"
-                        disabled={true}
+                        className={`bg-zinc-900 text-zinc-300 hover:bg-zinc-800 border-zinc-800 ${
+                          notionConnected ? 'bg-green-900 hover:bg-green-800' : ''
+                        }`}
+                        onClick={handleNotionConnect}
                       >
-                        Coming Soon
+                        {notionConnected ? 'Connected' : 'Connect'}
                       </Button>
                     </div>
+                  </CardContent>
+                </Card>
 
-                    <div className="flex items-center justify-between p-4 rounded-lg bg-zinc-800/50 border border-zinc-700">
+                <Card className="bg-black border-zinc-800">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        <FileText className="w-6 h-6 text-[#9334E9]" />
+                        <img 
+                          src={PROVIDER_ICONS.google} 
+                          alt="Google" 
+                          className="w-6 h-6"
+                        />
                         <div>
-                          <h3 className="font-medium text-white">Import Google Docs</h3>
+                          <h3 className="font-medium text-white text-lg">Connect Google</h3>
                           <p className="text-sm text-zinc-400">Sync your Google documents</p>
                         </div>
                       </div>
                       <Button 
                         variant="outline" 
-                        className="bg-zinc-700 text-zinc-300 hover:bg-zinc-600 cursor-not-allowed"
-                        disabled={true}
+                        className={`bg-zinc-900 text-zinc-300 hover:bg-zinc-800 border-zinc-800 ${
+                          googleDocsConnected ? 'bg-green-900 hover:bg-green-800' : ''
+                        }`}
+                        onClick={handleGoogleDocsConnect}
                       >
-                        Coming Soon
+                        {googleDocsConnected ? 'Connected' : 'Connect'}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'account' && (
+            <>
+              <div className="flex-1 space-y-8">
+                <h1 className="text-2xl font-medium text-white">Account</h1>
+                
+                <Card className="bg-black border-zinc-800">
+                  <CardContent className="p-6">
+                    <div className="space-y-4">
+                      <div>
+                        <h3 className="text-md text-zinc-400">Email</h3>
+                        <p className="text-white">{userEmail}</p>
+                      </div>
+                      <div>
+                        <h3 className="text-md text-zinc-400">With us since</h3>
+                        <p className="text-white">{createdAt}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Button 
+                  variant="outline" 
+                  className="text-sm bg-zinc-800 hover:bg-red-500 text-white whitespace-nowrap flex items-center mt-auto w-fit"
+                  onClick={handleLogout}
+                >
+                  <LogOut className="w-5 h-5 text-red-500 mr-2" />
+                  Sign out
+                </Button>
+              </div>
+            </>
+          )}
+
+          {activeTab === 'feedback' && (
+            <div className="space-y-10">
+              <h1 className="text-2xl font-medium text-white">Feedback</h1>
+              
+              <Card className="bg-black border-zinc-800">
+                <CardContent className="p-6">
+                  {/* Report an issue */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1">
+                        <h2 className="text-md font-semibold flex items-center gap-2 text-white">
+                          Encounter an issue?
+                        </h2>
+                        <p className="text-sm text-zinc-400">
+                          Help us improve by reporting issues
+                        </p>
+                      </div>
+                      <Button 
+                        variant="outline" 
+                        className="bg-zinc-800 hover:bg-zinc-700 text-white whitespace-nowrap flex items-center"
+                        onClick={() => window.open('https://github.com/thepersonalaicompany/amurex/issues/new', '_blank')}
+                      >
+                        <Github className="w-5 h-5 text-[#9334E9] mr-2" />
+                        Report Issue
+                      </Button>
+                    </div>
+                    
+                    {/* Book a call */}
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1">
+                        <h2 className="text-md font-semibold flex items-center gap-2 text-white">
+                          Want to give us feedback?
+                        </h2>
+                        <p className="text-sm text-zinc-400">
+                          Book a call with us to talk about your experience
+                        </p>
+                      </div>
+                      <Button 
+                        variant="outline" 
+                        className="bg-zinc-800 hover:bg-zinc-700 text-white whitespace-nowrap flex items-center"
+                        onClick={() => window.open('https://github.com/thepersonalaicompany/amurex/issues/new', '_blank')}
+                      >
+                        <Github className="w-5 h-5 text-[#9334E9] mr-2" />
+                        Book a call
                       </Button>
                     </div>
                   </div>
-                </div>
-
-                {/* Report a bug */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-1">
-                      <h2 className="text-xl font-semibold flex items-center gap-2 text-white">
-                        <Bug className="w-5 h-5 text-[#9334E9]" />
-                        Encounter an issue?
-                      </h2>
-                      <p className="text-sm text-zinc-400">
-                        Help us improve by reporting issues
-                      </p>
-                    </div>
-                    <Button 
-                      variant="outline" 
-                      className="bg-zinc-800 hover:bg-zinc-700 text-white whitespace-nowrap flex items-center"
-                      onClick={() => window.open('https://github.com/thepersonalaicompany/amurex/issues/new', '_blank')}
-                    >
-                      <Github className="w-5 h-5 text-[#9334E9] mr-2" />
-                      Report Issue
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Sign out */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-1">
-                      <h2 className="text-xl font-semibold flex items-center gap-2 text-white">
-                        <LogOut className="w-5 h-5 text-red-500 mr-2" />
-                        Sign out
-                      </h2>
-                      {/* <p className="text-sm text-zinc-400">
-                        Help us improve by reporting issues
-                      </p> */}
-                    </div>
-                    <Button 
-                      variant="outline" 
-                      className="bg-zinc-800 hover:bg-red-500 text-white whitespace-nowrap flex items-center"
-                      onClick={handleLogout}
-                    >
-                      <LogOut className="w-5 h-5 text-white mr-2" />
-                      Sign out
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* <div className="flex flex-col gap-4">
-
-            <Button 
-              variant="destructive" 
-              className="w-full bg-red-500 hover:bg-red-600 text-white py-6 text-lg"
-              onClick={handleLogout}
-              disabled={loading}
-            >
-              {loading ? 'Logging out...' : 'Logout'}
-            </Button>
-          </div> */}
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </div>
-        <ImportingModal isOpen={isImporting} source={importSource} onClose={() => setIsImporting(false)} />
       </div>
-    </>
+      
+      <ImportingModal isOpen={isImporting} source={importSource} onClose={() => setIsImporting(false)} />
+    </div>
   );
 }
 

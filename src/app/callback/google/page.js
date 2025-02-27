@@ -2,67 +2,69 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
+import { toast } from 'react-hot-toast';
 import { supabase } from '@/lib/supabaseClient';
 
 export default function GoogleCallbackPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
-    const handleGoogleCallback = async () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const code = urlParams.get('code');
-      const state = urlParams.get('state'); // This contains the userId we passed
-      const { data: { session } } = await supabase.auth.getSession();
-      const userId = session.user.id;
+    const handleCallback = async () => {
+      console.log('callback page hit');
+      const code = searchParams.get('code');
+      const error = searchParams.get('error');
+      const state = searchParams.get('state');
 
       if (code) {
         try {
-          const response = await fetch(`/api/google/callback?code=${code}&state=${state}`);
-          console.log('Making api call');
+          // Get current session
+          const { data: { session } } = await supabase.auth.getSession();
+          
+          // Exchange code for tokens
+          const response = await fetch('/api/google/callback', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+              code,
+              state,
+              userId: session?.user?.id 
+            }),
+          });
 
           const data = await response.json();
-
+          
           if (data.success) {
-            const { access_token, refresh_token } = data;
-            console.log('access_token', access_token);
-
-            const updateResponse = await fetch('/api/google/callback', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                access_token,
-                refresh_token,
-                state,
-                userId,
-                type: state.includes('calendar') ? 'calendar' : 'docs'
-              }),
-            });
-
-            const updateData = await updateResponse.json();
-            if (updateData.success) {
-              console.log(state.includes('calendar') ? 'Google Calendar connected successfully' : 'Google Docs connected successfully');
-              window.history.replaceState({}, document.title, window.location.pathname);
-              router.push('/settings'); // Redirect to settings page to see the updated state
-            } else {
-              console.error('Error updating user:', updateData.error);
-            }
+            toast.success('Google Docs connected successfully!');
+            router.push('/settings?connection=success');
           } else {
-            console.error('Error connecting Google Docs:', data.error);
+            console.error('Connection failed:', data.error);
+            router.push(`/settings?error=${encodeURIComponent(data.error)}`);
           }
-        } catch (error) {
-          console.error('Error handling Google callback:', error);
+        } catch (err) {
+          console.error('Error in Google callback:', err);
+          router.push('/settings?error=Failed to connect Google Docs');
         }
+      } else if (error) {
+        toast.error(`Connection failed: ${error}`);
+        router.push(`/settings?error=${encodeURIComponent(error)}`);
+      } else {
+        router.push('/settings');
       }
     };
 
-    handleGoogleCallback();
-  }, [router]);
+    handleCallback();
+  }, [router, searchParams]);
 
   return (
-    <div>
-      <h1>Connecting to Google Docs...</h1>
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="text-center">
+        <h1 className="text-xl font-semibold mb-2">Connecting to Google...</h1>
+        <p className="text-gray-500">Please wait while we complete the connection.</p>
+      </div>
     </div>
   );
 }
