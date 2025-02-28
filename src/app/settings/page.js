@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
-import { MessageSquare, FileText, Cloud, Github, Bug, LogOut } from 'lucide-react';
+import { MessageSquare, FileText, Cloud, Github, Bug, LogOut, Video, Calendar } from 'lucide-react';
 import Cookies from 'js-cookie';
 import { X } from "@phosphor-icons/react";
 import { Navbar } from '@/components/Navbar'
@@ -565,9 +565,9 @@ export default function SettingsPage() {
                       <Button 
                         variant="outline" 
                         className="bg-zinc-800 hover:bg-zinc-700 text-white whitespace-nowrap flex items-center"
-                        onClick={() => window.open('https://github.com/thepersonalaicompany/amurex/issues/new', '_blank')}
+                        onClick={() => window.open('https://cal.com/founders-the-personal-ai-company/15min', '_blank')}
                       >
-                        <Github className="w-5 h-5 text-[#9334E9] mr-2" />
+                        <Calendar className="w-5 h-5 text-[#9334E9] mr-2" />
                         Book a call
                       </Button>
                     </div>
