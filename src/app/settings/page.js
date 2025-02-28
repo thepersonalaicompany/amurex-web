@@ -34,6 +34,7 @@ function SettingsContent() {
   const [memoryEnabled, setMemoryEnabled] = useState(false);
   const [createdAt, setCreatedAt] = useState('');
   const [emailNotificationsEnabled, setEmailNotificationsEnabled] = useState(false);
+  const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -106,7 +107,12 @@ function SettingsContent() {
     }
   };
 
+  const initiateLogout = () => {
+    setShowSignOutConfirm(true);
+  };
+
   const handleLogout = async () => {
+    setShowSignOutConfirm(false);
     setLoading(true);
     
     // Clear local storage and cookies
@@ -550,9 +556,7 @@ function SettingsContent() {
               </Card>
 
               {/* Integrations */}
-              <div className="space-y-4">
-                
-
+              {/* <div className="space-y-4">
                 <div className="relative">
                   <div className="absolute -inset-0.5 bg-gradient-to-r from-[#9334E9] to-[#9334E9] rounded-lg blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-gradient-x"></div>
                   <Card className="bg-black border-zinc-500 relative overflow-hidden">
@@ -581,7 +585,7 @@ function SettingsContent() {
                     </CardContent>
                   </Card>
                 </div>
-              </div>
+              </div> */}
             </div>
           )}
 
@@ -621,16 +625,16 @@ function SettingsContent() {
                       <div className="pt">
                         <div className="flex items-center justify-between">
                           <div>
-                            <h3 className="text-md font-medium text-white">Sign out (pussy)</h3>
+                            <h3 className="text-md font-medium text-white">Sign Out</h3>
                             <p className="text-sm text-zinc-400">Sign out of your account</p>
                           </div>
                           <Button 
                             variant="outline" 
-                            className="text-sm bg-zinc-800 hover:bg-red-500 text-white whitespace-nowrap flex items-center mt-auto w-fit"
-                            onClick={handleLogout}
+                            className="text-sm bg-zinc-800 hover:bg-red-500 text-white whitespace-nowrap flex items-center mt-auto w-fit group"
+                            onClick={initiateLogout}
                           >
-                            <LogOut className="w-5 h-5 text-red-500 mr-2" />
-                            Sign out
+                            <LogOut className="w-5 h-5 text-red-500 mr-2 group-hover:text-white" />
+                            Sign Out
                           </Button>
                         </div>
                       </div>
@@ -692,8 +696,62 @@ function SettingsContent() {
               </Card>
             </div>
           )}
+
+            <div className="space-y-4 mt-4">
+              <div className="relative">
+                <div className="absolute -inset-0.5 bg-gradient-to-r from-[#9334E9] to-[#9334E9] rounded-lg blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-gradient-x"></div>
+                <Card className="bg-black border-zinc-500 relative overflow-hidden">
+                  <div className="absolute inset-0 bg-[#9334E9]/20 animate-pulse"></div>
+                  <div className="absolute inset-0 bg-gradient-to-r from-[#9334E9]/30 via-[#9334E9]/20 to-[#9334E9]/30"></div>
+                  <CardContent className="p-4 relative">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <MessageSquare className="w-6 h-6 text-[#9334E9]" />
+                        <div>
+                          <h3 className="font-medium text-white text-lg">Memory Chat (new!)</h3>
+                          <p className="text-sm text-zinc-400">Try our new memory chat feature</p>
+                        </div>
+                      </div>
+                      <div className="relative">
+                        <div className="absolute -inset-0.5 bg-gradient-to-r from-[#9334E9] to-[#9334E9] rounded-lg blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-gradient-x"></div>
+                        <Button 
+                          variant="outline" 
+                          className="relative bg-zinc-900/50 text-zinc-300 hover:bg-zinc-800 hover:border-[#9334E9] border border-zinc-800 rounded-md backdrop-blur-sm transition-colors duration-200"
+                          onClick={() => router.push('/chat')}
+                        >
+                          Try Now
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
         </div>
       </div>
+
+      {showSignOutConfirm && (
+        <div className="px-2 fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-black bg-opacity-40 backdrop-blur-sm p-8 rounded-lg shadow-lg border border-white/20">
+            <h3 className="lg:text-xl text-md font-medium mb-4 text-white">Confirm Sign Out</h3>
+            <p className="text-zinc-400 mb-6">Are you sure you want to sign out of your account?</p>
+            <div className="flex gap-3 justify-end">
+              <button
+                className="px-4 py-2 inline-flex items-center justify-center gap-2 rounded-md text-md font-medium border border-white/10 text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:bg-[#3c1671] hover:border-[#6D28D9]"
+                onClick={() => setShowSignOutConfirm(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 inline-flex items-center justify-center gap-2 rounded-md text-md font-medium border border-white/10 bg-[#9334E9] text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:bg-[#3c1671] hover:border-[#6D28D9]"
+                onClick={handleLogout}
+              >
+                Sign Out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
