@@ -46,15 +46,17 @@ export default function NotionCallbackPage() {
             if (updateData.success) {
               console.log('Notion connected successfully');
               window.history.replaceState({}, document.title, window.location.pathname);
-              router.push('/'); // Redirect to the main page
+              router.push('/settings?connection=success'); // Redirect to the main page
             } else {
               console.error('Error updating user:', updateData.error);
             }
           } else {
             console.error('Error connecting Notion:', data.error);
+            router.push(`/settings?error=${encodeURIComponent(data.error)}`);
           }
         } catch (error) {
           console.error('Error handling Notion callback:', error);
+          router.push('/settings?error=Failed to connect Notion');
         }
       }
     };
