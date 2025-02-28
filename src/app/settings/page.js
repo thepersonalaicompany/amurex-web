@@ -33,6 +33,7 @@ function SettingsContent() {
   const [importProgress, setImportProgress] = useState(0);
   const [memoryEnabled, setMemoryEnabled] = useState(false);
   const [createdAt, setCreatedAt] = useState('');
+  const [emailNotificationsEnabled, setEmailNotificationsEnabled] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -51,6 +52,29 @@ function SettingsContent() {
       toast.error(`Connection failed: ${error}`);
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    const checkEmailSettings = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          const { data: user, error } = await supabase
+            .from('users')
+            .select('emails_enabled')
+            .eq('id', session.user.id)
+            .single();
+          
+          if (user) {
+            setEmailNotificationsEnabled(user.emails_enabled);
+          }
+        }
+      } catch (error) {
+        console.error('Error checking email settings:', error);
+      }
+    };
+
+    checkEmailSettings();
+  }, []);
 
   const checkIntegrations = async () => {
     try {
@@ -313,6 +337,24 @@ function SettingsContent() {
     }
   };
 
+  const handleEmailNotificationsToggle = async (checked) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const { error } = await supabase
+          .from('users')
+          .update({ emails_enabled: checked })
+          .eq('id', session.user.id);
+
+        if (error) throw error;
+        setEmailNotificationsEnabled(checked);
+      }
+    } catch (error) {
+      console.error('Error updating email notification settings:', error);
+      toast.error('Failed to update email settings');
+    }
+  };
+
   const handleGoogleCallback = useCallback(async () => {
     console.log('Handling Google callback');
     const code = searchParams.get('code');
@@ -420,14 +462,14 @@ function SettingsContent() {
               
               {/* Memory Toggle */}
               <Card className="bg-black border-zinc-800">
-                <CardContent className="p-6">
+                <CardContent className="p-6 space-y-6">
                   <div className="flex items-center justify-between">
                     <div>
                       <h2 className="text-lg font-semibold flex items-center gap-2 text-white">
                         <Cloud className="w-5 h-5 text-[#9334E9]" />
                         Memory
                       </h2>
-                      <p className="text-sm text-zinc-400">Keep your notes synced across devices</p>
+                      <p className="text-sm text-zinc-400">Enable memory and connect your documents to unlock our <b>AI-powered memory chat feature</b>, allowing you to have intelligent conversations about your content</p>
                     </div>
                     <Switch 
                       checked={memoryEnabled}
@@ -435,102 +477,110 @@ function SettingsContent() {
                       className={memoryEnabled ? 'bg-[#9334E9]' : ''}
                     />
                   </div>
+
+                  <div className="flex gap-4">
+                  <Card className="bg-black border-zinc-800 flex-1">
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <img 
+                              src={PROVIDER_ICONS.google} 
+                              alt="Google" 
+                              className="w-6 h-6"
+                            />
+                            <div>
+                              <h3 className="font-medium text-white text-lg">Connect Google</h3>
+                              <p className="text-sm text-zinc-400">Sync your Google documents</p>
+                            </div>
+                          </div>
+                          <Button 
+                            variant="outline" 
+                            className={`bg-zinc-900 text-zinc-300 hover:bg-zinc-800 border-zinc-800 ${
+                              googleDocsConnected ? 'bg-green-900 hover:bg-green-800' : ''
+                            } min-w-[100px]`}
+                            onClick={handleGoogleDocsConnect}
+                            disabled={isImporting && importSource === 'Google Docs'}
+                          >
+                            {isImporting && importSource === 'Google Docs' ? (
+                              <div className="flex items-center">
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#9334E9] mr-2"></div>
+                                Importing...
+                              </div>
+                            ) : googleDocsConnected ? 'Connected' : 'Connect'}
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+
+                    <Card className="bg-black border-zinc-800 flex-1">
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <img 
+                              src={PROVIDER_ICONS.notion} 
+                              alt="Notion" 
+                              className="w-6 h-6"
+                            />
+                            <div>
+                              <h3 className="font-medium text-white text-lg">Connect Notion</h3>
+                              <p className="text-sm text-zinc-400">Sync your Notion pages</p>
+                            </div>
+                          </div>
+                          <Button 
+                            variant="outline" 
+                            className={`bg-zinc-900 text-zinc-300 hover:bg-zinc-800 border-zinc-800 ${
+                              notionConnected ? 'bg-green-900 hover:bg-green-800' : ''
+                            } min-w-[100px]`}
+                            onClick={handleNotionConnect}
+                            disabled={isImporting && importSource === 'Notion'}
+                          >
+                            {isImporting && importSource === 'Notion' ? (
+                              <div className="flex items-center">
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#9334E9] mr-2"></div>
+                                Importing...
+                              </div>
+                            ) : notionConnected ? 'Connected' : 'Connect'}
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
                 </CardContent>
               </Card>
 
               {/* Integrations */}
               <div className="space-y-4">
-                <Card className="bg-black border-zinc-800">
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <img 
-                          src={PROVIDER_ICONS.notion} 
-                          alt="Notion" 
-                          className="w-6 h-6"
-                        />
-                        <div>
-                          <h3 className="font-medium text-white text-lg">Connect Notion</h3>
-                          <p className="text-sm text-zinc-400">Sync your Notion pages</p>
-                        </div>
-                      </div>
-                      <Button 
-                        variant="outline" 
-                        className={`bg-zinc-900 text-zinc-300 hover:bg-zinc-800 border-zinc-800 ${
-                          notionConnected ? 'bg-green-900 hover:bg-green-800' : ''
-                        } min-w-[100px]`}
-                        onClick={handleNotionConnect}
-                        disabled={isImporting && importSource === 'Notion'}
-                      >
-                        {isImporting && importSource === 'Notion' ? (
-                          <div className="flex items-center">
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#9334E9] mr-2"></div>
-                            Importing...
-                          </div>
-                        ) : notionConnected ? 'Connected' : 'Connect'}
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                
 
-                <Card className="bg-black border-zinc-800">
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <img 
-                          src={PROVIDER_ICONS.google} 
-                          alt="Google" 
-                          className="w-6 h-6"
-                        />
-                        <div>
-                          <h3 className="font-medium text-white text-lg">Connect Google</h3>
-                          <p className="text-sm text-zinc-400">Sync your Google documents</p>
-                        </div>
-                      </div>
-                      <Button 
-                        variant="outline" 
-                        className={`bg-zinc-900 text-zinc-300 hover:bg-zinc-800 border-zinc-800 ${
-                          googleDocsConnected ? 'bg-green-900 hover:bg-green-800' : ''
-                        } min-w-[100px]`}
-                        onClick={handleGoogleDocsConnect}
-                        disabled={isImporting && importSource === 'Google Docs'}
-                      >
-                        {isImporting && importSource === 'Google Docs' ? (
-                          <div className="flex items-center">
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#9334E9] mr-2"></div>
-                            Importing...
+                <div className="relative">
+                  <div className="absolute -inset-0.5 bg-gradient-to-r from-[#9334E9] to-[#9334E9] rounded-lg blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-gradient-x"></div>
+                  <Card className="bg-black border-zinc-500 relative overflow-hidden">
+                    <div className="absolute inset-0 bg-[#9334E9]/20 animate-pulse"></div>
+                    <div className="absolute inset-0 bg-gradient-to-r from-[#9334E9]/30 via-[#9334E9]/20 to-[#9334E9]/30"></div>
+                    <CardContent className="p-4 relative">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <MessageSquare className="w-6 h-6 text-[#9334E9]" />
+                          <div>
+                            <h3 className="font-medium text-white text-lg">Memory Chat (new!)</h3>
+                            <p className="text-sm text-zinc-400">Try our new memory chat feature</p>
                           </div>
-                        ) : googleDocsConnected ? 'Connected' : 'Connect'}
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-black border-zinc-500 relative overflow-hidden">
-                  <div className="absolute inset-0 bg-[#9334E9]/20 animate-pulse"></div>
-                  <div className="absolute inset-0 bg-gradient-to-r from-[#9334E9]/30 via-[#9334E9]/20 to-[#9334E9]/30"></div>
-                  <CardContent className="p-4 relative">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <MessageSquare className="w-6 h-6 text-[#9334E9]" />
-                        <div>
-                          <h3 className="font-medium text-white text-lg">Knowledge Search</h3>
-                          <p className="text-sm text-zinc-400">Try our new semantic search feature</p>
+                        </div>
+                        <div className="relative">
+                          <div className="absolute -inset-0.5 bg-gradient-to-r from-[#9334E9] to-[#9334E9] rounded-lg blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-gradient-x"></div>
+                          <Button 
+                            variant="outline" 
+                            className="relative bg-zinc-900/50 text-zinc-300 hover:bg-zinc-800 hover:border-[#9334E9] border border-zinc-800 rounded-md backdrop-blur-sm transition-colors duration-200"
+                            onClick={() => router.push('/chat')}
+                          >
+                            Try Now
+                          </Button>
                         </div>
                       </div>
-                      <div className="relative">
-                        <div className="absolute -inset-0.5 bg-gradient-to-r from-[#9334E9] to-[#9334E9] rounded-lg blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-gradient-x"></div>
-                        <Button 
-                          variant="outline" 
-                          className="relative bg-zinc-900/50 text-zinc-300 hover:bg-zinc-800 hover:border-[#9334E9] border border-zinc-800 rounded-md backdrop-blur-sm transition-colors duration-200"
-                          onClick={() => router.push('/chat')}
-                        >
-                          Try Now
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                </div>
               </div>
             </div>
           )}
@@ -542,26 +592,51 @@ function SettingsContent() {
                 
                 <Card className="bg-black border-zinc-800">
                   <CardContent className="p-6">
-                    <div className="space-y-4">
-                      <div>
-                        <h3 className="text-md text-zinc-400">Email</h3>
-                        <p className="text-white">{userEmail}</p>
+                    <div className="space-y-6">
+                      <div className="space-y-4">
+                        <div>
+                          <h3 className="text-md text-zinc-400">Email</h3>
+                          <p className="text-white">{userEmail}</p>
+                        </div>
+                        <div>
+                          <h3 className="text-md text-zinc-400">With us since</h3>
+                          <p className="text-white">{createdAt}</p>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="text-md text-zinc-400">With us since</h3>
-                        <p className="text-white">{createdAt}</p>
+
+                      <div className="pt-2 border-t border-zinc-800">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h3 className="text-md font-medium text-white">Email Notifications</h3>
+                            <p className="text-sm text-zinc-400">Receive meeting summaries after each call</p>
+                          </div>
+                          <Switch 
+                            checked={emailNotificationsEnabled}
+                            onCheckedChange={handleEmailNotificationsToggle}
+                            className={emailNotificationsEnabled ? 'bg-[#9334E9]' : ''}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="pt">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h3 className="text-md font-medium text-white">Sign out (pussy)</h3>
+                            <p className="text-sm text-zinc-400">Sign out of your account</p>
+                          </div>
+                          <Button 
+                            variant="outline" 
+                            className="text-sm bg-zinc-800 hover:bg-red-500 text-white whitespace-nowrap flex items-center mt-auto w-fit"
+                            onClick={handleLogout}
+                          >
+                            <LogOut className="w-5 h-5 text-red-500 mr-2" />
+                            Sign out
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
-                <Button 
-                  variant="outline" 
-                  className="text-sm bg-zinc-800 hover:bg-red-500 text-white whitespace-nowrap flex items-center mt-auto w-fit"
-                  onClick={handleLogout}
-                >
-                  <LogOut className="w-5 h-5 text-red-500 mr-2" />
-                  Sign out
-                </Button>
               </div>
             </>
           )}
