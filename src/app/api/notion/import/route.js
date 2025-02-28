@@ -3,12 +3,44 @@ import { supabase } from '@/lib/supabaseClient';
 import { Client } from '@notionhq/client';
 import OpenAI from 'openai';
 import crypto from 'crypto';
-import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
 
 const openai = new OpenAI(process.env.OPENAI_API_KEY);
 
 export const maxDuration = 300;
 
+class TextSplitter {
+  constructor({ chunkSize = 200, chunkOverlap = 50 } = {}) {
+    this.chunkSize = chunkSize;
+    this.chunkOverlap = chunkOverlap;
+  }
+
+  async createDocuments(texts) {
+    // Handle array of texts or single text
+    const textArray = Array.isArray(texts) ? texts : [texts];
+    
+    return textArray.flatMap(text => {
+      // Clean and normalize text
+      const cleanText = text.trim().replace(/\s+/g, ' ');
+      
+      // If text is shorter than chunk size, return as single chunk
+      if (cleanText.length <= this.chunkSize) {
+        return [{ pageContent: cleanText }];
+      }
+
+      const chunks = [];
+      let startIndex = 0;
+
+      while (startIndex < cleanText.length) {
+        chunks.push({ 
+          pageContent: cleanText.slice(startIndex, startIndex + this.chunkSize).trim() 
+        });
+        startIndex += this.chunkSize - this.chunkOverlap;
+      }
+
+      return chunks;
+    });
+  }
+}
 
 export async function POST(req) {
   try {
@@ -55,7 +87,7 @@ export async function POST(req) {
     console.log('Response:', response.results.length);
 
 
-    const textSplitter = new RecursiveCharacterTextSplitter({
+    const textSplitter = new TextSplitter({
       chunkSize: 200,
       chunkOverlap: 50,
     });
@@ -64,96 +96,101 @@ export async function POST(req) {
 
     const results = [];
     for (const page of response.results) {
-      console.log('Processing page:', page);
-      const pageContent = await fetchNotionPageContent(notion, page.id);
-      const tags = await generateTags(pageContent);
-      const checksum = crypto.createHash('sha256').update(pageContent).digest('hex');
+      try {
+        console.log('Processing page:', page);
+        const pageContent = await fetchNotionPageContent(notion, page.id);
+        const tags = await generateTags(pageContent);
+        const checksum = crypto.createHash('sha256').update(pageContent).digest('hex');
 
-      // Check for existing page
-      const { data: existingPage } = await supabase
-        .from('documents')
-        .select('id')
-        .eq('checksum', checksum)
-        .eq('user_id', session.user.id)
-        .single();
+        // Check for existing page
+        const { data: existingPage } = await supabase
+          .from('documents')
+          .select('id')
+          .eq('checksum', checksum)
+          .eq('user_id', session.user.id)
+          .single();
 
+        if (existingPage) {
+          results.push({ id: existingPage.id, status: 'existing' });
+          continue;
+        }
 
-      if (existingPage) {
-        results.push({ id: existingPage.id, status: 'existing' });
-        continue;
-      }
+        console.log('Creating new page:', page.properties?.name?.title?.[0]?.plain_text || page.properties?.title?.title?.[0]?.plain_text || 'Untitled');
 
-      console.log('Creating new page:', page.properties?.name?.title?.[0]?.plain_text || page.properties?.title?.title?.[0]?.plain_text || 'Untitled');
-
-      // Create new page
-      const { data: newPage, error: pageError } = await supabase
-        .from('documents')
-        .insert({
-          url: page.url,
-          title: page.properties?.name?.title?.[0]?.plain_text || page.properties?.title?.title?.[0]?.plain_text || 'Untitled',
-          text: pageContent,
-          tags: tags,
-          user_id: session.user.id,
-          type: 'notion',
-          checksum,
-          created_at: new Date().toISOString(),
-          meta: {
+        // Create new page
+        const { data: newPage, error: pageError } = await supabase
+          .from('documents')
+          .insert({
+            url: page.url,
             title: page.properties?.name?.title?.[0]?.plain_text || page.properties?.title?.title?.[0]?.plain_text || 'Untitled',
+            text: pageContent,
+            tags: tags,
+            user_id: session.user.id,
             type: 'notion',
+            checksum,
             created_at: new Date().toISOString(),
-            tags: tags
-          },
-        })
-        .select()
-        .single();
+            meta: {
+              title: page.properties?.name?.title?.[0]?.plain_text || page.properties?.title?.title?.[0]?.plain_text || 'Untitled',
+              type: 'notion',
+              created_at: new Date().toISOString(),
+              tags: tags
+            },
+          })
+          .select()
+          .single();
 
-      if (pageError) { 
-        console.error('Error creating page:', pageError, page);
-        throw pageError; 
+        if (pageError) { 
+          console.error('Error creating page:', pageError, page);
+          continue; // Skip this page and move to the next one
+        }
+
+        // Process embeddings
+        try {
+          const sections = await textSplitter.createDocuments([pageContent]);
+          const chunkTexts = sections.map(section => section.pageContent);
+          
+          const embeddingResponse = await fetch('https://api.mistral.ai/v1/embeddings', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${process.env.MISTRAL_API_KEY}`
+            },
+            body: JSON.stringify({
+              input: chunkTexts,
+              model: "mistral-embed",
+              encoding_format: "float"
+            })
+          });
+
+          const embedData = await embeddingResponse.json();
+          const embeddings = embedData.data.map(item => `[${item.embedding.join(',')}]`);
+          const centroid = `[${calculateCentroid(embedData.data.map(item => item.embedding)).join(',')}]`;
+
+          const { error: updateError } = await supabase
+            .from('documents')
+            .update({
+              chunks: chunkTexts,
+              embeddings: embeddings,
+              centroid: centroid
+            })
+            .eq('id', newPage.id)
+            .select()
+            .single();
+
+          if (updateError) {
+            console.error('Error updating embeddings:', updateError);
+            // Don't throw error, just log it and continue
+          }
+        } catch (embeddingError) {
+          console.error('Error processing embeddings:', embeddingError);
+          // Continue with next page even if embeddings fail
+        }
+
+        results.push({ id: newPage.id, status: 'created', title: newPage.title });
+      } catch (pageError) {
+        console.error('Error processing page:', pageError, page);
+        continue; // Skip this page and move to the next one
       }
-
-      // Split and process content
-      const sections = await textSplitter.createDocuments([pageContent]);
-
-      // Replace OpenAI embeddings with Mistral
-      const chunkTexts = sections.map(section => section.pageContent);
-      
-      // Generate embeddings using Mistral API
-      const embeddingResponse = await fetch('https://api.mistral.ai/v1/embeddings', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.MISTRAL_API_KEY}`
-        },
-        body: JSON.stringify({
-          input: chunkTexts,
-          model: "mistral-embed",
-          encoding_format: "float"
-        })
-      });
-
-      const embedData = await embeddingResponse.json();
-      const embeddings = embedData.data.map(item => `[${item.embedding.join(',')}]`);
-      const centroid = `[${calculateCentroid(embedData.data.map(item => item.embedding)).join(',')}]`;
-
-      // Update document with embeddings and chunks
-      const { data: updatedPage, error: updateError } = await supabase
-        .from('documents')
-        .update({
-          chunks: chunkTexts,
-          embeddings: embeddings,
-          centroid: centroid
-        })
-        .eq('id', newPage.id)
-        .select()
-        .single();
-
-      if (updateError) {
-        console.error('Error updating embeddings:', updateError);
-        throw updateError;
-      }
-
-      results.push({ id: newPage.id, status: 'created', title: newPage.title });
     }
 
     // Send email notification
