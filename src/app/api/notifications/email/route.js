@@ -6,7 +6,7 @@ export const ImportCompleteEmail = ({ documents }) => {
     return (
         <div>
             <h2>Your Google Docs Import is Complete!</h2>
-            <p>We've successfully imported the following documents:</p>
+            <p>We&apos;ve successfully imported the following documents:</p>
             <ul>
             {documents.map((doc, index) => (
                 <li key={index}>{doc.title}</li>

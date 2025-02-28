@@ -1,5 +1,8 @@
-"use client";
+'use client';
 
+export const dynamic = 'force-dynamic'
+
+import { Suspense } from 'react';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
@@ -17,7 +20,7 @@ const PROVIDER_ICONS = {
   notion: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/Notion-logo.svg/2048px-Notion-logo.svg.png"
 };
 
-export default function SettingsPage() {
+function SettingsContent() {
   const [activeTab, setActiveTab] = useState('personalization');
   const [loading, setLoading] = useState(false);
   const [userEmail, setUserEmail] = useState('');
@@ -455,10 +458,16 @@ export default function SettingsPage() {
                         variant="outline" 
                         className={`bg-zinc-900 text-zinc-300 hover:bg-zinc-800 border-zinc-800 ${
                           notionConnected ? 'bg-green-900 hover:bg-green-800' : ''
-                        }`}
+                        } min-w-[100px]`}
                         onClick={handleNotionConnect}
+                        disabled={isImporting && importSource === 'Notion'}
                       >
-                        {notionConnected ? 'Connected' : 'Connect'}
+                        {isImporting && importSource === 'Notion' ? (
+                          <div className="flex items-center">
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#9334E9] mr-2"></div>
+                            Importing...
+                          </div>
+                        ) : notionConnected ? 'Connected' : 'Connect'}
                       </Button>
                     </div>
                   </CardContent>
@@ -482,11 +491,43 @@ export default function SettingsPage() {
                         variant="outline" 
                         className={`bg-zinc-900 text-zinc-300 hover:bg-zinc-800 border-zinc-800 ${
                           googleDocsConnected ? 'bg-green-900 hover:bg-green-800' : ''
-                        }`}
+                        } min-w-[100px]`}
                         onClick={handleGoogleDocsConnect}
+                        disabled={isImporting && importSource === 'Google Docs'}
                       >
-                        {googleDocsConnected ? 'Connected' : 'Connect'}
+                        {isImporting && importSource === 'Google Docs' ? (
+                          <div className="flex items-center">
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#9334E9] mr-2"></div>
+                            Importing...
+                          </div>
+                        ) : googleDocsConnected ? 'Connected' : 'Connect'}
                       </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-black border-zinc-500 relative overflow-hidden">
+                  <div className="absolute inset-0 bg-[#9334E9]/20 animate-pulse"></div>
+                  <div className="absolute inset-0 bg-gradient-to-r from-[#9334E9]/30 via-[#9334E9]/20 to-[#9334E9]/30"></div>
+                  <CardContent className="p-4 relative">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <MessageSquare className="w-6 h-6 text-[#9334E9]" />
+                        <div>
+                          <h3 className="font-medium text-white text-lg">Knowledge Search</h3>
+                          <p className="text-sm text-zinc-400">Try our new semantic search feature</p>
+                        </div>
+                      </div>
+                      <div className="relative">
+                        <div className="absolute -inset-0.5 bg-gradient-to-r from-[#9334E9] to-[#9334E9] rounded-lg blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-gradient-x"></div>
+                        <Button 
+                          variant="outline" 
+                          className="relative bg-zinc-900/50 text-zinc-300 hover:bg-zinc-800 hover:border-[#9334E9] border border-zinc-800 rounded-md backdrop-blur-sm transition-colors duration-200"
+                          onClick={() => router.push('/chat')}
+                        >
+                          Try Now
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -578,48 +619,14 @@ export default function SettingsPage() {
           )}
         </div>
       </div>
-      
-      <ImportingModal isOpen={isImporting} source={importSource} onClose={() => setIsImporting(false)} />
     </div>
   );
 }
 
-function ImportingModal({ isOpen, source, onClose }) {
-  useEffect(() => {
-    const handleEscapeKey = (event) => {
-      if (event.key === 'Escape') {
-        onClose();
-      }
-    };
-
-    document.addEventListener('keydown', handleEscapeKey);
-    return () => {
-      document.removeEventListener('keydown', handleEscapeKey);
-    };
-  }, [onClose]);
-
-  if (!isOpen) return null;
-
+export default function SettingsPage() {
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <Card className="bg-zinc-900 border-zinc-800 max-w-sm w-full mx-4">
-        <CardContent className="p-6 relative">
-          <button
-            onClick={onClose}
-            className="absolute top-4 right-4 text-zinc-400 hover:text-white transition-colors"
-          >
-            <X size={24} />
-          </button>
-          <div className="text-center">
-            <div className="mb-4">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#9334E9] mx-auto"></div>
-            </div>
-            <h3 className="text-lg font-semibold mb-2 text-white">Importing {source}</h3>
-            <p className="text-sm text-zinc-400">This may take a while depending on the number of documents.</p>
-            <p className="text-sm text-zinc-400 mt-2">Feel free to close this window and continue using the app.</p>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+    <Suspense fallback={<div>Loading...</div>}>
+      <SettingsContent />
+    </Suspense>
   );
 }
