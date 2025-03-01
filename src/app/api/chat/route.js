@@ -40,9 +40,8 @@ async function rephraseInput(inputString) {
 }
 
 async function searchMemory(queryEmbedding, user_id) {
-  // Search using search_memory_chunks RPC
   const { data: chunks, error } = await supabase.rpc(
-    "search_memory_centroids",
+    "fafsearch_one",
     {
       query_embedding: queryEmbedding,
       input_user_id: user_id,
@@ -55,9 +54,8 @@ async function searchMemory(queryEmbedding, user_id) {
 
 async function searchDocuments(queryEmbedding, user_id, enabledSources) {
   console.log("queryEmbedding", queryEmbedding);
-  // Search using search_closest_chunks RPC
   const { data: documents, error } = await supabase.rpc(
-    "search_closest_chunks",
+    "fafsearch_two",
     {
       query_embedding: queryEmbedding,
       input_user_id: user_id,
