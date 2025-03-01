@@ -554,38 +554,6 @@ function SettingsContent() {
                   </div>
                 </CardContent>
               </Card>
-
-              {/* Integrations */}
-              {/* <div className="space-y-4">
-                <div className="relative">
-                  <div className="absolute -inset-0.5 bg-gradient-to-r from-[#9334E9] to-[#9334E9] rounded-lg blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-gradient-x"></div>
-                  <Card className="bg-black border-zinc-500 relative overflow-hidden">
-                    <div className="absolute inset-0 bg-[#9334E9]/20 animate-pulse"></div>
-                    <div className="absolute inset-0 bg-gradient-to-r from-[#9334E9]/30 via-[#9334E9]/20 to-[#9334E9]/30"></div>
-                    <CardContent className="p-4 relative">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <MessageSquare className="w-6 h-6 text-[#9334E9]" />
-                          <div>
-                            <h3 className="font-medium text-white text-lg">Memory Chat (new!)</h3>
-                            <p className="text-sm text-zinc-400">Try our new memory chat feature</p>
-                          </div>
-                        </div>
-                        <div className="relative">
-                          <div className="absolute -inset-0.5 bg-gradient-to-r from-[#9334E9] to-[#9334E9] rounded-lg blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-gradient-x"></div>
-                          <Button 
-                            variant="outline" 
-                            className="relative bg-zinc-900/50 text-zinc-300 hover:bg-zinc-800 hover:border-[#9334E9] border border-zinc-800 rounded-md backdrop-blur-sm transition-colors duration-200"
-                            onClick={() => router.push('/chat')}
-                          >
-                            Try Now
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              </div> */}
             </div>
           )}
 

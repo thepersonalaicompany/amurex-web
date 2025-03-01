@@ -358,18 +358,6 @@ export async function POST(req, res) {
     const encoder = new TextEncoder();
 
     console.log("documentChunks", documentChunks);
-    // console.log("formattedChunks", formattedChunks);
-    // console.log(`Query: ${message};
-          
-    //               Retrieved chunks from online conversations: ${JSON.stringify(formattedChunks)}
-
-    //               AAAAAAAAAAAAAA
-          
-    //               Retrieved chunks from Google Docs (from files): ${JSON.stringify(documentChunks.map(doc => ({
-    //         title: doc.title,
-    //         content: doc.selected_chunks
-    //       })))}`);
-    // Start the streaming process
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [

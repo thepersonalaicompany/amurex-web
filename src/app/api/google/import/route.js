@@ -154,7 +154,6 @@ async function processGoogleDocs(session, supabase) {
     const results = [];
     for (const file of response.data.files) {
       try {
-        console.log("Processing file:", file);
         const doc = await docs.documents.get({ documentId: file.id });
         
         // Add null checks for document content
@@ -216,7 +215,6 @@ async function processGoogleDocs(session, supabase) {
           continue;
         }
 
-        console.log("no existing doc found, generating tags and chunks");
 
         // Generate tags and chunks
         const tags = await generateTags(content);
@@ -243,10 +241,6 @@ async function processGoogleDocs(session, supabase) {
         
         // Calculate and format centroid as array for Postgres
         const centroid = `[${calculateCentroid(embedData.data.map(item => item.embedding)).join(',')}]`;
-
-        console.log("file id:", file.id);
-        console.log("session id:", session.id);
-
 
         // Insert document with properly formatted vectors
         const { data: newDoc, error: newDocError } = await supabase
