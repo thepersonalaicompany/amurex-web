@@ -477,6 +477,12 @@ function SettingsContent() {
             >
               Feedback
             </button>
+            <button
+              onClick={() => router.push('/teams/settings')}
+              className={`w-full text-left px-4 py-2 rounded-lg text-zinc-400 hover:bg-zinc-800`}
+            >
+              Team
+            </button>
           </div>
         </div>
 
