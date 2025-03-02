@@ -12,12 +12,12 @@ export default function TranscriptList() {
   const [transcripts, setTranscripts] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [filter, setFilter] = useState('personal')
   const router = useRouter()
 
   useEffect(() => {
-    console.log("fetching transcripts");
     fetchTranscripts()
-  }, [])
+  }, [filter])
 
   const fetchTranscripts = async () => {
     try {
@@ -27,7 +27,7 @@ export default function TranscriptList() {
         return
       }
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('late_meeting')
         .select(`
           id,
@@ -39,9 +39,34 @@ export default function TranscriptList() {
           transcript,
           action_items
         `)
-        .contains('user_ids', [session.user.id])
         .order('created_at', { ascending: false })
         .not('transcript', 'is', null)
+
+      if (filter === 'personal') {
+        query = query.contains('user_ids', [session.user.id])
+      } else {
+        const { data: userTeams } = await supabase
+          .from('team_members')
+          .select('team_id')
+          .eq('user_id', session.user.id)
+
+        const teamIds = userTeams?.map(team => team.team_id) || []
+        
+        if (teamIds.length > 0) {
+          const { data: teamMeetings } = await supabase
+            .from('meetings_teams')
+            .select('meeting_id')
+            .in('team_id', teamIds)
+
+          const meetingIds = teamMeetings?.map(meeting => meeting.meeting_id) || []
+          
+          if (meetingIds.length > 0) {
+            query = query.in('id', meetingIds)
+          }
+        }
+      }
+
+      const { data, error } = await query
 
       if (error) throw error
 
@@ -89,6 +114,29 @@ export default function TranscriptList() {
         <div className="p-6 max-w-7xl mx-auto">
           <h1 className="text-3xl font-semibold mb-6 text-white">Meetings</h1>
           
+          <div className="flex items-center gap-4 mb-6">
+            <label className="flex items-center space-x-2 text-white cursor-pointer">
+              <input
+                type="radio"
+                value="personal"
+                checked={filter === 'personal'}
+                onChange={(e) => setFilter(e.target.value)}
+                className="form-radio text-purple-500 focus:ring-purple-500"
+              />
+              <span>Personal</span>
+            </label>
+            <label className="flex items-center space-x-2 text-white cursor-pointer">
+              <input
+                type="radio"
+                value="shared"
+                checked={filter === 'shared'}
+                onChange={(e) => setFilter(e.target.value)}
+                className="form-radio text-purple-500 focus:ring-purple-500"
+              />
+              <span>Shared with me</span>
+            </label>
+          </div>
+
           <div className="mb-6 relative">
             <input
               type="text"
