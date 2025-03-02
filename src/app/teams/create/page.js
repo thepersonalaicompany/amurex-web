@@ -151,7 +151,7 @@ export default function CreateTeam() {
             <h3 className="text-white font-medium mb-2">What happens next?</h3>
             <ul className="text-gray-400 text-sm space-y-2">
               <li>• Your team will be created instantly</li>
-              <li>• You'll be added as the team owner</li>
+              <li>• You&apos;ll be added as the team owner</li>
               <li>• You can invite team members right away</li>
             </ul>
           </div>
