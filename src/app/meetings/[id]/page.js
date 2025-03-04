@@ -60,19 +60,6 @@ export default function TranscriptDetail({ params }) {
     });
   };
 
-  const mobileStyles = {
-    modal: {
-      width: '90%',
-      maxWidth: '400px',
-    },
-    button: {
-      padding: '10px 20px',
-    },
-    input: {
-      width: '100%',
-    },
-  };
-
   useEffect(() => {
     fetchMemoryStatus()
     fetchTranscript()

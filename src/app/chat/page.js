@@ -6,6 +6,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { supabase } from '@/lib/supabaseClient';
 import { Navbar } from '@/components/Navbar';
+import StarButton from '@/components/star-button';
 // 3. Home component
 export default function AISearch() {
 // 4. Initialize states and refs
@@ -23,6 +24,7 @@ export default function AISearch() {
   const [hasNotion, setHasNotion] = useState(false);
   const [obsidianEnabled, setObsidianEnabled] = useState(true);
   const [hasObsidian, setHasObsidian] = useState(false);
+  const [isSearchInitiated, setIsSearchInitiated] = useState(false);
 
   // Auto scroll to the end of the messages
   useEffect(() => {
@@ -127,6 +129,7 @@ export default function AISearch() {
     const message = messageToSend || inputValue;
     setInputValue("");
     setIsSearching(true);
+    setIsSearchInitiated(true);
 
     setSearchResults({
       query: message,
@@ -208,9 +211,10 @@ export default function AISearch() {
   return (
     <>
     <Navbar />
-    <div className="min-h-screen bg-black lg:ml-[4rem]">
-      <div className="p-6 max-w-7xl mx-auto">
-        <div className="bg-[#09090A] rounded-lg border border-zinc-800">
+    <div className={`min-h-screen bg-black lg:ml-[4rem] ${isSearchInitiated ? 'pt-6' : 'flex items-center justify-center'}`}>
+          <StarButton />
+      <div className="p-6 max-w-7xl mx-auto w-full lg:w-3/4">
+        <div className="bg-[#09090A] rounded-lg border border-zinc-800 relative">
           <div className="p-6 border-b border-zinc-800">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">

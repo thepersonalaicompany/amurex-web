@@ -53,7 +53,6 @@ async function searchMemory(queryEmbedding, user_id) {
 }
 
 async function searchDocuments(queryEmbedding, user_id, enabledSources) {
-  console.log("queryEmbedding", queryEmbedding);
   const { data: documents, error } = await supabase.rpc(
     "fafsearch_two",
     {
