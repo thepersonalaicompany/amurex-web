@@ -25,6 +25,7 @@ export default function AISearch() {
   const [obsidianEnabled, setObsidianEnabled] = useState(true);
   const [hasObsidian, setHasObsidian] = useState(false);
   const [isSearchInitiated, setIsSearchInitiated] = useState(false);
+  const [suggestedPrompts, setSuggestedPrompts] = useState([]);
 
   // Auto scroll to the end of the messages
   useEffect(() => {
@@ -120,6 +121,45 @@ export default function AISearch() {
       .eq('type', 'obsidian')
       .limit(1)
       .then(({ data }) => setHasObsidian(!!data?.length));
+  }, [session?.user?.id]);
+
+  // Add new useEffect to fetch documents and generate prompts
+  useEffect(() => {
+    if (!session?.user?.id) return;
+
+    supabase
+      .from('documents')
+      .select('title, text')
+      .eq('user_id', session.user.id)
+      .order('created_at', { ascending: false })
+      .limit(3)
+      .then(async ({ data, error }) => {
+        if (error) {
+          console.error('Error fetching documents:', error);
+          return;
+        }
+
+        // Send the documents to the backend
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          body: JSON.stringify({ 
+            documents: data,
+            user_id: session.user.id,
+            type: 'prompts'  // Add type to differentiate the request
+          }),
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (!response.ok) {
+          console.error('Error generating prompts');
+          return;
+        }
+
+        const { prompts } = await response.json();
+        setSuggestedPrompts(prompts.prompts); // Access the nested prompts array
+      });
   }, [session?.user?.id]);
 
   // Update sendMessage to check enabled sources
@@ -222,126 +262,130 @@ export default function AISearch() {
                   <ChatCenteredDots className="h-5 w-5" />
                 </div>
                 <h1 className="text-2xl font-medium text-white">
-                  Search Your Knowledge
+                  Hi! I'm Amurex - your AI assistant for work and life.
                 </h1>
               </div>
-              <div className="flex items-center gap-2">
-                {!hasGoogleDocs ? (
-                  <a 
-                    href="/settings"
-                    target="_blank"
-                    className="px-4 py-2 inline-flex items-center justify-center gap-2 rounded-[8px] text-md font-medium border border-white/10 cursor-pointer text-[#FAFAFA] opacity-80 hover:bg-[#3c1671] transition-all duration-200 whitespace-nowrap relative group"
-                  >
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/0/01/Google_Docs_logo_%282014-2020%29.svg" alt="Google Docs" className="w-4 h-4" />
-                    Google Docs
-                    <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-white text-black px-2 py-1 rounded text-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
-                      Connect Google Docs
-                    </span>
-                  </a>
-                ) : (
-                  <button
-                    onClick={() => setGoogleDocsEnabled(!googleDocsEnabled)}
-                    className={`px-4 py-2 inline-flex items-center justify-center gap-2 rounded-[8px] text-md font-medium border border-white/10 ${
-                      googleDocsEnabled ? 'bg-[#9334E9] text-[#FAFAFA]' : 'text-[#FAFAFA]'
-                    } transition-all duration-200 whitespace-nowrap hover:border-[#6D28D9]`}
-                  >
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/0/01/Google_Docs_logo_%282014-2020%29.svg" alt="Google Docs" className="w-4 h-4" />
-                    Google Docs
-                    {googleDocsEnabled && (
-                      <svg className="w-4 h-4 ml-1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    )}
-                  </button>
-                )}
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  {!hasGoogleDocs ? (
+                    <a 
+                      href="/settings"
+                      target="_blank"
+                      className="px-4 py-2 inline-flex items-center justify-center gap-2 rounded-[8px] text-md font-medium border border-white/10 cursor-pointer text-[#FAFAFA] opacity-80 hover:bg-[#3c1671] transition-all duration-200 whitespace-nowrap relative group"
+                    >
+                      <img src="https://upload.wikimedia.org/wikipedia/commons/0/01/Google_Docs_logo_%282014-2020%29.svg" alt="Google Docs" className="w-4 h-4" />
+                      Google Docs
+                      <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-white text-black px-2 py-1 rounded text-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
+                        Connect Google Docs
+                      </span>
+                    </a>
+                  ) : (
+                    <button
+                      onClick={() => setGoogleDocsEnabled(!googleDocsEnabled)}
+                      className={`px-4 py-2 inline-flex items-center justify-center gap-2 rounded-[8px] text-md font-medium border border-white/10 ${
+                        googleDocsEnabled ? 'bg-[#9334E9] text-[#FAFAFA]' : 'text-[#FAFAFA]'
+                      } transition-all duration-200 whitespace-nowrap hover:border-[#6D28D9]`}
+                    >
+                      <img src="https://upload.wikimedia.org/wikipedia/commons/0/01/Google_Docs_logo_%282014-2020%29.svg" alt="Google Docs" className="w-4 h-4" />
+                      Google Docs
+                      {googleDocsEnabled && (
+                        <svg className="w-4 h-4 ml-1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      )}
+                    </button>
+                  )}
 
-                {!hasMeetings ? (
-                  <a 
-                    href="https://chromewebstore.google.com/detail/Amurex%20%28Early%20Preview%29/dckidmhhpnfhachdpobgfbjnhfnmddmc"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-4 py-2 inline-flex items-center justify-center gap-2 rounded-[8px] text-md font-medium border border-white/10 cursor-pointer text-[#FAFAFA] opacity-80 hover:bg-[#3c1671] transition-all duration-200 whitespace-nowrap relative group"
-                  >
-                    <ChatCenteredDots className="w-4 h-4" />
-                    Meetings
-                    <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-white text-black px-2 py-1 rounded text-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
-                      Connect Meetings
-                    </span>
-                  </a>
-                ) : (
-                  <button
-                    onClick={() => setMemorySearchEnabled(!memorySearchEnabled)}
-                    className={`px-4 py-2 inline-flex items-center justify-center gap-2 rounded-[8px] text-md font-medium border border-white/10 ${
-                      memorySearchEnabled ? 'bg-[#9334E9] text-[#FAFAFA]' : 'text-[#FAFAFA]'
-                    } transition-all duration-200 whitespace-nowrap hover:border-[#6D28D9]`}
-                  >
-                    <ChatCenteredDots className="w-4 h-4" />
-                    Meetings
-                    {memorySearchEnabled && (
-                      <svg className="w-4 h-4 ml-1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    )}
-                  </button>
-                )}
+                  {!hasMeetings ? (
+                    <a 
+                      href="https://chromewebstore.google.com/detail/Amurex%20%28Early%20Preview%29/dckidmhhpnfhachdpobgfbjnhfnmddmc"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-4 py-2 inline-flex items-center justify-center gap-2 rounded-[8px] text-md font-medium border border-white/10 cursor-pointer text-[#FAFAFA] opacity-80 hover:bg-[#3c1671] transition-all duration-200 whitespace-nowrap relative group"
+                    >
+                      <ChatCenteredDots className="w-4 h-4" />
+                      Meetings
+                      <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-white text-black px-2 py-1 rounded text-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
+                        Connect Meetings
+                      </span>
+                    </a>
+                  ) : (
+                    <button
+                      onClick={() => setMemorySearchEnabled(!memorySearchEnabled)}
+                      className={`px-4 py-2 inline-flex items-center justify-center gap-2 rounded-[8px] text-md font-medium border border-white/10 ${
+                        memorySearchEnabled ? 'bg-[#9334E9] text-[#FAFAFA]' : 'text-[#FAFAFA]'
+                      } transition-all duration-200 whitespace-nowrap hover:border-[#6D28D9]`}
+                    >
+                      <ChatCenteredDots className="w-4 h-4" />
+                      Meetings
+                      {memorySearchEnabled && (
+                        <svg className="w-4 h-4 ml-1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      )}
+                    </button>
+                  )}
+                </div>
 
-                {!hasNotion ? (
-                  <a 
-                    href="/settings"
-                    target="_blank"
-                    className="px-4 py-2 inline-flex items-center justify-center gap-2 rounded-[8px] text-md font-medium border border-white/10 cursor-pointer text-[#FAFAFA] opacity-80 hover:bg-[#3c1671] transition-all duration-200 whitespace-nowrap relative group"
-                  >
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png" alt="Notion" className="w-4 h-4" />
-                    Notion
-                    <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-white text-black px-2 py-1 rounded text-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
-                      Connect Notion
-                    </span>
-                  </a>
-                ) : (
-                  <button
-                    onClick={() => setNotionEnabled(!notionEnabled)}
-                    className={`px-4 py-2 inline-flex items-center justify-center gap-2 rounded-[8px] text-md font-medium border border-white/10 ${
-                      notionEnabled ? 'bg-[#9334E9] text-[#FAFAFA]' : 'text-[#FAFAFA]'
-                    } transition-all duration-200 whitespace-nowrap hover:border-[#6D28D9]`}
-                  >
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png" alt="Notion" className="w-4 h-4" />
-                    Notion
-                    {notionEnabled && (
-                      <svg className="w-4 h-4 ml-1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    )}
-                  </button>
-                )}
+                <div className="flex items-center gap-2">
+                  {!hasNotion ? (
+                    <a 
+                      href="/settings"
+                      target="_blank"
+                      className="px-4 py-2 inline-flex items-center justify-center gap-2 rounded-[8px] text-md font-medium border border-white/10 cursor-pointer text-[#FAFAFA] opacity-80 hover:bg-[#3c1671] transition-all duration-200 whitespace-nowrap relative group"
+                    >
+                      <img src="https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png" alt="Notion" className="w-4 h-4" />
+                      Notion
+                      <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-white text-black px-2 py-1 rounded text-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
+                        Connect Notion
+                      </span>
+                    </a>
+                  ) : (
+                    <button
+                      onClick={() => setNotionEnabled(!notionEnabled)}
+                      className={`px-4 py-2 inline-flex items-center justify-center gap-2 rounded-[8px] text-md font-medium border border-white/10 ${
+                        notionEnabled ? 'bg-[#9334E9] text-[#FAFAFA]' : 'text-[#FAFAFA]'
+                      } transition-all duration-200 whitespace-nowrap hover:border-[#6D28D9]`}
+                    >
+                      <img src="https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png" alt="Notion" className="w-4 h-4" />
+                      Notion
+                      {notionEnabled && (
+                        <svg className="w-4 h-4 ml-1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      )}
+                    </button>
+                  )}
 
-                {!hasObsidian ? (
-                  <a 
-                    href="/settings"
-                    target="_blank"
-                    className="px-4 py-2 inline-flex items-center justify-center gap-2 rounded-[8px] text-md font-medium border border-white/10 cursor-pointer text-[#FAFAFA] opacity-80 hover:bg-[#3c1671] transition-all duration-200 whitespace-nowrap relative group"
-                  >
-                    <img src="https://obsidian.md/images/obsidian-logo-gradient.svg" alt="Obsidian" className="w-4 h-4" />
-                    Obsidian
-                    <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-white text-black px-2 py-1 rounded text-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
-                      Upload Obsidian Files
-                    </span>
-                  </a>
-                ) : (
-                  <button
-                    onClick={() => setObsidianEnabled(!obsidianEnabled)}
-                    className={`px-4 py-2 inline-flex items-center justify-center gap-2 rounded-[8px] text-md font-medium border border-white/10 ${
-                      obsidianEnabled ? 'bg-[#9334E9] text-[#FAFAFA]' : 'text-[#FAFAFA]'
-                    } transition-all duration-200 whitespace-nowrap hover:border-[#6D28D9]`}
-                  >
-                    <img src="https://obsidian.md/images/obsidian-logo-gradient.svg" alt="Obsidian" className="w-4 h-4" />
-                    Obsidian
-                    {obsidianEnabled && (
-                      <svg className="w-4 h-4 ml-1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    )}
-                  </button>
-                )}
+                  {!hasObsidian ? (
+                    <a 
+                      href="/settings"
+                      target="_blank"
+                      className="px-4 py-2 inline-flex items-center justify-center gap-2 rounded-[8px] text-md font-medium border border-white/10 cursor-pointer text-[#FAFAFA] opacity-80 hover:bg-[#3c1671] transition-all duration-200 whitespace-nowrap relative group"
+                    >
+                      <img src="https://obsidian.md/images/obsidian-logo-gradient.svg" alt="Obsidian" className="w-4 h-4" />
+                      Obsidian
+                      <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-white text-black px-2 py-1 rounded text-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
+                        Upload Obsidian Files
+                      </span>
+                    </a>
+                  ) : (
+                    <button
+                      onClick={() => setObsidianEnabled(!obsidianEnabled)}
+                      className={`px-4 py-2 inline-flex items-center justify-center gap-2 rounded-[8px] text-md font-medium border border-white/10 ${
+                        obsidianEnabled ? 'bg-[#9334E9] text-[#FAFAFA]' : 'text-[#FAFAFA]'
+                      } transition-all duration-200 whitespace-nowrap hover:border-[#6D28D9]`}
+                    >
+                      <img src="https://obsidian.md/images/obsidian-logo-gradient.svg" alt="Obsidian" className="w-4 h-4" />
+                      Obsidian
+                      {obsidianEnabled && (
+                        <svg className="w-4 h-4 ml-1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      )}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -354,6 +398,42 @@ export default function AISearch() {
                 sendMessage={sendMessage}
                 className="w-full"
               />
+              
+              {/* Add suggested prompts section */}
+              {!isSearchInitiated && (
+                <div className="mt-4 space-y-2">
+                  <div className="text-zinc-500 text-sm">Suggested searches:</div>
+                  <div className="grid grid-cols-3 gap-3">
+                    {suggestedPrompts.length === 0 ? (
+                      // Loading state
+                      <>
+                        {[1, 2, 3].map((_, index) => (
+                          <div 
+                            key={index}
+                            className="h-[52px] bg-black rounded-lg border border-zinc-800 animate-pulse"
+                          >
+                            <div className="h-4 bg-zinc-800 rounded w-3/4 m-4"></div>
+                          </div>
+                        ))}
+                      </>
+                    ) : (
+                      // Actual prompts
+                      suggestedPrompts.map((prompt, index) => (
+                        <button
+                          key={index}
+                          onClick={() => {
+                            setInputValue(prompt);
+                            sendMessage(prompt);
+                          }}
+                          className="px-4 py-2 rounded-lg bg-black border border-zinc-800 text-zinc-300 hover:bg-[#3c1671] transition-colors text-sm text-left"
+                        >
+                          {prompt}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             {(isSearching || searchResults?.query) && (
@@ -511,6 +591,8 @@ export const Sources = ({ content = [] }) => {
                     <img src="https://upload.wikimedia.org/wikipedia/commons/0/01/Google_Docs_logo_%282014-2020%29.svg" alt="Google Docs" className="w-6" />
                   ) : source.type === 'notion' ? (
                     <img src="https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png" alt="Notion" className="w-6" />
+                  ) : source.type === 'obsidian' ? (
+                    <img src="https://obsidian.md/images/obsidian-logo-gradient.svg" alt="Obsidian" className="w-6" />
                   ) : (
                     <Stack size={24} />
                   )}
