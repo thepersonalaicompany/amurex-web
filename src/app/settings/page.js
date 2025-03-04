@@ -17,7 +17,8 @@ import { toast } from 'react-hot-toast';
 
 const PROVIDER_ICONS = {
   google: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/768px-Google_%22G%22_logo.svg.png",
-  notion: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/Notion-logo.svg/2048px-Notion-logo.svg.png"
+  notion: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/Notion-logo.svg/2048px-Notion-logo.svg.png",
+  obsidian: "https://obsidian.md/images/obsidian-logo-gradient.svg"
 };
 
 const BASE_URL_BACKEND = "https://api.amurex.ai";
@@ -54,6 +55,10 @@ function SettingsContent() {
   const [teamInviteCode, setTeamInviteCode] = useState('');
   const [copyButtonText, setCopyButtonText] = useState('Copy URL');
   const [isMobile, setIsMobile] = useState(false);
+  const [isObsidianModalOpen, setIsObsidianModalOpen] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -708,6 +713,77 @@ function SettingsContent() {
     fetchTeamInviteCode();
   }, []);
 
+  // Update the handleFileSelect function
+  const handleFileSelect = (e) => {
+    const files = Array.from(e.target?.files || e.dataTransfer?.files || [])
+      .filter(file => file.name.endsWith('.md'));
+    setSelectedFiles(files);
+  };
+
+  // Add drag and drop handlers
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.currentTarget.classList.add('border-[#9334E9]');
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.currentTarget.classList.remove('border-[#9334E9]');
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.currentTarget.classList.remove('border-[#9334E9]');
+    handleFileSelect(e);
+  };
+
+  // Add new function to handle file upload
+  const handleObsidianUpload = async () => {
+    if (selectedFiles.length === 0) return;
+
+    setIsUploading(true);
+    setUploadProgress(0);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('No session found');
+
+      for (let i = 0; i < selectedFiles.length; i++) {
+        const file = selectedFiles[i];
+        const content = await file.text();
+
+        const response = await fetch('/api/obsidian/upload', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            fileName: file.name,
+            content: content,
+            userId: session.user.id
+          }),
+        });
+
+        if (!response.ok) throw new Error('Upload failed');
+
+        setUploadProgress(((i + 1) / selectedFiles.length) * 100);
+      }
+
+      toast.success('Markdown files uploaded successfully!');
+      setIsObsidianModalOpen(false);
+      setSelectedFiles([]);
+    } catch (error) {
+      console.error('Error uploading files:', error);
+      toast.error('Failed to upload files');
+    } finally {
+      setIsUploading(false);
+      setUploadProgress(0);
+    }
+  };
+
   return (
     <div className="flex min-h-screen bg-black text-white">
       {/* Left App Navbar - the thin one */}
@@ -781,7 +857,7 @@ function SettingsContent() {
                   </div>
 
                   <div className="flex gap-4">
-                  <Card className="bg-black border-zinc-800 flex-1">
+                    <Card className="bg-black border-zinc-800 flex-1">
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-4">
@@ -813,7 +889,6 @@ function SettingsContent() {
                         </div>
                       </CardContent>
                     </Card>
-
 
                     <Card className="bg-black border-zinc-800 flex-1">
                       <CardContent className="p-4">
@@ -848,6 +923,58 @@ function SettingsContent() {
                       </CardContent>
                     </Card>
                   </div>
+
+                  <div className="flex gap-4">
+                    <Card className="bg-black border-zinc-800 flex-1">
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <img 
+                              src={PROVIDER_ICONS.obsidian} 
+                              alt="Obsidian" 
+                              className="w-6 h-6"
+                            />
+                            <div>
+                              <h3 className="font-medium text-white text-lg">Upload from Obsidian</h3>
+                              <p className="text-sm text-zinc-400">Import your markdown files</p>
+                            </div>
+                          </div>
+                          <Button 
+                            variant="outline" 
+                            className="bg-zinc-900 text-zinc-300 hover:bg-zinc-800 border-zinc-800 min-w-[100px]"
+                            onClick={() => setIsObsidianModalOpen(true)}
+                          >
+                            Upload
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="bg-black border-zinc-800 flex-1">
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <div className="w-6 h-6 rounded-full bg-zinc-800 flex items-center justify-center">
+                              <Plus className="w-4 h-4 text-zinc-400" />
+                            </div>
+                            <div>
+                              <h3 className="font-medium text-white text-lg">Request Integration</h3>
+                              <p className="text-sm text-zinc-400">Suggest the next integration</p>
+                            </div>
+                          </div>
+                          <Button 
+                            variant="outline" 
+                            className="bg-zinc-900 text-zinc-300 hover:bg-zinc-800 border-zinc-800 min-w-[100px]"
+                            onClick={() => window.open('https://github.com/thepersonalaicompany/amurex/issues/new', '_blank')}
+                          >
+                            Request
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  
                 </CardContent>
               </Card>
             </div>
@@ -1307,6 +1434,85 @@ function SettingsContent() {
               >
                 <span>Done</span>
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isObsidianModalOpen && (
+        <div className="px-2 fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-black bg-opacity-40 backdrop-blur-sm p-8 rounded-lg shadow-lg border border-white/20 max-w-lg w-full">
+            <h2 className="text-xl font-medium mb-4 text-white">Upload Markdown Files</h2>
+            
+            <div className="mt-4">
+              <input
+                type="file"
+                multiple
+                accept=".md"
+                onChange={handleFileSelect}
+                className="hidden"
+                id="markdown-upload"
+              />
+              <label
+                htmlFor="markdown-upload"
+                className="cursor-pointer flex items-center justify-center w-full p-4 border-2 border-dashed border-zinc-700 rounded-lg hover:border-[#9334E9] transition-colors"
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+              >
+                <div className="text-center">
+                  <FileText className="w-8 h-8 text-[#9334E9] mx-auto mb-2" />
+                  <p className="text-white">Click to select markdown files</p>
+                  <p className="text-sm text-zinc-400">or drag and drop them here</p>
+                </div>
+              </label>
+
+              {selectedFiles.length > 0 && (
+                <div className="mt-4">
+                  <h3 className="text-white font-medium mb-2">Selected Files:</h3>
+                  <ul className="space-y-2">
+                    {selectedFiles.map((file, index) => (
+                      <li key={index} className="text-zinc-400 flex items-center">
+                        <FileText className="w-4 h-4 mr-2" />
+                        {file.name}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {isUploading && (
+                <div className="mt-4">
+                  <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-[#9334E9] transition-all duration-300"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                  <p className="text-zinc-400 text-sm mt-2 text-center">
+                    Uploading... {Math.round(uploadProgress)}%
+                  </p>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-3 mt-6">
+                <button
+                  onClick={() => {
+                    setIsObsidianModalOpen(false);
+                    setSelectedFiles([]);
+                  }}
+                  className="mt-2 lg:px-4 lg:py-2 px-2 py-2 inline-flex items-center justify-center gap-2 rounded-sm text-sm font-medium border border-white/10 text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:bg-[#3c1671] hover:border-[#6D28D9]"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleObsidianUpload}
+                  disabled={selectedFiles.length === 0 || isUploading}
+                  className="mt-2 lg:px-4 lg:py-2 px-2 py-2 inline-flex items-center justify-center gap-2 rounded-sm text-sm font-medium border border-white/10 !bg-[#9334E9] text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:!bg-[#3c1671] hover:border-[#6D28D9]"
+                >
+                  Upload Files
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -278,7 +278,7 @@ async function generateFollowup(message) {
 }
 // 54. Define POST function for API endpoint
 export async function POST(req, res) {
-  const { message, user_id, googleDocsEnabled, notionEnabled, memorySearchEnabled } = await req.json();
+  const { message, user_id, googleDocsEnabled, notionEnabled, memorySearchEnabled, obsidianEnabled } = await req.json();
 
   if (!user_id) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
@@ -292,6 +292,7 @@ export async function POST(req, res) {
     const enabledSources = [
       ...(googleDocsEnabled ? ['google_docs'] : []),
       ...(notionEnabled ? ['notion'] : []),
+      ...(obsidianEnabled ? ['obsidian'] : []),
       ...(memorySearchEnabled ? ['memory'] : [])
     ];
 
@@ -322,7 +323,7 @@ export async function POST(req, res) {
     // Get all relevant sources based on enabled types
     const [memoryChunks, documentChunks] = await Promise.all([
       enabledSources.includes('memory') ? searchMemory(queryEmbedding, user_id) : [],
-      enabledSources.some(source => ['google_docs', 'notion'].includes(source)) 
+      enabledSources.some(source => ['google_docs', 'notion', 'obsidian'].includes(source)) 
         ? searchDocuments(queryEmbedding, user_id, enabledSources.filter(source => source !== 'memory'))
         : []
     ]);
@@ -371,7 +372,7 @@ export async function POST(req, res) {
           
                   Retrieved chunks from online conversations: ${JSON.stringify(formattedChunks)}
           
-                  Retrieved chunks from Google Docs (from files): ${JSON.stringify(documentChunks.map(doc => ({
+                  Retrieved chunks from documents (from files): ${JSON.stringify(documentChunks.map(doc => ({
             title: doc.title,
             content: doc.selected_chunks
           })))}`,
