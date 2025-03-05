@@ -395,19 +395,21 @@ export async function POST(req) {
         url: item.meeting_id ? `/meetings/${item.meeting_id}` : null
       })),
       ...documentChunks.map(doc => ({
+        id: doc.id,
         text: doc.selected_chunks?.join('\n') || '',
         title: doc.title,
         url: doc.url,
         type: doc.type
       }))
     ];
+    
+    // console.log("documentChunks", documentChunks);
 
     // Create streaming response
     const stream = new TransformStream();
     const writer = stream.writable.getWriter();
     const encoder = new TextEncoder();
 
-    console.log("documentChunks", documentChunks);
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
@@ -433,6 +435,8 @@ export async function POST(req) {
     // Process the stream
     (async () => {
       try {
+        let fullGPTResponse = ''; // Track complete GPT response
+
         // Send sources first
         const sourcesPayload = JSON.stringify({
           success: true,
@@ -444,6 +448,7 @@ export async function POST(req) {
         for await (const chunk of completion) {
           const content = chunk.choices[0]?.delta?.content || '';
           if (content) {
+            fullGPTResponse += content; // Accumulate the response
             const payload = JSON.stringify({
               success: true,
               chunk: content,
@@ -451,6 +456,13 @@ export async function POST(req) {
             await writer.write(encoder.encode(payload + '\n'));
           }
         }
+
+        await supabase.from('sessions').insert({
+          user_id: user_id,
+          query: message,
+          response: fullGPTResponse,
+          sources: sources,
+        });
 
         // Send final message
         const finalPayload = JSON.stringify({
