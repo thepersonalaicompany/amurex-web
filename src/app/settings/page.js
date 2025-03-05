@@ -24,7 +24,7 @@ const PROVIDER_ICONS = {
 const BASE_URL_BACKEND = "https://api.amurex.ai";
 
 function SettingsContent() {
-  const [activeTab, setActiveTab] = useState('personalization');
+  const [activeTab, setActiveTab] = useState('');
   const [loading, setLoading] = useState(false);
   const [userEmail, setUserEmail] = useState('');
   const [notionConnected, setNotionConnected] = useState(false);
@@ -61,6 +61,31 @@ function SettingsContent() {
   const [isUploading, setIsUploading] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [session, setSession] = useState(null);
+  // Modify the session check useEffect
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      // Redirect if no session
+      if (!session) {
+        const currentPath = window.location.pathname + window.location.search;
+        const encodedRedirect = encodeURIComponent(currentPath);
+        router.push(`/web_app/signin?redirect=${encodedRedirect}`);
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      // Redirect if session is terminated
+      if (!session) {
+        const currentPath = window.location.pathname + window.location.search;
+        const encodedRedirect = encodeURIComponent(currentPath);
+        router.push(`/web_app/signin?redirect=${encodedRedirect}`);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [router]);
 
   useEffect(() => {
     checkIntegrations();
@@ -167,7 +192,9 @@ function SettingsContent() {
     if (error) {
       console.error('Error logging out:', error);
     } else {
-      router.push('/web_app/signin');
+      const currentPath = window.location.pathname + window.location.search;
+      const encodedRedirect = encodeURIComponent(currentPath);
+      router.push(`/web_app/signin?redirect=${encodedRedirect}`);
     }
     
     setLoading(false);
@@ -784,6 +811,24 @@ function SettingsContent() {
     }
   };
 
+  useEffect(() => {
+    // Get tab from URL query parameter
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get('tab');
+    if (tab) {
+      setActiveTab(tab);
+    } else {
+      // Set default tab and update URL
+      router.push(`${window.location.pathname}?tab=personalization`);
+    }
+  }, [router]);
+
+  const handleTabChange = (tabName) => {
+    // Update URL with new tab
+    router.push(`${window.location.pathname}?tab=${tabName}`);
+    setActiveTab(tabName);
+  };
+
   return (
     <div className="flex min-h-screen bg-black text-white">
       {/* Left App Navbar - the thin one */}
@@ -798,7 +843,7 @@ function SettingsContent() {
           <h2 className="text-2xl font-medium text-white mb-6">Settings</h2>
           <div className="text-md space-y-2">
             <button
-              onClick={() => setActiveTab('personalization')}
+              onClick={() => handleTabChange('personalization')}
               className={`w-full text-left px-4 py-2 rounded-lg ${
                 activeTab === 'personalization' ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:bg-zinc-800'
               }`}
@@ -806,7 +851,7 @@ function SettingsContent() {
               Personalization
             </button>
             <button
-              onClick={() => setActiveTab('account')}
+              onClick={() => handleTabChange('account')}
               className={`w-full text-left px-4 py-2 rounded-lg ${
                 activeTab === 'account' ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:bg-zinc-800'
               }`}
@@ -814,7 +859,7 @@ function SettingsContent() {
               Account
             </button>
             <button
-              onClick={() => setActiveTab('team')}
+              onClick={() => handleTabChange('team')}
               className={`w-full text-left px-4 py-2 rounded-lg ${
                 activeTab === 'team' ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:bg-zinc-800'
               }`}
@@ -822,7 +867,7 @@ function SettingsContent() {
               Team
             </button>
             <button
-              onClick={() => setActiveTab('feedback')}
+              onClick={() => handleTabChange('feedback')}
               className={`w-full text-left px-4 py-2 rounded-lg ${
                 activeTab === 'feedback' ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:bg-zinc-800'
               }`}
@@ -834,6 +879,41 @@ function SettingsContent() {
 
         {/* Main Content */}
         <div className="flex-1 p-8 bg-black overflow-y-auto">
+          <div className="space-y-4 mb-4">
+            <div className="relative">
+              <div className="absolute -inset-0.5 bg-gradient-to-r from-[#9334E9] to-[#9334E9] rounded-lg blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-gradient-x"></div>
+              <Card className="bg-black border-zinc-500 relative overflow-hidden">
+                <div className="absolute inset-0 bg-[#9334E9]/20 animate-pulse"></div>
+                <div className="absolute inset-0 bg-gradient-to-r from-[#9334E9]/30 via-[#9334E9]/20 to-[#9334E9]/30"></div>
+                <CardContent className="p-4 relative">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <MessageSquare className="w-6 h-6 text-[#9334E9]" />
+                      <div>
+                        <h3 className="font-medium text-white text-lg">Memory Chat (new!)</h3>
+                        <p className="text-sm text-zinc-400">Try our new memory chat feature</p>
+                      </div>
+                    </div>
+                    <div className="relative">
+                      <div className="absolute -inset-0.5 bg-gradient-to-r from-[#9334E9] to-[#9334E9] rounded-lg blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-gradient-x"></div>
+                      <Button 
+                        variant="outline" 
+                        className="relative bg-zinc-900/50 text-zinc-300 hover:bg-zinc-800 hover:border-[#9334E9] border border-zinc-800 rounded-md backdrop-blur-sm transition-colors duration-200"
+                        onClick={async () => {
+                          console.log("clicked");
+                          await logUserAction("not-required", 'web_memory_chat_tried');
+                          router.push('/chat');
+                        }}
+                      >
+                        Try Now
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
           {activeTab === 'personalization' && (
             <div className="space-y-8">
               <h1 className="text-2xl font-medium text-white">Personalization</h1>
@@ -1170,7 +1250,7 @@ function SettingsContent() {
                               </div>
                               <div>
                                 <p className="text-white font-medium">
-                                  {member.name || member.users?.email}
+                                  {member.name || member.users?.email} <b>({member.users?.email || member.name})</b>
                                 </p>
                                 <div className="flex items-center gap-2 text-sm text-zinc-400">
                                   {editingMemberId === member.id ? (
@@ -1291,41 +1371,6 @@ function SettingsContent() {
               </Card>
             </div>
           )}
-
-          <div className="space-y-4 mt-4">
-            <div className="relative">
-              <div className="absolute -inset-0.5 bg-gradient-to-r from-[#9334E9] to-[#9334E9] rounded-lg blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-gradient-x"></div>
-              <Card className="bg-black border-zinc-500 relative overflow-hidden">
-                <div className="absolute inset-0 bg-[#9334E9]/20 animate-pulse"></div>
-                <div className="absolute inset-0 bg-gradient-to-r from-[#9334E9]/30 via-[#9334E9]/20 to-[#9334E9]/30"></div>
-                <CardContent className="p-4 relative">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <MessageSquare className="w-6 h-6 text-[#9334E9]" />
-                      <div>
-                        <h3 className="font-medium text-white text-lg">Memory Chat (new!)</h3>
-                        <p className="text-sm text-zinc-400">Try our new memory chat feature</p>
-                      </div>
-                    </div>
-                    <div className="relative">
-                      <div className="absolute -inset-0.5 bg-gradient-to-r from-[#9334E9] to-[#9334E9] rounded-lg blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-gradient-x"></div>
-                      <Button 
-                        variant="outline" 
-                        className="relative bg-zinc-900/50 text-zinc-300 hover:bg-zinc-800 hover:border-[#9334E9] border border-zinc-800 rounded-md backdrop-blur-sm transition-colors duration-200"
-                        onClick={async () => {
-                          console.log("clicked");
-                          await logUserAction("not-required", 'web_memory_chat_tried');
-                          router.push('/chat');
-                        }}
-                      >
-                        Try Now
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
         </div>
       </div>
 

@@ -16,6 +16,15 @@ export default function SignIn() {
   const [isExtensionAuth, setIsExtensionAuth] = useState(false);
   const router = useRouter();
   let signupRedirect = "/web_app/signup";
+  const [redirectUrl, setRedirectUrl] = useState("");
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const redirect = params.get('redirect');
+    if (redirect) {
+      setRedirectUrl(decodeURIComponent(redirect));
+    }
+  }, []);
 
   const handleSignIn = async (e) => {
     e.preventDefault();
@@ -47,7 +56,8 @@ export default function SignIn() {
       if (isExtensionAuth) {
         window.close();
       } else {
-        router.push("/meetings");
+        // Redirect to the original URL if it exists, otherwise to /meetings
+        router.push(redirectUrl || "/meetings");
         setMessage("Signing in...");
       }
     }
@@ -181,7 +191,7 @@ export default function SignIn() {
           <p className="mt-4 md:mt-6 text-center text-xs md:text-sm text-gray-400">
             Don&apos;t have an account?{" "}
             <Link
-              href={signupRedirect}
+              href={signupRedirect + (redirectUrl ? `?redirect=${encodeURIComponent(redirectUrl)}` : '')}
               className="text-white font-light hover:underline"
             >
               Sign Up

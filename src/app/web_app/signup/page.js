@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { Input } from "@/components/ui/Input";
 import Link from "next/link";
@@ -15,8 +15,18 @@ export default function SignUp() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const router = useRouter();
+  const [redirectUrl, setRedirectUrl] = useState("");
 
-  let signinRedirect = "/web_app/signin";
+  // Add useEffect to get redirect URL from query params
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const redirect = params.get('redirect');
+    if (redirect) {
+      setRedirectUrl(decodeURIComponent(redirect));
+    }
+  }, []);
+
+  let signinRedirect = `/web_app/signin${redirectUrl ? `?redirect=${encodeURIComponent(redirectUrl)}` : ''}`;
 
   const createUserEntry = async (userId) => {
     const { data, error } = await supabase
@@ -92,7 +102,8 @@ export default function SignUp() {
         console.error("Error sending email to external endpoint:", err);
       }
 
-      router.push("/meetings");
+      // Redirect to the original URL if it exists, otherwise to /meetings
+      router.push(redirectUrl || "/meetings");
     } else {
       setMessage("An unexpected error occurred. Please try again.");
     }

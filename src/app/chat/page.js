@@ -7,6 +7,7 @@ import remarkGfm from "remark-gfm";
 import { supabase } from '@/lib/supabaseClient';
 import { Navbar } from '@/components/Navbar';
 import StarButton from '@/components/star-button';
+import { useRouter } from "next/navigation";
 // 3. Home component
 export default function AISearch() {
 // 4. Initialize states and refs
@@ -27,6 +28,9 @@ export default function AISearch() {
   const [isSearchInitiated, setIsSearchInitiated] = useState(false);
   const [suggestedPrompts, setSuggestedPrompts] = useState([]);
 
+  // Add useRouter
+  const router = useRouter();
+
   // Auto scroll to the end of the messages
   useEffect(() => {
     setTimeout(() => {
@@ -34,18 +38,30 @@ export default function AISearch() {
     }, 0);
   }, [messageHistory]);
 
-  // Add session check on component mount
+  // Modify the session check useEffect
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
+      // Redirect if no session
+      if (!session) {
+        const currentPath = window.location.pathname + window.location.search;
+        const encodedRedirect = encodeURIComponent(currentPath);
+        router.push(`/web_app/signin?redirect=${encodedRedirect}`);
+      }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
+      // Redirect if session is terminated
+      if (!session) {
+        const currentPath = window.location.pathname + window.location.search;
+        const encodedRedirect = encodeURIComponent(currentPath);
+        router.push(`/web_app/signin?redirect=${encodedRedirect}`);
+      }
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [router]);
 
   // Update message history fetch with user_id
   useEffect(() => {
