@@ -45,7 +45,7 @@ export function Navbar() {
         </div>
         {/* Repeat the above structure for other buttons */}
         <div className="relative group">
-          <Button variant="navbar" size="icon" onClick={() => router.push('/settings')}>
+          <Button variant="navbar" size="icon" onClick={() => router.push('/settings?tab=personalization')}>
             <Settings className="h-6 w-6" style={{ color: "var(--color-4)" }} />
           </Button>
           <span className="absolute left-12 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-white">

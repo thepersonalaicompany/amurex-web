@@ -860,7 +860,7 @@ function SettingsContent() {
             </button>
             <button
               onClick={() => handleTabChange('team')}
-              className={`w-full text-left px-4 py-2 rounded-lg ${
+              className={`w-full text-left px-4 py-2 rounded-lg hidden ${
                 activeTab === 'team' ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:bg-zinc-800'
               }`}
             >

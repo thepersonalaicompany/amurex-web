@@ -166,7 +166,7 @@ export default function TranscriptList() {
         <div className="p-6 max-w-7xl mx-auto">
           <h1 className="text-3xl font-semibold mb-6 text-white">Meetings</h1>
           
-          <div className="flex items-center gap-2 mb-6 flex-wrap bg-[#1C1C1E] p-1 rounded-lg w-fit">
+          <div className="flex items-center gap-2 mb-6 flex-wrap bg-[#1C1C1E] p-1 rounded-lg w-fit hidden">
             <label className={`relative px-4 py-2 rounded-md cursor-pointer transition-all duration-200 ${
               filter === 'personal' 
                 ? 'bg-[#9334E9] text-[#FAFAFA] hover:cursor-not-allowed' 
