@@ -1,19 +1,19 @@
-'use client';
+"use client";
 
-export const dynamic = 'force-dynamic'
+export const dynamic = "force-dynamic";
 
-import { Suspense } from 'react';
-import { useState, useEffect, useCallback } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { supabase } from '@/lib/supabaseClient';
-import { Button } from '@/components/ui/Button';
+import { Suspense } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { supabase } from "@/lib/supabaseClient";
+import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { MessageSquare, FileText, Cloud, Github, Bug, LogOut, Video, Calendar, Pencil, UserPlus, Plus, Minus } from 'lucide-react';
 import Cookies from 'js-cookie';
 import { X } from "@phosphor-icons/react";
-import { Navbar } from '@/components/Navbar'
-import { toast } from 'react-hot-toast';
+import { Navbar } from "@/components/Navbar";
+import { toast } from "react-hot-toast";
 
 const PROVIDER_ICONS = {
   google: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/768px-Google_%22G%22_logo.svg.png",
@@ -24,19 +24,20 @@ const PROVIDER_ICONS = {
 const BASE_URL_BACKEND = "https://api.amurex.ai";
 
 function SettingsContent() {
-  const [activeTab, setActiveTab] = useState('');
+  const [activeTab, setActiveTab] = useState("personalization");
   const [loading, setLoading] = useState(false);
-  const [userEmail, setUserEmail] = useState('');
+  const [userEmail, setUserEmail] = useState("");
   const [notionConnected, setNotionConnected] = useState(false);
   const [googleDocsConnected, setGoogleDocsConnected] = useState(false);
   const [calendarConnected, setCalendarConnected] = useState(false);
   const [notionDocuments, setNotionDocuments] = useState([]);
   const [isImporting, setIsImporting] = useState(false);
-  const [importSource, setImportSource] = useState('');
+  const [importSource, setImportSource] = useState("");
   const [importProgress, setImportProgress] = useState(0);
   const [memoryEnabled, setMemoryEnabled] = useState(false);
-  const [createdAt, setCreatedAt] = useState('');
-  const [emailNotificationsEnabled, setEmailNotificationsEnabled] = useState(false);
+  const [createdAt, setCreatedAt] = useState("");
+  const [emailNotificationsEnabled, setEmailNotificationsEnabled] =
+    useState(false);
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
   const [teamName, setTeamName] = useState('');
   const [teamLocation, setTeamLocation] = useState('');
@@ -92,11 +93,11 @@ function SettingsContent() {
   }, []);
 
   useEffect(() => {
-    const connection = searchParams.get('connection');
-    const error = searchParams.get('error');
+    const connection = searchParams.get("connection");
+    const error = searchParams.get("error");
 
-    if (connection === 'success') {
-      toast.success('Google Docs connected successfully!');
+    if (connection === "success") {
+      toast.success("Google Docs connected successfully!");
     }
     if (error) {
       toast.error(`Connection failed: ${error}`);
@@ -106,20 +107,22 @@ function SettingsContent() {
   useEffect(() => {
     const checkEmailSettings = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
         if (session) {
           const { data: user, error } = await supabase
-            .from('users')
-            .select('emails_enabled')
-            .eq('id', session.user.id)
+            .from("users")
+            .select("emails_enabled")
+            .eq("id", session.user.id)
             .single();
-          
+
           if (user) {
             setEmailNotificationsEnabled(user.emails_enabled);
           }
         }
       } catch (error) {
-        console.error('Error checking email settings:', error);
+        console.error("Error checking email settings:", error);
       }
     };
 
@@ -128,23 +131,30 @@ function SettingsContent() {
 
   const checkIntegrations = async () => {
     try {
-      console.log('checkIntegrations');
-      const { data: { session }, error } = await supabase.auth.getSession();
+      console.log("checkIntegrations");
+      const {
+        data: { session },
+        error,
+      } = await supabase.auth.getSession();
       if (session) {
         const { data: user, error } = await supabase
-          .from('users')
-          .select('notion_connected, google_docs_connected, calendar_connected, memory_enabled, email, created_at')
-          .eq('id', session.user.id)
+          .from("users")
+          .select(
+            "notion_connected, google_docs_connected, calendar_connected, memory_enabled, email, created_at"
+          )
+          .eq("id", session.user.id)
           .single();
-        console.log('user', user);
+        console.log("user", user);
 
         if (user) {
           setUserEmail(user.email);
-          setCreatedAt(new Date(user.created_at).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-          }));
+          setCreatedAt(
+            new Date(user.created_at).toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            })
+          );
           setNotionConnected(user.notion_connected);
           setGoogleDocsConnected(user.google_docs_connected);
           setCalendarConnected(user.calendar_connected);
@@ -152,7 +162,7 @@ function SettingsContent() {
         }
       }
     } catch (error) {
-      console.error('Error checking integrations:', error);
+      console.error("Error checking integrations:", error);
     }
   };
 
@@ -163,105 +173,113 @@ function SettingsContent() {
   const handleLogout = async () => {
     setShowSignOutConfirm(false);
     setLoading(true);
-    
+
     // Clear local storage and cookies
-    console.log('Clearing cookies');
-    localStorage.removeItem('amurex_session');
-    Cookies.remove('amurex_session', { 
-      path: '/',
-      sameSite: 'strict',
-      secure: process.env.NODE_ENV === 'production'
+    console.log("Clearing cookies");
+    localStorage.removeItem("amurex_session");
+    Cookies.remove("amurex_session", {
+      path: "/",
+      sameSite: "strict",
+      secure: process.env.NODE_ENV === "production",
     });
-    
+
     // If in extension environment, send message to clear extension storage
     if (window.chrome && chrome.runtime && chrome.runtime.id) {
       try {
         window.postMessage(
-          { 
-            type: 'AMUREX_LOGOUT',
-          }, 
-          '*'
+          {
+            type: "AMUREX_LOGOUT",
+          },
+          "*"
         );
       } catch (err) {
-        console.error('Error sending logout message to extension:', err);
+        console.error("Error sending logout message to extension:", err);
       }
     }
 
     // Sign out from Supabase
     const { error } = await supabase.auth.signOut();
     if (error) {
-      console.error('Error logging out:', error);
+      console.error("Error logging out:", error);
     } else {
       const currentPath = window.location.pathname + window.location.search;
       const encodedRedirect = encodeURIComponent(currentPath);
       router.push(`/web_app/signin?redirect=${encodedRedirect}`);
     }
-    
+
     setLoading(false);
   };
 
   const handleNotionConnect = async () => {
-    console.log('Starting Notion connection flow...');
+    console.log("Starting Notion connection flow...");
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (session) {
-        const response = await fetch('/api/notion/auth', {
-          method: 'POST',
+        const response = await fetch("/api/notion/auth", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({ userId: session.user.id }),
         });
         const data = await response.json();
         if (data.url) {
-          console.log('Setting pendingNotionImport flag before OAuth redirect');
-          localStorage.setItem('pendingNotionImport', 'true');
+          console.log("Setting pendingNotionImport flag before OAuth redirect");
+          localStorage.setItem("pendingNotionImport", "true");
           router.push(data.url);
         } else {
-          console.error('Error starting Notion OAuth flow:', data.error);
-          toast.error('Failed to connect Notion');
+          console.error("Error starting Notion OAuth flow:", data.error);
+          toast.error("Failed to connect Notion");
         }
       }
     } catch (error) {
-      console.error('Error connecting Notion:', error);
-      toast.error('Failed to connect Notion');
+      console.error("Error connecting Notion:", error);
+      toast.error("Failed to connect Notion");
     }
   };
 
   const handleGoogleDocsConnect = async () => {
-    console.log('Starting Google Docs connection flow...');
+    console.log("Starting Google Docs connection flow...");
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (session) {
-        const response = await fetch('/api/google/auth', {
-          method: 'POST',
+        const response = await fetch("/api/google/auth", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({ userId: session.user.id }),
         });
         const data = await response.json();
         if (data.url) {
-          console.log('Setting pendingGoogleDocsImport flag before OAuth redirect');
-          localStorage.setItem('pendingGoogleDocsImport', 'true');
+          console.log(
+            "Setting pendingGoogleDocsImport flag before OAuth redirect"
+          );
+          localStorage.setItem("pendingGoogleDocsImport", "true");
           router.push(data.url);
         } else {
-          console.error('Error starting Google OAuth flow:', data.error);
+          console.error("Error starting Google OAuth flow:", data.error);
         }
       }
     } catch (error) {
-      console.error('Error connecting Google Docs:', error);
+      console.error("Error connecting Google Docs:", error);
     }
   };
 
   const handleCalendarConnect = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (session) {
-        const response = await fetch('/api/google/auth', {
-          method: 'POST',
+        const response = await fetch("/api/google/auth", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({ userId: session.user.id }),
         });
@@ -269,42 +287,44 @@ function SettingsContent() {
         if (data.url) {
           router.push(data.url);
         } else {
-          console.error('Error starting Google OAuth flow:', data.error);
+          console.error("Error starting Google OAuth flow:", data.error);
         }
       }
     } catch (error) {
-      console.error('Error connecting Google services:', error);
+      console.error("Error connecting Google services:", error);
     }
   };
 
   const importNotionDocuments = useCallback(async () => {
     if (notionConnected) {
       setIsImporting(true);
-      setImportSource('Notion');
-      const { data: { session } } = await supabase.auth.getSession();
+      setImportSource("Notion");
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       try {
-        const response = await fetch('/api/notion/import', {
-          method: 'POST',
+        const response = await fetch("/api/notion/import", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({ session: session }),
         });
         const data = await response.json();
-        
+
         if (data.success) {
           setNotionDocuments(data.documents);
         } else {
-          console.log('Data:', data);
-          console.error('Error importing Notion documents:', data.error);
+          console.log("Data:", data);
+          console.error("Error importing Notion documents:", data.error);
         }
       } catch (error) {
-          console.log('Error:', error);
-        console.error('Error importing Notion documents:', error);
+        console.log("Error:", error);
+        console.error("Error importing Notion documents:", error);
       } finally {
         setTimeout(() => {
           setIsImporting(false);
-          setImportSource('');
+          setImportSource("");
           setImportProgress(0);
         }, 1000);
       }
@@ -313,42 +333,44 @@ function SettingsContent() {
 
   const importGoogleDocs = useCallback(async () => {
     if (googleDocsConnected) {
-      console.log('Starting Google Docs import process...');
+      console.log("Starting Google Docs import process...");
       setIsImporting(true);
-      setImportSource('Google Docs');
-      
-      const { data: { session } } = await supabase.auth.getSession();
+      setImportSource("Google Docs");
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       const accessToken = session?.access_token;
 
       try {
-        const response = await fetch('/api/google/import', {
-          method: 'POST',
+        const response = await fetch("/api/google/import", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${accessToken}`
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
           },
-          body: JSON.stringify({ 
+          body: JSON.stringify({
             userId: session.user.id,
-            accessToken: accessToken
+            accessToken: accessToken,
           }),
         });
-        
+
         const data = await response.json();
-        
+
         if (data.success) {
-          console.log('Google Docs import initiated:', data);
-          toast.success('Import complete! Check your email for details.');
+          console.log("Google Docs import initiated:", data);
+          toast.success("Import complete! Check your email for details.");
         } else {
-          console.error('Error importing Google docs:', data.error);
-          toast.error('Import failed. Please try again.');
+          console.error("Error importing Google docs:", data.error);
+          toast.error("Import failed. Please try again.");
         }
       } catch (error) {
-        console.error('Error importing Google docs:', error);
-        toast.error('Import failed. Please try again.');
+        console.error("Error importing Google docs:", error);
+        toast.error("Import failed. Please try again.");
       } finally {
-        console.log('Import process completed');
+        console.log("Import process completed");
         setIsImporting(false);
-        setImportSource('');
+        setImportSource("");
         setImportProgress(0);
       }
     }
@@ -357,108 +379,123 @@ function SettingsContent() {
   // Update the useEffect to check for pending imports as well
   useEffect(() => {
     const checkPendingImports = async () => {
-      console.log('Checking for pending imports...');
-      const pendingGoogleImport = localStorage.getItem('pendingGoogleDocsImport');
-      const pendingNotionImport = localStorage.getItem('pendingNotionImport');
-      
-      if (pendingGoogleImport === 'true' && googleDocsConnected) {
-        console.log('Found pending Google import, starting Google Docs import...');
-        localStorage.removeItem('pendingGoogleDocsImport');
+      console.log("Checking for pending imports...");
+      const pendingGoogleImport = localStorage.getItem(
+        "pendingGoogleDocsImport"
+      );
+      const pendingNotionImport = localStorage.getItem("pendingNotionImport");
+
+      if (pendingGoogleImport === "true" && googleDocsConnected) {
+        console.log(
+          "Found pending Google import, starting Google Docs import..."
+        );
+        localStorage.removeItem("pendingGoogleDocsImport");
         await importGoogleDocs();
       }
 
-      if (pendingNotionImport === 'true' && notionConnected) {
-        console.log('Found pending Notion import, starting Notion import...');
-        localStorage.removeItem('pendingNotionImport');
+      if (pendingNotionImport === "true" && notionConnected) {
+        console.log("Found pending Notion import, starting Notion import...");
+        localStorage.removeItem("pendingNotionImport");
         await importNotionDocuments();
       }
     };
 
     checkPendingImports();
-  }, [googleDocsConnected, notionConnected, importGoogleDocs, importNotionDocuments]);
+  }, [
+    googleDocsConnected,
+    notionConnected,
+    importGoogleDocs,
+    importNotionDocuments,
+  ]);
 
   const handleMemoryToggle = async (checked) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (session) {
         const { error } = await supabase
-          .from('users')
+          .from("users")
           .update({ memory_enabled: checked })
-          .eq('id', session.user.id);
+          .eq("id", session.user.id);
 
         if (error) throw error;
         setMemoryEnabled(checked);
       }
     } catch (error) {
-      console.error('Error updating memory settings:', error);
+      console.error("Error updating memory settings:", error);
     }
   };
 
   const handleEmailNotificationsToggle = async (checked) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (session) {
         const { error } = await supabase
-          .from('users')
+          .from("users")
           .update({ emails_enabled: checked })
-          .eq('id', session.user.id);
+          .eq("id", session.user.id);
 
         if (error) throw error;
         setEmailNotificationsEnabled(checked);
       }
     } catch (error) {
-      console.error('Error updating email notification settings:', error);
-      toast.error('Failed to update email settings');
+      console.error("Error updating email notification settings:", error);
+      toast.error("Failed to update email settings");
     }
   };
 
   const handleGoogleCallback = useCallback(async () => {
-    console.log('Handling Google callback');
-    const code = searchParams.get('code');
-    const error = searchParams.get('error');
-    const state = searchParams.get('state');
+    console.log("Handling Google callback");
+    const code = searchParams.get("code");
+    const error = searchParams.get("error");
+    const state = searchParams.get("state");
 
     if (code) {
       try {
         // Get current session
-        const { data: { session } } = await supabase.auth.getSession();
-        
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
         // Exchange code for tokens
-        const response = await fetch('/api/google/callback', {
-          method: 'POST',
+        const response = await fetch("/api/google/callback", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
-          body: JSON.stringify({ 
+          body: JSON.stringify({
             code,
             state,
-            userId: session?.user?.id 
+            userId: session?.user?.id,
           }),
         });
 
         const data = await response.json();
-        
+
         if (data.success) {
           await checkIntegrations(); // Refresh integration status
-          toast.success('Google Docs connected successfully!');
-          
+          toast.success("Google Docs connected successfully!");
+
           // Trigger import if there's a pending import flag
-          const pendingImport = localStorage.getItem('pendingGoogleDocsImport');
-          if (pendingImport === 'true') {
-            console.log('Starting import after successful connection...');
-            localStorage.removeItem('pendingGoogleDocsImport');
+          const pendingImport = localStorage.getItem("pendingGoogleDocsImport");
+          if (pendingImport === "true") {
+            console.log("Starting import after successful connection...");
+            localStorage.removeItem("pendingGoogleDocsImport");
             await importGoogleDocs();
           }
         } else {
-          console.error('Connection failed:', data.error);
-          toast.error('Failed to connect Google Docs');
+          console.error("Connection failed:", data.error);
+          toast.error("Failed to connect Google Docs");
         }
       } catch (err) {
-        console.error('Error in Google callback:', err);
-        toast.error('Failed to connect Google Docs');
+        console.error("Error in Google callback:", err);
+        toast.error("Failed to connect Google Docs");
       }
     }
-    
+
     if (error) {
       toast.error(`Connection failed: ${error}`);
     }
@@ -466,7 +503,7 @@ function SettingsContent() {
 
   // Update the useEffect to run handleGoogleCallback when code is present
   useEffect(() => {
-    if (searchParams.get('code')) {
+    if (searchParams.get("code")) {
       handleGoogleCallback();
     }
   }, [searchParams, handleGoogleCallback]);
@@ -479,9 +516,9 @@ function SettingsContent() {
           "Content-Type": "application/json",
           Accept: "application/json",
         },
-        body: JSON.stringify({ 
-          uuid: userId, 
-          event_type: eventType
+        body: JSON.stringify({
+          uuid: userId,
+          event_type: eventType,
         }),
       });
     } catch (error) {
@@ -835,7 +872,7 @@ function SettingsContent() {
       <div className="w-16 flex-shrink-0 bg-black border-r border-zinc-800">
         <Navbar />
       </div>
-      
+
       {/* Main Settings Area */}
       <div className="flex flex-1 overflow-hidden">
         {/* Settings Sidebar */}
@@ -845,7 +882,9 @@ function SettingsContent() {
             <button
               onClick={() => handleTabChange('personalization')}
               className={`w-full text-left px-4 py-2 rounded-lg ${
-                activeTab === 'personalization' ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:bg-zinc-800'
+                activeTab === "personalization"
+                  ? "bg-zinc-800 text-white"
+                  : "text-zinc-400 hover:bg-zinc-800"
               }`}
             >
               Personalization
@@ -853,7 +892,9 @@ function SettingsContent() {
             <button
               onClick={() => handleTabChange('account')}
               className={`w-full text-left px-4 py-2 rounded-lg ${
-                activeTab === 'account' ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:bg-zinc-800'
+                activeTab === "account"
+                  ? "bg-zinc-800 text-white"
+                  : "text-zinc-400 hover:bg-zinc-800"
               }`}
             >
               Account
@@ -869,7 +910,9 @@ function SettingsContent() {
             <button
               onClick={() => handleTabChange('feedback')}
               className={`w-full text-left px-4 py-2 rounded-lg ${
-                activeTab === 'feedback' ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:bg-zinc-800'
+                activeTab === "feedback"
+                  ? "bg-zinc-800 text-white"
+                  : "text-zinc-400 hover:bg-zinc-800"
               }`}
             >
               Feedback
@@ -916,8 +959,10 @@ function SettingsContent() {
 
           {activeTab === 'personalization' && (
             <div className="space-y-8">
-              <h1 className="text-2xl font-medium text-white">Personalization</h1>
-              
+              <h1 className="text-2xl font-medium text-white">
+                Personalization
+              </h1>
+
               {/* Memory Toggle */}
               <Card className="bg-black border-zinc-800">
                 <CardContent className="p-6 space-y-6">
@@ -927,12 +972,16 @@ function SettingsContent() {
                         <Cloud className="w-5 h-5 text-[#9334E9]" />
                         Memory
                       </h2>
-                      <p className="text-sm text-zinc-400">Enable memory and connect your documents to unlock our <b>AI-powered memory chat feature</b>, allowing you to have intelligent conversations about your content</p>
+                      <p className="text-sm text-zinc-400">
+                        Enable memory and connect your documents to unlock our{" "}
+                        <b>AI-powered memory chat feature</b>, allowing you to
+                        have intelligent conversations about your content
+                      </p>
                     </div>
-                    <Switch 
+                    <Switch
                       checked={memoryEnabled}
                       onCheckedChange={handleMemoryToggle}
-                      className={memoryEnabled ? 'bg-[#9334E9]' : ''}
+                      className={memoryEnabled ? "bg-[#9334E9]" : ""}
                     />
                   </div>
 
@@ -941,9 +990,9 @@ function SettingsContent() {
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-4">
-                            <img 
-                              src={PROVIDER_ICONS.google} 
-                              alt="Google" 
+                            <img
+                              src={PROVIDER_ICONS.google}
+                              alt="Google"
                               className="w-6 h-6"
                             />
                             <div>
@@ -951,20 +1000,28 @@ function SettingsContent() {
                               <p className="text-sm text-zinc-400">You might be warned by Google that this app is not secure.<br></br> We are still early stage and the app is under review. <br></br>Please ignore this and continue.</p>
                             </div>
                           </div>
-                          <Button 
-                            variant="outline" 
+                          <Button
+                            variant="outline"
                             className={`bg-zinc-900 text-zinc-300 hover:bg-zinc-800 border-zinc-800 ${
-                              googleDocsConnected ? 'bg-green-900 hover:bg-green-800' : ''
+                              googleDocsConnected
+                                ? "bg-green-900 hover:bg-green-800"
+                                : ""
                             } min-w-[100px]`}
                             onClick={handleGoogleDocsConnect}
-                            disabled={isImporting && importSource === 'Google Docs'}
+                            disabled={
+                              isImporting && importSource === "Google Docs"
+                            }
                           >
-                            {isImporting && importSource === 'Google Docs' ? (
+                            {isImporting && importSource === "Google Docs" ? (
                               <div className="flex items-center">
                                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#9334E9] mr-2"></div>
                                 Importing...
                               </div>
-                            ) : googleDocsConnected ? 'Connected' : 'Connect'}
+                            ) : googleDocsConnected ? (
+                              "Connected"
+                            ) : (
+                              "Connect"
+                            )}
                           </Button>
                         </div>
                       </CardContent>
@@ -974,30 +1031,40 @@ function SettingsContent() {
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-4">
-                            <img 
-                              src={PROVIDER_ICONS.notion} 
-                              alt="Notion" 
+                            <img
+                              src={PROVIDER_ICONS.notion}
+                              alt="Notion"
                               className="w-6 h-6"
                             />
                             <div>
-                              <h3 className="font-medium text-white text-lg">Connect Notion</h3>
-                              <p className="text-sm text-zinc-400">Sync your Notion pages</p>
+                              <h3 className="font-medium text-white text-lg">
+                                Connect Notion
+                              </h3>
+                              <p className="text-sm text-zinc-400">
+                                Sync your Notion pages
+                              </p>
                             </div>
                           </div>
-                          <Button 
-                            variant="outline" 
+                          <Button
+                            variant="outline"
                             className={`bg-zinc-900 text-zinc-300 hover:bg-zinc-800 border-zinc-800 ${
-                              notionConnected ? 'bg-green-900 hover:bg-green-800' : ''
+                              notionConnected
+                                ? "bg-green-900 hover:bg-green-800"
+                                : ""
                             } min-w-[100px]`}
                             onClick={handleNotionConnect}
-                            disabled={isImporting && importSource === 'Notion'}
+                            disabled={isImporting && importSource === "Notion"}
                           >
-                            {isImporting && importSource === 'Notion' ? (
+                            {isImporting && importSource === "Notion" ? (
                               <div className="flex items-center">
                                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#9334E9] mr-2"></div>
                                 Importing...
                               </div>
-                            ) : notionConnected ? 'Connected' : 'Connect'}
+                            ) : notionConnected ? (
+                              "Connected"
+                            ) : (
+                              "Connect"
+                            )}
                           </Button>
                         </div>
                       </CardContent>
@@ -1060,11 +1127,11 @@ function SettingsContent() {
             </div>
           )}
 
-          {activeTab === 'account' && (
+          {activeTab === "account" && (
             <>
               <div className="flex-1 space-y-8">
                 <h1 className="text-2xl font-medium text-white">Account</h1>
-                
+
                 <Card className="bg-black border-zinc-800">
                   <CardContent className="p-6">
                     <div className="space-y-6">
@@ -1074,7 +1141,9 @@ function SettingsContent() {
                           <p className="text-white">{userEmail}</p>
                         </div>
                         <div>
-                          <h3 className="text-md text-zinc-400">With us since</h3>
+                          <h3 className="text-md text-zinc-400">
+                            With us since
+                          </h3>
                           <p className="text-white">{createdAt}</p>
                         </div>
                       </div>
@@ -1082,13 +1151,19 @@ function SettingsContent() {
                       <div className="pt-2 border-t border-zinc-800">
                         <div className="flex items-center justify-between">
                           <div>
-                            <h3 className="text-md font-medium text-white">Email Notifications</h3>
-                            <p className="text-sm text-zinc-400">Receive meeting summaries after each call</p>
+                            <h3 className="text-md font-medium text-white">
+                              Email Notifications
+                            </h3>
+                            <p className="text-sm text-zinc-400">
+                              Receive meeting summaries after each call
+                            </p>
                           </div>
-                          <Switch 
+                          <Switch
                             checked={emailNotificationsEnabled}
                             onCheckedChange={handleEmailNotificationsToggle}
-                            className={emailNotificationsEnabled ? 'bg-[#9334E9]' : ''}
+                            className={
+                              emailNotificationsEnabled ? "bg-[#9334E9]" : ""
+                            }
                           />
                         </div>
                       </div>
@@ -1096,11 +1171,15 @@ function SettingsContent() {
                       <div className="pt">
                         <div className="flex items-center justify-between">
                           <div>
-                            <h3 className="text-md font-medium text-white">Sign Out</h3>
-                            <p className="text-sm text-zinc-400">Sign out of your account</p>
+                            <h3 className="text-md font-medium text-white">
+                              Sign Out
+                            </h3>
+                            <p className="text-sm text-zinc-400">
+                              Sign out of your account
+                            </p>
                           </div>
-                          <Button 
-                            variant="outline" 
+                          <Button
+                            variant="outline"
                             className="text-sm bg-zinc-800 hover:bg-red-500 text-white whitespace-nowrap flex items-center mt-auto w-fit group"
                             onClick={initiateLogout}
                           >
@@ -1115,7 +1194,6 @@ function SettingsContent() {
               </div>
             </>
           )}
-
           {activeTab === 'team' && (
             <>
               <div className="space-y-2">
@@ -1323,7 +1401,7 @@ function SettingsContent() {
           {activeTab === 'feedback' && (
             <div className="space-y-10">
               <h1 className="text-2xl font-medium text-white">Feedback</h1>
-              
+
               <Card className="bg-black border-zinc-800">
                 <CardContent className="p-6">
                   {/* Report an issue */}
@@ -1337,16 +1415,21 @@ function SettingsContent() {
                           Help us improve by reporting issues
                         </p>
                       </div>
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         className="bg-zinc-800 hover:bg-zinc-700 text-white whitespace-nowrap flex items-center"
-                        onClick={() => window.open('https://github.com/thepersonalaicompany/amurex/issues/new', '_blank')}
+                        onClick={() =>
+                          window.open(
+                            "https://github.com/thepersonalaicompany/amurex/issues/new",
+                            "_blank"
+                          )
+                        }
                       >
                         <Github className="w-5 h-5 text-[#9334E9] mr-2" />
                         Report Issue
                       </Button>
                     </div>
-                    
+
                     {/* Book a call */}
                     <div className="flex items-center justify-between">
                       <div className="space-y-1">
@@ -1357,10 +1440,15 @@ function SettingsContent() {
                           Book a call with us to talk about your experience
                         </p>
                       </div>
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         className="bg-zinc-800 hover:bg-zinc-700 text-white whitespace-nowrap flex items-center"
-                        onClick={() => window.open('https://cal.com/founders-the-personal-ai-company/15min', '_blank')}
+                        onClick={() =>
+                          window.open(
+                            "https://cal.com/founders-the-personal-ai-company/15min",
+                            "_blank"
+                          )
+                        }
                       >
                         <Calendar className="w-5 h-5 text-[#9334E9] mr-2" />
                         Book a call
@@ -1377,8 +1465,12 @@ function SettingsContent() {
       {showSignOutConfirm && (
         <div className="px-2 fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-black bg-opacity-40 backdrop-blur-sm p-8 rounded-lg shadow-lg border border-white/20">
-            <h3 className="lg:text-xl text-md font-medium mb-4 text-white">Confirm Sign Out</h3>
-            <p className="text-zinc-400 mb-6">Are you sure you want to sign out of your account?</p>
+            <h3 className="lg:text-xl text-md font-medium mb-4 text-white">
+              Confirm Sign Out
+            </h3>
+            <p className="text-zinc-400 mb-6">
+              Are you sure you want to sign out of your account?
+            </p>
             <div className="flex gap-3 justify-end">
               <button
                 className="px-4 py-2 inline-flex items-center justify-center gap-2 rounded-md text-md font-medium border border-white/10 text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:bg-[#3c1671] hover:border-[#6D28D9]"
