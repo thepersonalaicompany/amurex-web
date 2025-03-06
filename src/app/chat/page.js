@@ -306,7 +306,7 @@ export default function AISearch() {
                   <div className="flex items-center gap-2">
                     {!hasGoogleDocs ? (
                       <a
-                        href="/settings"
+                        href="/settings?tab=personalization"
                         target="_blank"
                         className="px-4 py-2 inline-flex items-center justify-center gap-2 rounded-[8px] text-md font-medium border border-white/10 cursor-pointer text-[#FAFAFA] opacity-80 hover:bg-[#3c1671] transition-all duration-200 whitespace-nowrap relative group"
                       >
@@ -403,7 +403,7 @@ export default function AISearch() {
                   <div className="flex items-center gap-2">
                     {!hasNotion ? (
                       <a
-                        href="/settings"
+                        href="/settings?tab=personalization"
                         target="_blank"
                         className="px-4 py-2 inline-flex items-center justify-center gap-2 rounded-[8px] text-md font-medium border border-white/10 cursor-pointer text-[#FAFAFA] opacity-80 hover:bg-[#3c1671] transition-all duration-200 whitespace-nowrap relative group"
                       >
@@ -453,7 +453,7 @@ export default function AISearch() {
 
                     {!hasObsidian ? (
                       <a
-                        href="/settings"
+                        href="/settings?tab=personalization"
                         target="_blank"
                         className="px-4 py-2 inline-flex items-center justify-center gap-2 rounded-[8px] text-md font-medium border border-white/10 cursor-pointer text-[#FAFAFA] opacity-80 hover:bg-[#3c1671] transition-all duration-200 whitespace-nowrap relative group"
                       >
