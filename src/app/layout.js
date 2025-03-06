@@ -1,10 +1,11 @@
-
 import localFont from "next/font/local";
 import "./globals.css";
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { Analytics } from "@vercel/analytics/react"
 import { Noto_Serif } from 'next/font/google';
 import { AuthProvider } from "@/components/AuthProvider";
+import { defaultSEOConfig } from './seo';
+import { Inter } from 'next/font/google'
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -22,16 +23,47 @@ const notoSerif = Noto_Serif({
   variable: '--font-noto-serif',
 });
 
+const inter = Inter({ subsets: ['latin'] })
+
 export const metadata = {
-  title: "Amurex - Your AI meeting copilot.",
-  description: "Your AI meeting copilot.",
+  title: 'Amurex',
+  description: 'Your AI copilot for work and life',
+  metadataBase: new URL('https://app.amurex.ai'),
+  openGraph: {
+    title: 'Amurex',
+    description: 'Your AI copilot for work and life',
+    url: 'https://app.amurex.ai',
+    siteName: 'Amurex',
+    images: [
+      {
+        url: '/og2.jpg',
+        width: 1200,
+        height: 630,
+        alt: 'Amurex Open Graph Image',
+      },
+    ],
+    locale: 'en_US',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Amurex',
+    description: 'Your AI copilot for work and life',
+    creator: '@thepersonalaico',
+    images: ['/og2.jpg'],
+  },
 };
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
+      <head>
+        <meta property="og:image" content={defaultSEOConfig.openGraph.images[0].url} />
+        <meta property="og:image:width" content={defaultSEOConfig.openGraph.images[0].width} />
+        <meta property="og:image:height" content={defaultSEOConfig.openGraph.images[0].height} />
+      </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${notoSerif.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${notoSerif.variable} antialiased ${inter.className}`}
       >
         <AuthProvider>
           <span
