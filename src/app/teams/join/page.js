@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/Input";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
-export default function JoinTeam() {
+const joinTeamContent = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -323,5 +323,13 @@ export default function JoinTeam() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function JoinTeam() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <JoinTeamContent />
+    </Suspense>
   );
 }
