@@ -7,7 +7,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import LoadingFallback from "@/components/LoadingFallback";
 
-const joinTeamContent = () => {
+const JoinTeamContent = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
