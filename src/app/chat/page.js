@@ -556,7 +556,7 @@ export default function AISearch() {
                 <div className="space-y-6">
                   <Query content={searchResults?.query || ""} />
 
-                  <div className="grid grid-cols-1 gap-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-[2fr,1fr] gap-6">
                     <div>
                       <Heading content="Answer" />
                       <div className="bg-black rounded-lg p-4 border border-zinc-800 text-zinc-300">
