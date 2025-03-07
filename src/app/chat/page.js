@@ -289,31 +289,33 @@ export default function AISearch() {
           isSearchInitiated ? "pt-6" : "flex items-center justify-center"
         }`}
       >
-        <StarButton />
-        <div className="p-6 max-w-7xl mx-auto w-full lg:w-3/4">
+        <div className="fixed top-4 right-4 z-50">
+          <StarButton />
+        </div>
+        <div className="p-3 md:p-6 max-w-7xl mx-auto w-full">
           <div className="bg-[#09090A] rounded-lg border border-zinc-800 relative">
-            <div className="p-6 border-b border-zinc-800">
-              <div className="flex items-center justify-between">
+            <div className="p-4 md:p-6 border-b border-zinc-800">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <div className="text-[#9334E9]">
                     <ChatCenteredDots className="h-5 w-5" />
                   </div>
-                  <h1 className="text-2xl font-medium text-white">
+                  <h1 className="text-xl md:text-2xl font-medium text-white">
                     Hi! I&apos;m Amurex - your AI assistant for work and life.
                   </h1>
                 </div>
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center gap-2">
+                <div className="flex flex-col gap-2 w-full md:w-auto">
+                  <div className="grid grid-cols-2 md:flex items-center gap-2">
                     {!hasGoogleDocs ? (
                       <a
                         href="/settings?tab=personalization"
                         target="_blank"
-                        className="px-4 py-2 inline-flex items-center justify-center gap-2 rounded-[8px] text-md font-medium border border-white/10 cursor-pointer text-[#FAFAFA] opacity-80 hover:bg-[#3c1671] transition-all duration-200 whitespace-nowrap relative group"
+                        className="px-2 md:px-4 py-2 inline-flex items-center justify-center gap-1 md:gap-2 rounded-[8px] text-xs md:text-md font-medium border border-white/10 cursor-pointer text-[#FAFAFA] opacity-80 hover:bg-[#3c1671] transition-all duration-200 whitespace-nowrap relative group"
                       >
                         <img
                           src="https://upload.wikimedia.org/wikipedia/commons/0/01/Google_Docs_logo_%282014-2020%29.svg"
                           alt="Google Docs"
-                          className="w-4 h-4"
+                          className="w-3 h-3 md:w-4 md:h-4"
                         />
                         Google Docs
                         <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-white text-black px-2 py-1 rounded text-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
@@ -323,7 +325,7 @@ export default function AISearch() {
                     ) : (
                       <button
                         onClick={() => setGoogleDocsEnabled(!googleDocsEnabled)}
-                        className={`px-4 py-2 inline-flex items-center justify-center gap-2 rounded-[8px] text-md font-medium border border-white/10 ${
+                        className={`px-2 md:px-4 py-2 inline-flex items-center justify-center gap-1 md:gap-2 rounded-[8px] text-xs md:text-md font-medium border border-white/10 ${
                           googleDocsEnabled
                             ? "bg-[#9334E9] text-[#FAFAFA]"
                             : "text-[#FAFAFA]"
@@ -332,12 +334,12 @@ export default function AISearch() {
                         <img
                           src="https://upload.wikimedia.org/wikipedia/commons/0/01/Google_Docs_logo_%282014-2020%29.svg"
                           alt="Google Docs"
-                          className="w-4 h-4"
+                          className="w-3 h-3 md:w-4 md:h-4"
                         />
                         Google Docs
                         {googleDocsEnabled && (
                           <svg
-                            className="w-4 h-4 ml-1"
+                            className="w-3 h-3 md:w-4 md:h-4 ml-1"
                             viewBox="0 0 24 24"
                             fill="none"
                             xmlns="http://www.w3.org/2000/svg"
@@ -372,17 +374,17 @@ export default function AISearch() {
                         onClick={() =>
                           setMemorySearchEnabled(!memorySearchEnabled)
                         }
-                        className={`px-4 py-2 inline-flex items-center justify-center gap-2 rounded-[8px] text-md font-medium border border-white/10 ${
+                        className={`px-2 md:px-4 py-2 inline-flex items-center justify-center gap-1 md:gap-2 rounded-[8px] text-xs md:text-md font-medium border border-white/10 ${
                           memorySearchEnabled
                             ? "bg-[#9334E9] text-[#FAFAFA]"
                             : "text-[#FAFAFA]"
                         } transition-all duration-200 whitespace-nowrap hover:border-[#6D28D9]`}
                       >
-                        <ChatCenteredDots className="w-4 h-4" />
+                        <ChatCenteredDots className="w-3 h-3 md:w-4 md:h-4" />
                         Meetings
                         {memorySearchEnabled && (
                           <svg
-                            className="w-4 h-4 ml-1"
+                            className="w-3 h-3 md:w-4 md:h-4 ml-1"
                             viewBox="0 0 24 24"
                             fill="none"
                             xmlns="http://www.w3.org/2000/svg"
@@ -400,7 +402,7 @@ export default function AISearch() {
                     )}
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="grid grid-cols-2 md:flex items-center gap-2">
                     {!hasNotion ? (
                       <a
                         href="/settings?tab=personalization"
@@ -420,7 +422,7 @@ export default function AISearch() {
                     ) : (
                       <button
                         onClick={() => setNotionEnabled(!notionEnabled)}
-                        className={`px-4 py-2 inline-flex items-center justify-center gap-2 rounded-[8px] text-md font-medium border border-white/10 ${
+                        className={`px-2 md:px-4 py-2 inline-flex items-center justify-center gap-1 md:gap-2 rounded-[8px] text-xs md:text-md font-medium border border-white/10 ${
                           notionEnabled
                             ? "bg-[#9334E9] text-[#FAFAFA]"
                             : "text-[#FAFAFA]"
@@ -429,12 +431,12 @@ export default function AISearch() {
                         <img
                           src="https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png"
                           alt="Notion"
-                          className="w-4 h-4"
+                          className="w-3 h-3 md:w-4 md:h-4"
                         />
                         Notion
                         {notionEnabled && (
                           <svg
-                            className="w-4 h-4 ml-1"
+                            className="w-3 h-3 md:w-4 md:h-4 ml-1"
                             viewBox="0 0 24 24"
                             fill="none"
                             xmlns="http://www.w3.org/2000/svg"
@@ -470,7 +472,7 @@ export default function AISearch() {
                     ) : (
                       <button
                         onClick={() => setObsidianEnabled(!obsidianEnabled)}
-                        className={`px-4 py-2 inline-flex items-center justify-center gap-2 rounded-[8px] text-md font-medium border border-white/10 ${
+                        className={`px-2 md:px-4 py-2 inline-flex items-center justify-center gap-1 md:gap-2 rounded-[8px] text-xs md:text-md font-medium border border-white/10 ${
                           obsidianEnabled
                             ? "bg-[#9334E9] text-[#FAFAFA]"
                             : "text-[#FAFAFA]"
@@ -479,12 +481,12 @@ export default function AISearch() {
                         <img
                           src="https://obsidian.md/images/obsidian-logo-gradient.svg"
                           alt="Obsidian"
-                          className="w-4 h-4"
+                          className="w-3 h-3 md:w-4 md:h-4"
                         />
                         Obsidian
                         {obsidianEnabled && (
                           <svg
-                            className="w-4 h-4 ml-1"
+                            className="w-3 h-3 md:w-4 md:h-4 ml-1"
                             viewBox="0 0 24 24"
                             fill="none"
                             xmlns="http://www.w3.org/2000/svg"
@@ -505,7 +507,7 @@ export default function AISearch() {
               </div>
             </div>
 
-            <div className="p-6 space-y-6">
+            <div className="p-4 md:p-6 space-y-6">
               <div className="w-full">
                 <InputArea
                   inputValue={inputValue}
@@ -514,15 +516,13 @@ export default function AISearch() {
                   className="w-full"
                 />
 
-                {/* Add suggested prompts section */}
                 {!isSearchInitiated && (
                   <div className="mt-4 space-y-2">
                     <div className="text-zinc-500 text-sm">
                       Suggested searches:
                     </div>
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                       {suggestedPrompts.length === 0 ? (
-                        // Loading state
                         <>
                           {[1, 2, 3].map((_, index) => (
                             <div
@@ -534,7 +534,6 @@ export default function AISearch() {
                           ))}
                         </>
                       ) : (
-                        // Actual prompts
                         suggestedPrompts.map((prompt, index) => (
                           <button
                             key={index}
@@ -557,8 +556,8 @@ export default function AISearch() {
                 <div className="space-y-6">
                   <Query content={searchResults?.query || ""} />
 
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div className="lg:col-span-2">
+                  <div className="grid grid-cols-1 gap-6">
+                    <div>
                       <Heading content="Answer" />
                       <div className="bg-black rounded-lg p-4 border border-zinc-800 text-zinc-300">
                         <GPT content={searchResults?.answer || ""} />
@@ -569,7 +568,7 @@ export default function AISearch() {
                     </div>
 
                     {searchResults?.sources?.length > 0 && (
-                      <div className="lg:col-span-1">
+                      <div>
                         <Sources content={searchResults.sources} />
                       </div>
                     )}
@@ -595,23 +594,23 @@ export function InputArea({
       <input
         type="text"
         placeholder="Type your search..."
-        className="flex-1 p-4 rounded-l-lg focus:outline-none bg-black border border-zinc-800 text-zinc-300"
+        className="flex-1 p-3 md:p-4 text-sm md:text-base rounded-l-lg focus:outline-none bg-black border border-zinc-800 text-zinc-300"
         value={inputValue}
         onChange={(e) => setInputValue(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && sendMessage()}
       />
       <button
         onClick={() => sendMessage()}
-        className="p-4 rounded-r-lg bg-black border-t border-r border-b border-zinc-800 text-zinc-300 hover:bg-[#3c1671] transition-colors"
+        className="p-3 md:p-4 rounded-r-lg bg-black border-t border-r border-b border-zinc-800 text-zinc-300 hover:bg-[#3c1671] transition-colors"
       >
-        <ArrowCircleRight size={25} />
+        <ArrowCircleRight size={20} className="md:w-6 md:h-6" />
       </button>
     </div>
   );
 }
 /* 21. Query component for displaying content */
 export const Query = ({ content = "" }) => {
-  return <div className="text-3xl font-medium text-white">{content}</div>;
+  return <div className="text-xl md:text-3xl font-medium text-white">{content}</div>;
 };
 /* 22. Sources component for displaying list of sources */
 export const Sources = ({ content = [] }) => {
@@ -661,8 +660,8 @@ export const Sources = ({ content = [] }) => {
   if (isLoading) {
     return (
       <div>
-        <div className="text-[#9334E9] font-medium mb-3 lg:text-xl text-md flex items-center gap-2">
-          <GitBranch size={24} />
+        <div className="text-[#9334E9] font-medium mb-3 text-md md:text-xl flex items-center gap-2">
+          <GitBranch size={20} className="md:w-6 md:h-6" />
           <span>Sources</span>
         </div>
         <div className="animate-pulse space-y-3">
@@ -682,8 +681,8 @@ export const Sources = ({ content = [] }) => {
 
   return (
     <div>
-      <div className="text-[#9334E9] font-medium mb-3 lg:text-xl text-md flex items-center gap-2">
-        <GitBranch size={24} />
+      <div className="text-[#9334E9] font-medium mb-3 text-md md:text-xl flex items-center gap-2">
+        <GitBranch size={20} className="md:w-6 md:h-6" />
         <span>Sources</span>
       </div>
       <div className="grid grid-cols-1 gap-2">
@@ -790,8 +789,8 @@ export const VectorCreation = ({ content = "" }) => {
 // 28. Heading component for displaying various headings
 export const Heading = ({ content = "" }) => {
   return (
-    <div className="text-[#9334E9] font-medium mb-3 lg:text-xl text-md flex items-center gap-2">
-      <ChatCenteredDots size={24} />
+    <div className="text-[#9334E9] font-medium mb-3 text-md md:text-xl flex items-center gap-2">
+      <ChatCenteredDots size={20} className="md:w-6 md:h-6" />
       <span>{content}</span>
     </div>
   );
@@ -799,7 +798,7 @@ export const Heading = ({ content = "" }) => {
 // 30. GPT component for rendering markdown content
 const GPT = ({ content = "" }) => (
   <ReactMarkdown
-    className="prose text-xl mt-1 w-full break-words prose-p:leading-relaxed"
+    className="prose text-base md:text-xl mt-1 w-full break-words prose-p:leading-relaxed"
     remarkPlugins={[remarkGfm]}
     components={{
       a: ({ node, ...props }) => (
