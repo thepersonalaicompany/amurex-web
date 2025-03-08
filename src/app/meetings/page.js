@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useEffect } from 'react'
-import { FileText, Search, Calendar, Clock } from 'lucide-react'
+import { FileText, Search, Calendar, Clock, Video } from 'lucide-react'
 import Link from 'next/link'
 import { supabase } from "@/lib/supabaseClient"
 import { useRouter } from 'next/navigation'
 import { Navbar } from '@/components/Navbar'
+import { Card, CardContent } from '@/components/ui/card'
 
 export default function TranscriptList() {
   const [searchTerm, setSearchTerm] = useState('')
@@ -252,8 +253,33 @@ export default function TranscriptList() {
           </div>
 
           {filteredTranscripts.length === 0 && (
-            <div className="text-center text-zinc-400 mt-8">
-              <p>No meetings found matching your search.</p>
+            <div className="text-center mt-8">
+              <div className="relative inline-block">
+                <div className="absolute -inset-0.5 bg-gradient-to-r from-[#9334E9] to-[#9334E9] rounded-lg blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-gradient-x"></div>
+                <Card className="bg-black border-zinc-500 relative overflow-hidden">
+                  <div className="absolute inset-0 bg-[#9334E9]/20 animate-pulse"></div>
+                  <div className="absolute inset-0 bg-gradient-to-r from-[#9334E9]/30 via-[#9334E9]/20 to-[#9334E9]/30"></div>
+                  <CardContent className="p-4 relative">
+                    <div className="flex items-center gap-4">
+                      <Video className="w-6 h-6 text-[#9334E9]" />
+                      <div>
+                        <h3 className="font-medium text-white text-lg">Try Amurex for Online Meetings</h3>
+                        <p className="text-sm text-zinc-400">Get AI-powered summaries for your meetings</p>
+                      </div>
+                    </div>
+                    <div className="mt-4">
+                      <a 
+                        href="https://chromewebstore.google.com/detail/amurex-early-preview/dckidmhhpnfhachdpobgfbjnhfnmddmc"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center px-4 py-2 rounded-md text-sm font-medium border border-white/10 bg-[#9334E9] text-[#FAFAFA] hover:bg-[#3c1671] hover:border-[#6D28D9] transition-colors duration-200"
+                      >
+                        Get Chrome Extension
+                      </a>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           )}
         </div>
