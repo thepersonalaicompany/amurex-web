@@ -318,7 +318,7 @@ async function generatePrompts(documents) {
   const messages = [
     {
       role: "system",
-      content: "You are a prompt generator. Given document titles and content, generate 3 interesting and specific questions that would help users explore their knowledge. Make the prompts engaging and focused on extracting key insights from the documents. Return only a JSON array of 3 strings. The JSON should be formatted as a JSON object with a 'prompts' key. Here's an example: { 'prompts': ['Question 1', 'Question 2', 'Question 3'] }. Keep the prompts super short and concise. One of the prompts should ask to write an email or any interesting action not just questions.",
+      content: "You are a prompt generator. Keep the prompts super short and concise. Given document titles and content, generate 2 interesting questions and 1 email action. Make the prompts engaging and focused on extracting key insights from the documents. Return a JSON object with a 'prompts' array containing exactly 3 objects. Example format: { 'prompts': [{'type': 'prompt', 'text': 'What are the key findings...?'}, {'type': 'prompt', 'text': 'How does this compare...?'}, {'type': 'email', 'text': 'Draft an email to summarize...'}] }",
     },
     {
       role: "user",

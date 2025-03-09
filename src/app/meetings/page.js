@@ -6,7 +6,8 @@ import Link from 'next/link'
 import { supabase } from "@/lib/supabaseClient"
 import { useRouter } from 'next/navigation'
 import { Navbar } from '@/components/Navbar'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card } from "@/components/ui/card"
+import { CardContent } from "@/components/ui/card"
 
 export default function TranscriptList() {
   const [searchTerm, setSearchTerm] = useState('')
