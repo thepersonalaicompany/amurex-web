@@ -5,6 +5,7 @@ import { BraveSearch } from "@langchain/community/tools/brave_search";
 import OpenAI from "openai";
 import * as cheerio from "cheerio";
 import { createClient } from "@supabase/supabase-js";
+import fetch from 'node-fetch';
 // 2. Initialize OpenAI and Supabase clients
 const openai = new OpenAI({ apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY });
 const supabase = createClient(
@@ -169,20 +170,20 @@ async function searchEngineForSources(message, internetSearchEnabled, user_id) {
   const topResult = successfulResults.length > 4 ? successfulResults.slice(0, 4) : successfulResults;
   console.log("topResult", topResult);
 
-  // After getting search results, generate GPT response
-  const gptResponse = await openai.chat.completions.create({
-    model: "gpt-4o",
-    messages: [
-      {
-        role: "system",
-        content: "You are a helpful assistant. Use the provided search results to answer the user's query. If the search results don't contain relevant information, provide a general response based on your knowledge.",
-      },
-      {
-        role: "user",
-        content: `Query: ${message}\n\nSearch Results: ${JSON.stringify(topResult)}`,
-      },
-    ],
-  });
+  // After getting search results, generate response
+  const modelName = process.env.MODEL_NAME;
+  const messages = [
+    {
+      role: "system",
+      content: "You are a helpful assistant. Use the provided search results to answer the user's query. If the search results don't contain relevant information, provide a general response based on your knowledge.",
+    },
+    {
+      role: "user",
+      content: `Query: ${message}\n\nSearch Results: ${JSON.stringify(topResult)}`,
+    },
+  ];
+
+  const gptResponse = await generateCompletion(messages, modelName);
 
   return {
     sources: combinedResults,
@@ -273,42 +274,119 @@ const updateRowWithGPTResponse = async (prevRowId, content, user_id) => {
 
 // 51. Define generateFollowup function
 async function generateFollowup(message) {
-  // 52. Create chat completion with OpenAI API
-  const chatCompletion = await openai.chat.completions.create({
-    messages: [
-      {
-        role: "system",
-        content: `You are a follow up answer generator and always respond with 4 follow up questions based on this input "${message}" in JSON format. i.e. { "follow_up": ["QUESTION_GOES_HERE", "QUESTION_GOES_HERE", "QUESTION_GOES_HERE"] }`,
+  const modelName = process.env.MODEL_NAME;
+  const messages = [
+    {
+      role: "system",
+      content: `You are a follow up answer generator and always respond with 4 follow up questions based on this input "${message}" in JSON format. i.e. { "follow_up": ["QUESTION_GOES_HERE", "QUESTION_GOES_HERE", "QUESTION_GOES_HERE"] }`,
+    },
+    {
+      role: "user",
+      content: `Generate a 4 follow up questions based on this input ""${message}"" `,
+    },
+  ];
+
+  if (modelName === 'llama3.3') {
+    // Use Ollama API
+    const response = await fetch('http://localhost:11434/api/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
       },
-      {
-        role: "user",
-        content: `Generate a 4 follow up questions based on this input ""${message}"" `,
-      },
-    ],
-    model: "gpt-4o",
-  });
-  // 53. Return the content of the chat completion
-  return chatCompletion.choices[0].message.content;
+      body: JSON.stringify({
+        model: 'llama3.3-70b',
+        messages: messages,
+        stream: false
+      }),
+    });
+    
+    const data = await response.json();
+    return data.message.content;
+  } else {
+    // Use OpenAI
+    const chatCompletion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: messages,
+    });
+    return chatCompletion.choices[0].message.content;
+  }
 }
 
 // Add this new function near the other helper functions
 async function generatePrompts(documents) {
-  const gptResponse = await openai.chat.completions.create({
-    model: "gpt-4o",
-    messages: [
-      {
-        role: "system",
-        content: "You are a prompt generator. Given document titles and content, generate 3 interesting and specific questions that would help users explore their knowledge. Make the prompts engaging and focused on extracting key insights from the documents. Return only a JSON array of 3 strings. The JSON should be formatted as a JSON object with a 'prompts' key. Here's an example: { 'prompts': ['Question 1', 'Question 2', 'Question 3'] }. Keep the prompts super short and concise. One of the prompts should ask to write an email or any interesting action not just questions.",
-      },
-      {
-        role: "user",
-        content: `Generate 3 prompts based on these documents: ${JSON.stringify(documents)}`,
-      },
-    ],
-    response_format: { type: "json_object" }
-  });
+  const modelName = process.env.MODEL_NAME;
+  const messages = [
+    {
+      role: "system",
+      content: "You are a prompt generator. Given document titles and content, generate 3 interesting and specific questions that would help users explore their knowledge. Make the prompts engaging and focused on extracting key insights from the documents. Return only a JSON array of 3 strings. The JSON should be formatted as a JSON object with a 'prompts' key. Here's an example: { 'prompts': ['Question 1', 'Question 2', 'Question 3'] }. Keep the prompts super short and concise. One of the prompts should ask to write an email or any interesting action not just questions.",
+    },
+    {
+      role: "user",
+      content: `Generate 3 prompts based on these documents: ${JSON.stringify(documents)}`,
+    },
+  ];
 
-  return JSON.parse(gptResponse.choices[0].message.content);
+  if (modelName === 'llama3.3') {
+    // Use Ollama API
+    const response = await fetch('http://localhost:11434/api/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'llama3.3-70b',
+        messages: messages,
+        stream: false
+      }),
+    });
+    
+    const data = await response.json();
+    return JSON.parse(data.message.content);
+  } else {
+    // Use OpenAI
+    const gptResponse = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: messages,
+      response_format: { type: "json_object" }
+    });
+    return JSON.parse(gptResponse.choices[0].message.content);
+  }
+}
+
+// Function to check which model to use and make the appropriate API call
+async function generateCompletion(messages, modelName) {
+  // Check if we should use Ollama
+  if (modelName === 'llama3.3') {
+    // Use Ollama API
+    const response = await fetch('http://localhost:11434/api/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'llama3.3-70b',
+        messages: messages,
+        stream: false
+      }),
+    });
+    
+    const data = await response.json();
+    return {
+      choices: [
+        {
+          message: {
+            content: data.message.content
+          }
+        }
+      ]
+    };
+  } else {
+    // Use OpenAI
+    return await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: messages,
+    });
+  }
 }
 
 // Modify the POST function to handle both chat and prompts endpoints
@@ -410,85 +488,186 @@ export async function POST(req) {
     const writer = stream.writable.getWriter();
     const encoder = new TextEncoder();
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        {
-          role: "system",
-          content: "You are a helpful assistant. Use the provided document chunks to answer the user's query. If the chunks don't contain relevant information, let the user know you couldn't find specific information about their query. Be confident in your answer. Don't say 'I'm not sure' or 'I don't know'.",
+    const modelName = process.env.MODEL_NAME;
+
+    // If using Ollama, we need to handle streaming differently
+    if (modelName === 'llama3.3') {
+      const response = await fetch('http://localhost:11434/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-        {
-          role: "user",
-          content: `Query: ${message};
+        body: JSON.stringify({
+          model: 'llama3.3-70b',
+          messages: [
+            {
+              role: "system",
+              content: "You are a helpful assistant. Use the provided document chunks to answer the user's query. If the chunks don't contain relevant information, let the user know you couldn't find specific information about their query. Be confident in your answer. Don't say 'I'm not sure' or 'I don't know'.",
+            },
+            {
+              role: "user",
+              content: `Query: ${message};
+              
+                      Retrieved chunks from online conversations: ${JSON.stringify(formattedChunks)}
+              
+                      Retrieved chunks from documents (from files): ${JSON.stringify(documentChunks.map(doc => ({
+                title: doc.title,
+                content: doc.selected_chunks
+              })))}`,
+            },
+          ],
+          stream: true
+        }),
+      });
+
+      // Process Ollama stream
+      (async () => {
+        try {
+          let fullResponse = '';
           
-                  Retrieved chunks from online conversations: ${JSON.stringify(formattedChunks)}
+          // Send sources first
+          const sourcesPayload = JSON.stringify({
+            success: true,
+            sources: sources,
+            chunk: ''
+          });
+          await writer.write(encoder.encode(sourcesPayload + '\n'));
           
-                  Retrieved chunks from documents (from files): ${JSON.stringify(documentChunks.map(doc => ({
-            title: doc.title,
-            content: doc.selected_chunks
-          })))}`,
-        },
-      ],
-      stream: true,
-    });
-
-    // Process the stream
-    (async () => {
-      try {
-        let fullGPTResponse = ''; // Track complete GPT response
-
-        // Send sources first
-        const sourcesPayload = JSON.stringify({
-          success: true,
-          sources: sources,
-          chunk: ''
-        });
-        await writer.write(encoder.encode(sourcesPayload + '\n'));
-
-        for await (const chunk of completion) {
-          const content = chunk.choices[0]?.delta?.content || '';
-          if (content) {
-            fullGPTResponse += content; // Accumulate the response
-            const payload = JSON.stringify({
-              success: true,
-              chunk: content,
-            });
-            await writer.write(encoder.encode(payload + '\n'));
+          const reader = response.body.getReader();
+          
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            const chunk = new TextDecoder().decode(value);
+            const lines = chunk.split('\n').filter(line => line.trim());
+            
+            for (const line of lines) {
+              try {
+                const data = JSON.parse(line);
+                if (data.message && data.message.content) {
+                  fullResponse += data.message.content;
+                  const payload = JSON.stringify({
+                    success: true,
+                    chunk: data.message.content,
+                  });
+                  await writer.write(encoder.encode(payload + '\n'));
+                }
+              } catch (e) {
+                console.error('Error parsing Ollama response:', e);
+              }
+            }
           }
-        }
-
-        // fetch the user's table and find if "memory_enabled" is true
-        const { data: user, error } = await supabase.from('users').select('memory_enabled').eq('id', user_id).single();
-        console.log("user", user);
-        if (user.memory_enabled) {
-          // fetch the user's memory table and find if "memory_enabled" is true
+          
+          // Save to memory if enabled
+          const { data: user, error } = await supabase.from('users').select('memory_enabled').eq('id', user_id).single();
+          if (user.memory_enabled) {
             await supabase.from('sessions').insert({
               user_id: user_id,
               query: message,
-              response: fullGPTResponse,
+              response: fullResponse,
               sources: sources,
             });
-        } else {
-          console.log("Memory is not enabled for this user", error);
+          }
+          
+          // Send final message
+          const finalPayload = JSON.stringify({
+            success: true,
+            done: true,
+          });
+          await writer.write(encoder.encode(finalPayload + '\n'));
+        } catch (error) {
+          const errorPayload = JSON.stringify({
+            success: false,
+            error: error.message,
+          });
+          await writer.write(encoder.encode(errorPayload + '\n'));
+        } finally {
+          await writer.close();
         }
+      })();
+    } else {
+      // Original OpenAI streaming code
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: "You are a helpful assistant. Use the provided document chunks to answer the user's query. If the chunks don't contain relevant information, let the user know you couldn't find specific information about their query. Be confident in your answer. Don't say 'I'm not sure' or 'I don't know'.",
+          },
+          {
+            role: "user",
+            content: `Query: ${message};
+            
+                    Retrieved chunks from online conversations: ${JSON.stringify(formattedChunks)}
+            
+                    Retrieved chunks from documents (from files): ${JSON.stringify(documentChunks.map(doc => ({
+              title: doc.title,
+              content: doc.selected_chunks
+            })))}`,
+          },
+        ],
+        stream: true,
+      });
+      
+      // Process the stream
+      (async () => {
+        try {
+          let fullGPTResponse = ''; // Track complete GPT response
+
+          // Send sources first
+          const sourcesPayload = JSON.stringify({
+            success: true,
+            sources: sources,
+            chunk: ''
+          });
+          await writer.write(encoder.encode(sourcesPayload + '\n'));
+
+          for await (const chunk of completion) {
+            const content = chunk.choices[0]?.delta?.content || '';
+            if (content) {
+              fullGPTResponse += content; // Accumulate the response
+              const payload = JSON.stringify({
+                success: true,
+                chunk: content,
+              });
+              await writer.write(encoder.encode(payload + '\n'));
+            }
+          }
+
+          // fetch the user's table and find if "memory_enabled" is true
+          const { data: user, error } = await supabase.from('users').select('memory_enabled').eq('id', user_id).single();
+          console.log("user", user);
+          if (user.memory_enabled) {
+            // fetch the user's memory table and find if "memory_enabled" is true
+              await supabase.from('sessions').insert({
+                user_id: user_id,
+                query: message,
+                response: fullGPTResponse,
+                sources: sources,
+              });
+          } else {
+            console.log("Memory is not enabled for this user", error);
+          }
 
 
-        // Send final message
-        const finalPayload = JSON.stringify({
-          success: true,
-          done: true,
-        });
-        await writer.write(encoder.encode(finalPayload + '\n'));
-      } catch (error) {
-        const errorPayload = JSON.stringify({
-          success: false,
-          error: error.message,
-        });
-        await writer.write(encoder.encode(errorPayload + '\n'));
-      } finally {
-        await writer.close();
-      }
-    })();
+          // Send final message
+          const finalPayload = JSON.stringify({
+            success: true,
+            done: true,
+          });
+          await writer.write(encoder.encode(finalPayload + '\n'));
+        } catch (error) {
+          const errorPayload = JSON.stringify({
+            success: false,
+            error: error.message,
+          });
+          await writer.write(encoder.encode(errorPayload + '\n'));
+        } finally {
+          await writer.close();
+        }
+      })();
+    }
 
     return new Response(stream.readable, {
       headers: {
