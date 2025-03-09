@@ -7,6 +7,7 @@ import {
   Stack,
   GitBranch,
   Link,
+  EnvelopeSimple,
 } from "@phosphor-icons/react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -14,6 +15,9 @@ import { supabase } from "@/lib/supabaseClient";
 import { Navbar } from "@/components/Navbar";
 import StarButton from "@/components/star-button";
 import { useRouter } from "next/navigation";
+
+const BASE_URL_BACKEND = "https://api.amurex.ai"
+
 // 3. Home component
 export default function AISearch() {
   // 4. Initialize states and refs
@@ -186,6 +190,7 @@ export default function AISearch() {
         }
 
         const { prompts } = await response.json();
+        console.log("prompts:", prompts);
         setSuggestedPrompts(prompts.prompts); // Access the nested prompts array
       });
   }, [session?.user?.id]);
@@ -521,7 +526,7 @@ export default function AISearch() {
                     <div className="text-zinc-500 text-sm">
                       Suggested searches:
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       {suggestedPrompts.length === 0 ? (
                         <>
                           {[1, 2, 3].map((_, index) => (
@@ -534,18 +539,38 @@ export default function AISearch() {
                           ))}
                         </>
                       ) : (
-                        suggestedPrompts.map((prompt, index) => (
-                          <button
-                            key={index}
-                            onClick={() => {
-                              setInputValue(prompt);
-                              sendMessage(prompt);
-                            }}
-                            className="px-4 py-2 rounded-lg bg-black border border-zinc-800 text-zinc-300 hover:bg-[#3c1671] transition-colors text-sm text-left"
-                          >
-                            {prompt}
-                          </button>
-                        ))
+                        <>
+                          {/* Regular prompts */}
+                          {suggestedPrompts
+                            .filter(item => item.type === 'prompt')
+                            .map((item, index) => (
+                              <button
+                                key={index}
+                                onClick={() => {
+                                  setInputValue(item.text);
+                                  sendMessage(item.text);
+                                }}
+                                className="px-4 py-2 rounded-lg bg-black border border-zinc-800 text-zinc-300 hover:bg-[#3c1671] transition-colors text-sm text-left"
+                              >
+                                {item.text}
+                              </button>
+                            ))}
+                          {/* Email actions */}
+                          {suggestedPrompts
+                            .filter(item => item.type === 'email')
+                            .map((item, index) => (
+                              <button
+                                key={index}
+                                onClick={() => {
+                                  setInputValue(item.text);
+                                  sendMessage(item.text);
+                                }}
+                                className="px-4 py-2 rounded-lg bg-black border border-zinc-800 text-zinc-300 hover:bg-[#3c1671] transition-colors text-sm text-left flex items-center justify-between"
+                              >
+                                <span>{item.text}</span>
+                              </button>
+                            ))}
+                        </>
                       )}
                     </div>
                   </div>
@@ -795,20 +820,130 @@ export const Heading = ({ content = "" }) => {
     </div>
   );
 };
+
+// Move these utility functions outside of any component
+const fetchSession = async () => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    router.push('/web_app/signin');
+    return null;
+  }
+  return session;
+};
+
+const logUserAction = async (userId, eventType) => {
+  try {
+    // First check if memory_enabled is true for this user
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('memory_enabled')
+      .eq('id', userId)
+      .single();
+
+    if (userError) {
+      console.error("Error fetching user data:", userError);
+      return;
+    }
+
+    console.log("userData", userData);
+
+    // Only track if memory_enabled is true
+    if (userData?.memory_enabled) {
+      await fetch(`${BASE_URL_BACKEND}/track`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          uuid: userId,
+          event_type: eventType,
+        }),
+      });
+    }
+  } catch (error) {
+    console.error("Error tracking:", error);
+  }
+};
+
 // 30. GPT component for rendering markdown content
-const GPT = ({ content = "" }) => (
-  <ReactMarkdown
-    className="prose text-base md:text-xl mt-1 w-full break-words prose-p:leading-relaxed"
-    remarkPlugins={[remarkGfm]}
-    components={{
-      a: ({ node, ...props }) => (
-        <a {...props} style={{ color: "blue", fontWeight: "bold" }} />
-      ),
-    }}
-  >
-    {content}
-  </ReactMarkdown>
-);
+const GPT = ({ content = "" }) => {
+  const [showEmailButton, setShowEmailButton] = useState(false);
+  const [isComplete, setIsComplete] = useState(false);
+  const contentRef = useRef(null);
+  
+  useEffect(() => {
+    // Reset states when content changes
+    setShowEmailButton(false);
+    setIsComplete(false);
+    
+    // Check if it's an email response
+    if (content.toLowerCase().includes('subject:') || content.toLowerCase().includes('dear ')) {
+      setShowEmailButton(true);
+    }
+
+    // Auto-scroll as content is generated
+    if (contentRef.current) {
+      contentRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [content]);
+
+  // Set complete when the streaming is done
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!content.endsWith('▋')) {
+        setIsComplete(true);
+      }
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [content]);
+
+  const openGmail = async () => {
+    // In any component:
+    const session = await fetchSession();
+    await logUserAction(session.user.id, 'web_open_email_in_gmail');
+
+    const cleanContent = content
+      .replace(/\*\*/g, '')
+      .replace(/\*/g, '')
+      .replace(/\n\n+/g, '\n\n')
+      .replace(/\n/g, '%0A')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .replace(/%0A\s+/g, '%0A')
+      .replace(/%0A%0A+/g, '%0A%0A');
+
+    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&body=${cleanContent}`;
+    window.open(gmailUrl, '_blank');
+  };
+
+  return (
+    <div ref={contentRef}>
+      <ReactMarkdown
+        className="prose text-base md:text-xl mt-1 w-full break-words prose-p:leading-relaxed"
+        remarkPlugins={[remarkGfm]}
+        components={{
+          a: ({ node, ...props }) => (
+            <a {...props} style={{ color: "blue", fontWeight: "bold" }} />
+          ),
+        }}
+      >
+        {content}
+      </ReactMarkdown>
+      
+      {showEmailButton && isComplete && (
+        <button
+          onClick={openGmail}
+          className="mt-4 px-4 py-2 rounded-lg bg-[#9334E9] text-white hover:bg-[#7928CA] transition-colors flex items-center gap-2"
+        >
+          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/2560px-Gmail_icon_%282020%29.svg.png" alt="Gmail" className="h-4" />
+          Open in Gmail
+        </button>
+      )}
+    </div>
+  );
+};
 // 31. FollowUp component for displaying follow-up options
 export const FollowUp = ({ content = "", sendMessage = () => {} }) => {
   const [followUp, setFollowUp] = useState([]);
