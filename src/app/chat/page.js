@@ -37,6 +37,8 @@ export default function AISearch() {
   const [hasObsidian, setHasObsidian] = useState(false);
   const [isSearchInitiated, setIsSearchInitiated] = useState(false);
   const [suggestedPrompts, setSuggestedPrompts] = useState([]);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [hasSeenOnboarding, setHasSeenOnboarding] = useState(false);
 
   // Add useRouter
   const router = useRouter();
@@ -117,9 +119,33 @@ export default function AISearch() {
       );
   }, [session?.user?.id]);
 
+  // Replace the existing useEffect for hasSeenOnboarding
+  useEffect(() => {
+    const checkOnboardingStatus = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const { data, error } = await supabase
+          .from("users")
+          .select("hasSeenChatOnboarding")
+          .eq("id", session.user.id)
+          .single();
+        
+        if (data) {
+          setHasSeenOnboarding(!!data.hasSeenChatOnboarding);
+        }
+      }
+    };
+    
+    checkOnboardingStatus();
+  }, []);
+
   // Add useEffect to check connections
   useEffect(() => {
     if (!session?.user?.id) return;
+
+    let googleConnected = false;
+    let notionConnected = false;
+    let connectionsChecked = 0;
 
     // Check Google Docs connection
     supabase
@@ -127,7 +153,14 @@ export default function AISearch() {
       .select("google_docs_connected")
       .eq("id", session.user.id)
       .single()
-      .then(({ data }) => setHasGoogleDocs(!!data?.google_docs_connected));
+      .then(({ data }) => {
+        googleConnected = !!data?.google_docs_connected;
+        setHasGoogleDocs(googleConnected);
+        connectionsChecked++;
+        if (connectionsChecked === 2) {
+          checkOnboarding(googleConnected, notionConnected);
+        }
+      });
 
     // Check if user has any meetings
     supabase
@@ -143,7 +176,14 @@ export default function AISearch() {
       .select("notion_connected")
       .eq("id", session.user.id)
       .single()
-      .then(({ data }) => setHasNotion(!!data?.notion_connected));
+      .then(({ data }) => {
+        notionConnected = !!data?.notion_connected;
+        setHasNotion(notionConnected);
+        connectionsChecked++;
+        if (connectionsChecked === 2) {
+          checkOnboarding(googleConnected, notionConnected);
+        }
+      });
 
     // Check if user has any Obsidian documents
     supabase
@@ -153,7 +193,14 @@ export default function AISearch() {
       .eq("type", "obsidian")
       .limit(1)
       .then(({ data }) => setHasObsidian(!!data?.length));
-  }, [session?.user?.id]);
+    
+    // Helper function to check if onboarding should be shown
+    const checkOnboarding = (google, notion) => {
+      if (!google && !notion && !hasSeenOnboarding) {
+        setShowOnboarding(true);
+      }
+    };
+  }, [session?.user?.id, hasSeenOnboarding]);
 
   // Add new useEffect to fetch documents and generate prompts
   useEffect(() => {
@@ -297,7 +344,35 @@ export default function AISearch() {
         <div className="fixed top-4 right-4 z-50">
           <StarButton />
         </div>
+        {showOnboarding && (
+          <OnboardingFlow 
+            onClose={() => setShowOnboarding(false)} 
+            setHasSeenOnboarding={setHasSeenOnboarding}
+          />
+        )}
         <div className="p-3 md:p-6 max-w-7xl mx-auto w-full">
+          {!showOnboarding && !hasGoogleDocs && !hasNotion && (
+            <div className="bg-[#1E1E24] rounded-lg border border-zinc-800 p-4 mb-4 flex flex-col md:flex-row items-center justify-between">
+              <div className="flex items-center gap-3 mb-3 md:mb-0">
+                <div className="bg-[#9334E9] rounded-full p-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                  </svg>
+                </div>
+                <p className="text-zinc-300">
+                  Connect your Google Docs or Notion to get the most out of Amurex
+                </p>
+              </div>
+              <a
+                href="/settings?tab=personalization"
+                className="inline-flex items-center justify-center px-4 py-2 bg-[#9334E9] text-white rounded-lg hover:bg-[#7928CA] transition-colors"
+              >
+                Connect Accounts
+              </a>
+            </div>
+          )}
           <div className="bg-[#09090A] rounded-lg border border-zinc-800 relative">
             <div className="p-4 md:p-6 border-b border-zinc-800">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -1018,4 +1093,105 @@ const MessageHandler = memo(
 
 // Add this line after the component definition
 MessageHandler.displayName = "MessageHandler";
+
+// Onboarding component to guide users to connect their accounts
+const OnboardingFlow = ({ onClose, setHasSeenOnboarding }) => {
+  const handleClose = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        // Update the user record in the database
+        const { error } = await supabase
+          .from("users")
+          .update({ hasSeenChatOnboarding: true })
+          .eq("id", session.user.id);
+          
+        if (error) {
+          console.error("Error updating hasSeenChatOnboarding:", error);
+        }
+      }
+      
+      setHasSeenOnboarding(true);
+      onClose();
+    } catch (error) {
+      console.error("Error in handleClose:", error);
+      // Still close the modal even if there's an error
+      setHasSeenOnboarding(true);
+      onClose();
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+      <div className="bg-[#09090A] rounded-lg border border-zinc-800 max-w-2xl w-full p-6 relative">
+        <button 
+          onClick={handleClose} 
+          className="absolute top-4 right-4 text-zinc-500 hover:text-white"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+        
+        <h2 className="text-2xl font-bold text-white mb-6">Welcome to Amurex!</h2>
+        
+        <p className="text-zinc-300 mb-6">
+          To get the most out of Amurex, connect your accounts to access your documents and information.
+        </p>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div className="bg-black rounded-lg p-6 border border-zinc-800">
+            <div className="flex items-center gap-3 mb-4">
+              <img
+                src="https://upload.wikimedia.org/wikipedia/commons/0/01/Google_Docs_logo_%282014-2020%29.svg"
+                alt="Google Docs"
+                className="w-8 h-8"
+              />
+              <h3 className="text-xl font-medium text-white">Google Docs</h3>
+            </div>
+            <p className="text-zinc-400 mb-4">
+              Connect your Google account to search and reference your documents.
+            </p>
+            <a
+              href="/settings?tab=personalization"
+              className="inline-flex items-center justify-center w-full px-4 py-2 bg-[#9334E9] text-white rounded-lg hover:bg-[#7928CA] transition-colors"
+            >
+              Connect Google
+            </a>
+          </div>
+          
+          <div className="bg-black rounded-lg p-6 border border-zinc-800">
+            <div className="flex items-center gap-3 mb-4">
+              <img
+                src="https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png"
+                alt="Notion"
+                className="w-8 h-8"
+              />
+              <h3 className="text-xl font-medium text-white">Notion</h3>
+            </div>
+            <p className="text-zinc-400 mb-4">
+              Connect Notion to access and search your workspaces and pages.
+            </p>
+            <a
+              href="/settings?tab=personalization"
+              className="inline-flex items-center justify-center w-full px-4 py-2 bg-[#9334E9] text-white rounded-lg hover:bg-[#7928CA] transition-colors"
+            >
+              Connect Notion
+            </a>
+          </div>
+        </div>
+        
+        <div className="flex justify-center">
+          <button
+            onClick={handleClose}
+            className="px-6 py-2 text-zinc-400 hover:text-white transition-colors"
+          >
+            Skip for now
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
