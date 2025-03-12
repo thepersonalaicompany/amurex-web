@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-// Configure Vercel Cron to run every 5 minutes
+// Configure Vercel Cron
+export const dynamic = 'force-dynamic';
+export const maxDuration = 300; // 5 minutes in seconds
+export const revalidate = 0;
+
+// Vercel Cron configuration
 export const config = {
-  runtime: "edge",
-  schedule: "*/5 * * * *", // Cron syntax: every 5 minutes
+  cron: "*/5 * * * *" // Cron syntax: every 5 minutes
 };
 
 export async function GET(req) {
