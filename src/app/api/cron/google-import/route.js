@@ -5,11 +5,10 @@ import { createClient } from "@supabase/supabase-js";
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // 5 minutes in seconds
 export const revalidate = 0;
+export const runtime = 'nodejs';
 
-// Vercel Cron configuration
-export const config = {
-  cron: "*/5 * * * *" // Cron syntax: every 5 minutes
-};
+// Vercel Cron configuration using the new format
+export const schedule = "*/5 * * * *"; // Cron syntax: every 5 minutes
 
 export async function GET(req) {
   try {
