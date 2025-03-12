@@ -106,6 +106,46 @@ export async function POST(req) {
   }
 }
 
+export async function GET(req) {
+  try {
+    // Get user ID from the URL query parameters
+    const url = new URL(req.url);
+    const userId = url.searchParams.get('userId');
+    
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: "User ID is required" },
+        { status: 400 }
+      );
+    }
+
+    // Create Supabase client with service role key
+    const adminSupabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+
+    // Process the documents
+    const results = await processGoogleDocs({ id: userId }, adminSupabase);
+
+    return NextResponse.json({
+      success: true,
+      message: "Import complete",
+      documents: results.map((result) => ({
+        id: result.id,
+        title: result.title || `Document ${result.id}`,
+        status: result.status,
+      })),
+    });
+  } catch (error) {
+    console.error("Error fetching Google Docs:", error);
+    return NextResponse.json(
+      { success: false, error: error.message },
+      { status: 500 }
+    );
+  }
+}
+
 async function processGoogleDocs(session, supabase) {
   try {
     // Get user's Google tokens
@@ -165,7 +205,7 @@ async function processGoogleDocs(session, supabase) {
     const response = await drive.files.list({
       q: "mimeType='application/vnd.google-apps.document'",
       fields: "files(id, name, modifiedTime, mimeType)",
-      pageSize: 30,
+      pageSize: 2,
     });
 
     const textSplitter = new RecursiveCharacterTextSplitter({
@@ -192,6 +232,7 @@ async function processGoogleDocs(session, supabase) {
           continue;
         }
 
+        // Extract content from the document
         const content = doc.data.body.content
           .filter((item) => item?.paragraph?.elements)
           .map((item) =>
@@ -202,6 +243,13 @@ async function processGoogleDocs(session, supabase) {
           )
           .filter(Boolean)
           .join("\n");
+
+        // Log content for debugging
+        console.log(`Document ${file.name} (${file.id}) content length: ${content.length}`);
+        console.log(`Document content preview: ${content.substring(0, 500)}...`);
+
+        // Log the raw document structure to see what we're working with
+        console.log(`Raw document structure:`, JSON.stringify(doc.data.body.content.slice(0, 2), null, 2));
 
         if (!content) {
           console.warn(
@@ -250,6 +298,36 @@ async function processGoogleDocs(session, supabase) {
         const chunks = await textSplitter.createDocuments([content]);
         const chunkTexts = chunks.map((chunk) => chunk.pageContent);
 
+        // Log chunk information for debugging
+        console.log(`Document ${file.name} (${file.id}) generated ${chunks.length} chunks`);
+        console.log(`Chunk lengths: ${chunkTexts.map(c => c.length).join(', ')}`);
+
+        // Validate chunks before generating embeddings
+        if (!chunkTexts || chunkTexts.length === 0) {
+          console.warn(`No valid chunks generated for document ${file.name} (${file.id})`);
+          results.push({
+            id: file.id,
+            status: "error",
+            title: file.name,
+            error: "Failed to generate text chunks",
+          });
+          continue;
+        }
+
+        // Filter out any empty chunks
+        const validChunks = chunkTexts.filter(chunk => chunk && chunk.trim().length > 0);
+
+        if (validChunks.length === 0) {
+          console.warn(`All chunks were empty for document ${file.name} (${file.id})`);
+          results.push({
+            id: file.id,
+            status: "error",
+            title: file.name,
+            error: "All text chunks were empty",
+          });
+          continue;
+        }
+
         // Generate embeddings using Mistral API
         const embeddingResponse = await fetch(
           "https://api.mistral.ai/v1/embeddings",
@@ -260,7 +338,7 @@ async function processGoogleDocs(session, supabase) {
               Authorization: `Bearer ${process.env.MISTRAL_API_KEY}`,
             },
             body: JSON.stringify({
-              input: chunkTexts,
+              input: validChunks,
               model: "mistral-embed",
               encoding_format: "float",
             }),
@@ -268,14 +346,31 @@ async function processGoogleDocs(session, supabase) {
         );
 
         const embedData = await embeddingResponse.json();
+
+        // Add error handling for the embedding data
+        if (!embedData || !embedData.data || !Array.isArray(embedData.data)) {
+          console.error("Invalid embedding data received:", embedData);
+          throw new Error("Failed to generate embeddings: Invalid response format");
+        }
+
         // Format embeddings as arrays for Postgres vector type
-        const embeddings = embedData.data.map(
-          (item) => `[${item.embedding.join(",")}]`
-        );
+        const embeddings = embedData.data.map(item => {
+          if (!item || !item.embedding || !Array.isArray(item.embedding)) {
+            console.error("Invalid embedding item:", item);
+            throw new Error("Failed to process embedding: Invalid format");
+          }
+          return `[${item.embedding.join(",")}]`;
+        });
 
         // Calculate and format centroid as array for Postgres
         const centroid = `[${calculateCentroid(
-          embedData.data.map((item) => item.embedding)
+          embedData.data.map(item => {
+            if (!item || !item.embedding || !Array.isArray(item.embedding)) {
+              console.error("Invalid embedding item for centroid:", item);
+              throw new Error("Failed to calculate centroid: Invalid embedding format");
+            }
+            return item.embedding;
+          })
         ).join(",")}]`;
 
         // Insert document with properly formatted vectors

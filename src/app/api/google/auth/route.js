@@ -10,7 +10,10 @@ const oauth2Client = new google.auth.OAuth2(
 export async function GET(req) {
   const scopes = [
     'https://www.googleapis.com/auth/documents.readonly',
-    'https://www.googleapis.com/auth/drive.readonly'
+    'https://www.googleapis.com/auth/drive.readonly',
+    'https://www.googleapis.com/auth/calendar.readonly',
+    'https://www.googleapis.com/auth/calendar.events.readonly',
+    'https://www.googleapis.com/auth/gmail.readonly'
   ];
 
   const url = oauth2Client.generateAuthUrl({
@@ -30,7 +33,8 @@ export async function POST(req) {
       'https://www.googleapis.com/auth/documents.readonly',
       'https://www.googleapis.com/auth/drive.readonly',
       'https://www.googleapis.com/auth/calendar.readonly',
-      'https://www.googleapis.com/auth/calendar.events.readonly'
+      'https://www.googleapis.com/auth/calendar.events.readonly',
+      'https://www.googleapis.com/auth/gmail.readonly'
     ];
 
     const url = oauth2Client.generateAuthUrl({
