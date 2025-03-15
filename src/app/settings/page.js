@@ -34,6 +34,7 @@ const PROVIDER_ICONS = {
   notion:
     "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/Notion-logo.svg/2048px-Notion-logo.svg.png",
   obsidian: "https://obsidian.md/images/obsidian-logo-gradient.svg",
+  gmail: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/2560px-Gmail_icon_%282020%29.svg.png",
 };
 
 const BASE_URL_BACKEND = "https://api.amurex.ai";
@@ -54,6 +55,9 @@ function SettingsContent() {
   const [emailNotificationsEnabled, setEmailNotificationsEnabled] =
     useState(false);
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
+  const [isProcessingEmails, setIsProcessingEmails] = useState(false);
+  const [emailLabelingEnabled, setEmailLabelingEnabled] = useState(false);
+  const [processedEmailCount, setProcessedEmailCount] = useState(0);
   const [teamName, setTeamName] = useState("");
   const [teamLocation, setTeamLocation] = useState("");
   const [editingField, setEditingField] = useState(null);
@@ -78,6 +82,8 @@ function SettingsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [session, setSession] = useState(null);
+  const [gmailPermissionError, setGmailPermissionError] = useState(false);
+
   // Modify the session check useEffect
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -146,6 +152,214 @@ function SettingsContent() {
     checkEmailSettings();
   }, []);
 
+  const handleGoogleDocsConnect = useCallback(async () => {
+    console.log("Starting Google Docs connection flow...");
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (session) {
+        const response = await fetch("/api/google/auth", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ userId: session.user.id }),
+        });
+        const data = await response.json();
+        if (data.url) {
+          console.log(
+            "Setting pendingGoogleDocsImport flag before OAuth redirect"
+          );
+          localStorage.setItem("pendingGoogleDocsImport", "true");
+          router.push(data.url);
+        } else {
+          console.error("Error starting Google OAuth flow:", data.error);
+        }
+      }
+    } catch (error) {
+      console.error("Error connecting Google Docs:", error);
+    }
+  }, [router]);
+
+  const importGoogleDocs = useCallback(async () => {
+    if (googleDocsConnected) {
+      console.log("Starting Google Docs import process...");
+      setIsImporting(true);
+      setImportSource("Google Docs");
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+
+      try {
+        const response = await fetch("/api/google/import", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({
+            userId: session.user.id,
+            accessToken: accessToken,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          console.log("Google Docs import initiated:", data);
+          toast.success("Import complete! Check your email for details.");
+        } else {
+          console.error("Error importing Google docs:", data.error);
+          toast.error("Import failed. Please try again.");
+        }
+      } catch (error) {
+        console.error("Error importing Google docs:", error);
+        toast.error("Import failed. Please try again.");
+      } finally {
+        console.log("Import process completed");
+        setIsImporting(false);
+        setImportSource("");
+        setImportProgress(0);
+      }
+    }
+  }, [googleDocsConnected]);
+
+  const importNotionDocuments = useCallback(async () => {
+    if (notionConnected) {
+      setIsImporting(true);
+      setImportSource("Notion");
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      try {
+        const response = await fetch("/api/notion/import", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ session: session }),
+        });
+        const data = await response.json();
+
+        if (data.success) {
+          setNotionDocuments(data.documents);
+        } else {
+          console.log("Data:", data);
+          console.error("Error importing Notion documents:", data.error);
+        }
+      } catch (error) {
+        console.log("Error:", error);
+        console.error("Error importing Notion documents:", error);
+      } finally {
+        setTimeout(() => {
+          setIsImporting(false);
+          setImportSource("");
+          setImportProgress(0);
+        }, 1000);
+      }
+    }
+  }, [notionConnected]);
+
+  const processGmailLabels = useCallback(async () => {
+    try {
+      setIsProcessingEmails(true);
+      setProcessedEmailCount(0);
+      setGmailPermissionError(false);
+      
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      
+      if (!session) {
+        toast.error("You must be logged in to process emails");
+        setIsProcessingEmails(false);
+        return;
+      }
+      
+      const response = await fetch("/api/gmail/process-labels", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userId: session.user.id
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setProcessedEmailCount(data.processed || 0);
+        toast.success(`Successfully processed ${data.processed} emails`);
+      } else {
+        if (data.errorType === "insufficient_permissions") {
+          setGmailPermissionError(true);
+          toast.error("Insufficient Gmail permissions. Please reconnect your Google account.");
+        } else {
+          toast.error(data.error || "Failed to process emails");
+        }
+      }
+    } catch (error) {
+      console.error("Error processing Gmail labels:", error);
+      toast.error("Failed to process emails");
+    } finally {
+      setIsProcessingEmails(false);
+    }
+  }, []);
+
+  const handleReconnectGoogle = useCallback(() => {
+    localStorage.setItem("pendingGmailReconnect", "true");
+    handleGoogleDocsConnect();
+    toast.success("Please reconnect your Google account with the necessary permissions");
+  }, [handleGoogleDocsConnect]);
+
+  // Update the useEffect to check for pending imports as well
+  useEffect(() => {
+    const checkPendingImports = async () => {
+      console.log("Checking for pending imports...");
+      const pendingGoogleImport = localStorage.getItem(
+        "pendingGoogleDocsImport"
+      );
+      const pendingNotionImport = localStorage.getItem("pendingNotionImport");
+      const pendingGmailReconnect = localStorage.getItem("pendingGmailReconnect");
+
+      if (pendingGoogleImport === "true" && googleDocsConnected) {
+        console.log(
+          "Found pending Google import, starting Google Docs import..."
+        );
+        localStorage.removeItem("pendingGoogleDocsImport");
+        await importGoogleDocs();
+      }
+
+      if (pendingNotionImport === "true" && notionConnected) {
+        console.log("Found pending Notion import, starting Notion import...");
+        localStorage.removeItem("pendingNotionImport");
+        await importNotionDocuments();
+      }
+      
+      if (pendingGmailReconnect === "true" && googleDocsConnected) {
+        console.log("Found pending Gmail reconnect, checking permissions...");
+        localStorage.removeItem("pendingGmailReconnect");
+        setGmailPermissionError(false);
+        if (emailLabelingEnabled) {
+          await processGmailLabels();
+        }
+      }
+    };
+
+    checkPendingImports();
+  }, [
+    googleDocsConnected,
+    notionConnected,
+    importGoogleDocs,
+    importNotionDocuments,
+    emailLabelingEnabled,
+    processGmailLabels,
+  ]);
+
   const checkIntegrations = async () => {
     try {
       console.log("checkIntegrations");
@@ -157,7 +371,7 @@ function SettingsContent() {
         const { data: user, error } = await supabase
           .from("users")
           .select(
-            "notion_connected, google_docs_connected, calendar_connected, memory_enabled, email, created_at"
+            "notion_connected, google_docs_connected, calendar_connected, memory_enabled, email, created_at, email_tagging_enabled"
           )
           .eq("id", session.user.id)
           .single();
@@ -176,6 +390,7 @@ function SettingsContent() {
           setGoogleDocsConnected(user.google_docs_connected);
           setCalendarConnected(user.calendar_connected);
           setMemoryEnabled(user.memory_enabled);
+          setEmailLabelingEnabled(user.email_tagging_enabled || false);
         }
       }
     } catch (error) {
@@ -257,36 +472,6 @@ function SettingsContent() {
     }
   };
 
-  const handleGoogleDocsConnect = async () => {
-    console.log("Starting Google Docs connection flow...");
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (session) {
-        const response = await fetch("/api/google/auth", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ userId: session.user.id }),
-        });
-        const data = await response.json();
-        if (data.url) {
-          console.log(
-            "Setting pendingGoogleDocsImport flag before OAuth redirect"
-          );
-          localStorage.setItem("pendingGoogleDocsImport", "true");
-          router.push(data.url);
-        } else {
-          console.error("Error starting Google OAuth flow:", data.error);
-        }
-      }
-    } catch (error) {
-      console.error("Error connecting Google Docs:", error);
-    }
-  };
-
   const handleCalendarConnect = async () => {
     try {
       const {
@@ -311,119 +496,6 @@ function SettingsContent() {
       console.error("Error connecting Google services:", error);
     }
   };
-
-  const importNotionDocuments = useCallback(async () => {
-    if (notionConnected) {
-      setIsImporting(true);
-      setImportSource("Notion");
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      try {
-        const response = await fetch("/api/notion/import", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ session: session }),
-        });
-        const data = await response.json();
-
-        if (data.success) {
-          setNotionDocuments(data.documents);
-        } else {
-          console.log("Data:", data);
-          console.error("Error importing Notion documents:", data.error);
-        }
-      } catch (error) {
-        console.log("Error:", error);
-        console.error("Error importing Notion documents:", error);
-      } finally {
-        setTimeout(() => {
-          setIsImporting(false);
-          setImportSource("");
-          setImportProgress(0);
-        }, 1000);
-      }
-    }
-  }, [notionConnected]);
-
-  const importGoogleDocs = useCallback(async () => {
-    if (googleDocsConnected) {
-      console.log("Starting Google Docs import process...");
-      setIsImporting(true);
-      setImportSource("Google Docs");
-
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      const accessToken = session?.access_token;
-
-      try {
-        const response = await fetch("/api/google/import", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify({
-            userId: session.user.id,
-            accessToken: accessToken,
-          }),
-        });
-
-        const data = await response.json();
-
-        if (data.success) {
-          console.log("Google Docs import initiated:", data);
-          toast.success("Import complete! Check your email for details.");
-        } else {
-          console.error("Error importing Google docs:", data.error);
-          toast.error("Import failed. Please try again.");
-        }
-      } catch (error) {
-        console.error("Error importing Google docs:", error);
-        toast.error("Import failed. Please try again.");
-      } finally {
-        console.log("Import process completed");
-        setIsImporting(false);
-        setImportSource("");
-        setImportProgress(0);
-      }
-    }
-  }, [googleDocsConnected]);
-
-  // Update the useEffect to check for pending imports as well
-  useEffect(() => {
-    const checkPendingImports = async () => {
-      console.log("Checking for pending imports...");
-      const pendingGoogleImport = localStorage.getItem(
-        "pendingGoogleDocsImport"
-      );
-      const pendingNotionImport = localStorage.getItem("pendingNotionImport");
-
-      if (pendingGoogleImport === "true" && googleDocsConnected) {
-        console.log(
-          "Found pending Google import, starting Google Docs import..."
-        );
-        localStorage.removeItem("pendingGoogleDocsImport");
-        await importGoogleDocs();
-      }
-
-      if (pendingNotionImport === "true" && notionConnected) {
-        console.log("Found pending Notion import, starting Notion import...");
-        localStorage.removeItem("pendingNotionImport");
-        await importNotionDocuments();
-      }
-    };
-
-    checkPendingImports();
-  }, [
-    googleDocsConnected,
-    notionConnected,
-    importGoogleDocs,
-    importNotionDocuments,
-  ]);
 
   const handleMemoryToggle = async (checked) => {
     try {
@@ -904,6 +976,27 @@ function SettingsContent() {
     setActiveTab(tabName);
   };
 
+  const handleEmailLabelToggle = async (checked) => {
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (session) {
+        const { error } = await supabase
+          .from("users")
+          .update({ email_tagging_enabled: checked })
+          .eq("id", session.user.id);
+
+        if (error) throw error;
+        setEmailLabelingEnabled(checked);
+        toast.success(checked ? "Email labeling enabled" : "Email labeling disabled");
+      }
+    } catch (error) {
+      console.error("Error updating email labeling settings:", error);
+      toast.error("Failed to update email labeling settings");
+    }
+  };
+
   return (
     <div className="flex min-h-screen bg-black text-white">
       {/* Left App Navbar - the thin one */}
@@ -1181,6 +1274,78 @@ function SettingsContent() {
                             Request
                           </Button>
                         </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  <div className="flex gap-4 mt-4">
+                    <Card className="bg-black border-zinc-800 flex-1">
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <img
+                              src={PROVIDER_ICONS.gmail}
+                              alt="Gmail"
+                              className="w-6 h-6"
+                            />
+                            <div>
+                              <h3 className="font-medium text-white text-lg">
+                                Gmail Smart Labels
+                              </h3>
+                              <p className="text-sm text-zinc-400">
+                                Auto-categorize emails with AI
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Switch
+                              checked={emailLabelingEnabled}
+                              onCheckedChange={handleEmailLabelToggle}
+                              className={emailLabelingEnabled ? "bg-[#9334E9]" : ""}
+                            />
+                            {emailLabelingEnabled && !gmailPermissionError && (
+                              <Button
+                                variant="outline"
+                                className="bg-zinc-900 text-zinc-300 hover:bg-zinc-800 border-zinc-800 min-w-[100px]"
+                                onClick={processGmailLabels}
+                                disabled={isProcessingEmails}
+                              >
+                                {isProcessingEmails ? (
+                                  <div className="flex items-center">
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#9334E9] mr-2"></div>
+                                    Processing...
+                                  </div>
+                                ) : (
+                                  "Process Emails"
+                                )}
+                              </Button>
+                            )}
+                            {gmailPermissionError && (
+                              <Button
+                                variant="outline"
+                                className="bg-amber-900 text-amber-100 hover:bg-amber-800 border-amber-700 min-w-[100px]"
+                                onClick={handleReconnectGoogle}
+                              >
+                                Reconnect Google
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                        {processedEmailCount > 0 && (
+                          <p className="text-sm text-green-500 mt-2">
+                            Successfully processed {processedEmailCount} emails
+                          </p>
+                        )}
+                        {gmailPermissionError && (
+                          <p className="text-sm text-amber-500 mt-2">
+                            Additional Gmail permissions are required. Please reconnect your Google account.
+                          </p>
+                        )}
+                        {emailLabelingEnabled && !gmailPermissionError && (
+                          <p className="text-xs text-zinc-400 mt-2">
+                            Uses AI to categorize your unread emails (max 10) and apply labels in Gmail
+                          </p>
+                        )}
                       </CardContent>
                     </Card>
                   </div>
