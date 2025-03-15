@@ -50,6 +50,7 @@ function SettingsContent() {
   const [importSource, setImportSource] = useState("");
   const [importProgress, setImportProgress] = useState(0);
   const [memoryEnabled, setMemoryEnabled] = useState(false);
+  const [emailTaggingEnabled, setEmailTaggingEnabled] = useState(false);
   const [createdAt, setCreatedAt] = useState("");
   const [emailNotificationsEnabled, setEmailNotificationsEnabled] =
     useState(false);
@@ -157,7 +158,7 @@ function SettingsContent() {
         const { data: user, error } = await supabase
           .from("users")
           .select(
-            "notion_connected, google_docs_connected, calendar_connected, memory_enabled, email, created_at"
+            "notion_connected, google_docs_connected, calendar_connected, memory_enabled, email_tagging_enabled, email, created_at"
           )
           .eq("id", session.user.id)
           .single();
@@ -176,6 +177,7 @@ function SettingsContent() {
           setGoogleDocsConnected(user.google_docs_connected);
           setCalendarConnected(user.calendar_connected);
           setMemoryEnabled(user.memory_enabled);
+          setEmailTaggingEnabled(user.email_tagging_enabled || false);
         }
       }
     } catch (error) {
@@ -904,6 +906,58 @@ function SettingsContent() {
     setActiveTab(tabName);
   };
 
+  // Add email tagging toggle handler
+  const handleEmailTaggingToggle = async (checked) => {
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (session) {
+        if (checked && !googleDocsConnected) {
+          toast.error("Please connect your Google account first");
+          return;
+        }
+
+        const { error } = await supabase
+          .from("users")
+          .update({ email_tagging_enabled: checked })
+          .eq("id", session.user.id);
+
+        if (error) throw error;
+        setEmailTaggingEnabled(checked);
+        
+        if (checked) {
+          // Request email permissions
+          toast.success("Email tagging enabled. We'll start categorizing your emails.");
+          
+          // Manually trigger the first tagging run
+          try {
+            const response = await fetch("/api/google/tag-emails", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ userId: session.user.id }),
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+              toast.success(`Successfully processed ${data.processed} emails`);
+            }
+          } catch (err) {
+            console.error("Error starting email tagging:", err);
+          }
+        } else {
+          toast.success("Email tagging disabled");
+        }
+      }
+    } catch (error) {
+      console.error("Error updating email tagging settings:", error);
+      toast.error("Failed to update email tagging settings");
+    }
+  };
+
   return (
     <div className="flex min-h-screen bg-black text-white">
       {/* Left App Navbar - the thin one */}
@@ -1184,6 +1238,85 @@ function SettingsContent() {
                       </CardContent>
                     </Card>
                   </div>
+
+                  {/* Email Tagging Card */}
+                  <Card className="bg-black border-zinc-800 mt-8">
+                    <CardContent className="p-6 space-y-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h2 className="text-lg font-semibold flex items-center gap-2 text-white">
+                            <MessageSquare className="w-5 h-5 text-[#9334E9]" />
+                            Email Tagging
+                          </h2>
+                          <p className="text-sm text-zinc-400">
+                            Automatically categorize and tag your emails with AI. We'll process up to 10 unread emails at a time.
+                          </p>
+                        </div>
+                        <Switch
+                          checked={emailTaggingEnabled}
+                          onCheckedChange={handleEmailTaggingToggle}
+                          className={emailTaggingEnabled ? "bg-[#9334E9]" : ""}
+                        />
+                      </div>
+
+                      {googleDocsConnected ? (
+                        <div className="bg-zinc-900 rounded-lg p-4 text-sm">
+                          <p className="text-zinc-400">
+                            {emailTaggingEnabled 
+                              ? "Email tagging is active. We'll automatically categorize up to 10 unread emails at a time with the following labels:" 
+                              : "Enable email tagging to automatically organize your inbox with AI-powered categories:"}
+                          </p>
+                          <ul className="mt-2 grid grid-cols-2 gap-x-8 gap-y-2">
+                            <li className="flex items-center">
+                              <div className="w-3 h-3 rounded-full bg-red-500 mr-2"></div>
+                              <span className="text-white">To Respond</span>
+                            </li>
+                            <li className="flex items-center">
+                              <div className="w-3 h-3 rounded-full bg-blue-500 mr-2"></div>
+                              <span className="text-white">FYI</span>
+                            </li>
+                            <li className="flex items-center">
+                              <div className="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
+                              <span className="text-white">Comment</span>
+                            </li>
+                            <li className="flex items-center">
+                              <div className="w-3 h-3 rounded-full bg-gray-500 mr-2"></div>
+                              <span className="text-white">Notification</span>
+                            </li>
+                            <li className="flex items-center">
+                              <div className="w-3 h-3 rounded-full bg-purple-400 mr-2"></div>
+                              <span className="text-white">Meeting Update</span>
+                            </li>
+                            <li className="flex items-center">
+                              <div className="w-3 h-3 rounded-full bg-orange-300 mr-2"></div>
+                              <span className="text-white">Awaiting Reply</span>
+                            </li>
+                            <li className="flex items-center">
+                              <div className="w-3 h-3 rounded-full bg-green-300 mr-2"></div>
+                              <span className="text-white">Actioned</span>
+                            </li>
+                            <li className="flex items-center">
+                              <div className="w-3 h-3 rounded-full bg-blue-300 mr-2"></div>
+                              <span className="text-white">Promotions</span>
+                            </li>
+                          </ul>
+                        </div>
+                      ) : (
+                        <div className="bg-red-900/20 border border-red-900/40 rounded-lg p-4 text-sm">
+                          <p className="text-red-400">
+                            You need to connect your Google account first to use email tagging.
+                          </p>
+                          <Button
+                            variant="outline"
+                            className="mt-2 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 border-zinc-800"
+                            onClick={handleGoogleDocsConnect}
+                          >
+                            Connect Google Account
+                          </Button>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
                 </CardContent>
               </Card>
             </div>
