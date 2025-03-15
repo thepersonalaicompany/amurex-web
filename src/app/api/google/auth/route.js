@@ -13,7 +13,9 @@ export async function GET(req) {
     'https://www.googleapis.com/auth/drive.readonly',
     'https://www.googleapis.com/auth/calendar.readonly',
     'https://www.googleapis.com/auth/calendar.events.readonly',
-    'https://www.googleapis.com/auth/gmail.readonly'
+    'https://www.googleapis.com/auth/gmail.readonly',
+    'https://www.googleapis.com/auth/gmail.modify',
+    'https://www.googleapis.com/auth/gmail.labels'
   ];
 
   const url = oauth2Client.generateAuthUrl({
@@ -34,7 +36,9 @@ export async function POST(req) {
       'https://www.googleapis.com/auth/drive.readonly',
       'https://www.googleapis.com/auth/calendar.readonly',
       'https://www.googleapis.com/auth/calendar.events.readonly',
-      'https://www.googleapis.com/auth/gmail.readonly'
+      'https://www.googleapis.com/auth/gmail.readonly',
+      'https://www.googleapis.com/auth/gmail.modify',
+      'https://www.googleapis.com/auth/gmail.labels'
     ];
 
     const url = oauth2Client.generateAuthUrl({
