@@ -10,15 +10,31 @@ const openai = new OpenAI({
 
 // Gmail label colors
 const GMAIL_COLORS = {
-  "to respond": { "backgroundColor": "#fb4c2f", "textColor": "#ffffff" },
-  "FYI": { "backgroundColor": "#16a766", "textColor": "#ffffff" },
-  "comment": { "backgroundColor": "#ffad47", "textColor": "#ffffff" },
-  "notification": { "backgroundColor": "#42d692", "textColor": "#ffffff" },
-  "meeting update": { "backgroundColor": "#9334e9", "textColor": "#ffffff" },
-  "awaiting reply": { "backgroundColor": "#ffd6c7", "textColor": "#000000" },
-  "actioned": { "backgroundColor": "#a0eade", "textColor": "#000000" },
-  "promotions": { "backgroundColor": "#a8c1e5", "textColor": "#000000" }
+  // Using Gmail's standard palette colors:
+  // See https://developers.google.com/gmail/api/reference/rest/v1/users.labels for allowed colors
+  "to respond": { "backgroundColor": "#fb4c2f", "textColor": "#ffffff" },  // Red
+  "FYI": { "backgroundColor": "#16a766", "textColor": "#ffffff" },         // Green
+  "comment": { "backgroundColor": "#ffad47", "textColor": "#ffffff" },     // Orange
+  "notification": { "backgroundColor": "#42d692", "textColor": "#ffffff" }, // Light Green
+  "meeting update": { "backgroundColor": "#8e63ce", "textColor": "#ffffff" }, // Purple (changed from #9334e9)
+  "awaiting reply": { "backgroundColor": "#ffad47", "textColor": "#ffffff" }, // Orange
+  "actioned": { "backgroundColor": "#4986e7", "textColor": "#ffffff" },    // Blue
+  "promotions": { "backgroundColor": "#2da2bb", "textColor": "#ffffff" }   // Teal
 };
+
+// Standard Gmail colors for reference (uncomment if needed):
+// const GMAIL_STANDARD_COLORS = {
+//   "berry": { "backgroundColor": "#dc2127", "textColor": "#ffffff" },
+//   "red": { "backgroundColor": "#fb4c2f", "textColor": "#ffffff" },
+//   "orange": { "backgroundColor": "#ffad47", "textColor": "#ffffff" },
+//   "yellow": { "backgroundColor": "#fad165", "textColor": "#000000" },
+//   "green": { "backgroundColor": "#16a766", "textColor": "#ffffff" },
+//   "teal": { "backgroundColor": "#2da2bb", "textColor": "#ffffff" },
+//   "blue": { "backgroundColor": "#4986e7", "textColor": "#ffffff" },
+//   "purple": { "backgroundColor": "#8e63ce", "textColor": "#ffffff" },
+//   "gray": { "backgroundColor": "#999999", "textColor": "#ffffff" },
+//   "brown": { "backgroundColor": "#b65775", "textColor": "#ffffff" }
+// };
 
 // Helper function to categorize emails using OpenAI
 async function categorizeWithOpenAI(fromEmail, subject, body) {
@@ -60,6 +76,7 @@ export async function POST(req) {
   try {
     const requestData = await req.json();
     const userId = requestData.userId;
+    const useStandardColors = requestData.useStandardColors === true;
 
     if (!userId) {
       return NextResponse.json({ success: false, error: "User ID is required" }, { status: 400 });
@@ -118,14 +135,20 @@ export async function POST(req) {
           amurexLabels[labelName] = existingLabels[fullLabelName];
         } else {
           try {
+            const requestBody = {
+              name: fullLabelName,
+              labelListVisibility: "labelShow",
+              messageListVisibility: "show"
+            };
+            
+            // Only add colors if not explicitly disabled
+            if (!useStandardColors) {
+              requestBody.color = colors;
+            }
+            
             const newLabel = await gmail.users.labels.create({
               userId: 'me',
-              requestBody: {
-                name: fullLabelName,
-                labelListVisibility: "labelShow",
-                messageListVisibility: "show",
-                color: colors
-              }
+              requestBody
             });
             
             amurexLabels[labelName] = newLabel.data.id;
@@ -137,8 +160,30 @@ export async function POST(req) {
                 error: "Insufficient Gmail permissions. Please disconnect and reconnect your Google account with the necessary permissions.",
                 errorType: "insufficient_permissions"
               }, { status: 403 });
+            } else if (labelError.status === 400 || (labelError.response && labelError.response.status === 400)) {
+              // Color palette error - try without color
+              console.error("Color error for label", fullLabelName, labelError.message || labelError);
+              
+              try {
+                const newLabel = await gmail.users.labels.create({
+                  userId: 'me',
+                  requestBody: {
+                    name: fullLabelName,
+                    labelListVisibility: "labelShow",
+                    messageListVisibility: "show"
+                    // No color specified this time
+                  }
+                });
+                
+                amurexLabels[labelName] = newLabel.data.id;
+              } catch (retryError) {
+                console.error("Failed to create label even without color:", retryError);
+                // Continue with the loop but don't add this label
+              }
+            } else {
+              console.error("Unexpected error creating label:", labelError);
+              // Continue with the loop but don't add this label
             }
-            throw labelError; // Re-throw if it's not a permissions issue
           }
         }
       }

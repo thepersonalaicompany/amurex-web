@@ -285,7 +285,9 @@ function SettingsContent() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          userId: session.user.id
+          userId: session.user.id,
+          // Use Gmail's predefined color palette instead of custom colors
+          useStandardColors: true
         }),
       });
       
@@ -1345,6 +1347,26 @@ function SettingsContent() {
                           <p className="text-xs text-zinc-400 mt-2">
                             Uses AI to categorize your unread emails (max 10) and apply labels in Gmail
                           </p>
+                        )}
+                        
+                        {/* Add note about Gmail's color restrictions */}
+                        {emailLabelingEnabled && !gmailPermissionError && (
+                          <p className="text-xs text-zinc-500 mt-1">
+                            Note: Gmail only allows a specific set of colors for labels
+                          </p>
+                        )}
+                        
+                        {/* Separate div for the Process Emails button */}
+                        {emailLabelingEnabled && !gmailPermissionError && !isProcessingEmails && (
+                          <div className="mt-3 flex justify-end">
+                            <Button
+                              variant="outline"
+                              className="bg-zinc-900 text-zinc-300 hover:bg-zinc-800 border-zinc-800 min-w-[120px]"
+                              onClick={processGmailLabels}
+                            >
+                              Process Emails
+                            </Button>
+                          </div>
                         )}
                       </CardContent>
                     </Card>
