@@ -1356,18 +1356,6 @@ function SettingsContent() {
                           </p>
                         )}
                         
-                        {/* Separate div for the Process Emails button */}
-                        {emailLabelingEnabled && !gmailPermissionError && !isProcessingEmails && (
-                          <div className="mt-3 flex justify-end">
-                            <Button
-                              variant="outline"
-                              className="bg-zinc-900 text-zinc-300 hover:bg-zinc-800 border-zinc-800 min-w-[120px]"
-                              onClick={processGmailLabels}
-                            >
-                              Process Emails
-                            </Button>
-                          </div>
-                        )}
                       </CardContent>
                     </Card>
                   </div>
