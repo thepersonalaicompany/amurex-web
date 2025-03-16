@@ -43,6 +43,7 @@ function SettingsContent() {
   const [activeTab, setActiveTab] = useState("personalization");
   const [loading, setLoading] = useState(false);
   const [userEmail, setUserEmail] = useState("");
+  const [userId, setUserId] = useState(null);
   const [notionConnected, setNotionConnected] = useState(false);
   const [googleDocsConnected, setGoogleDocsConnected] = useState(false);
   const [calendarConnected, setCalendarConnected] = useState(false);
@@ -999,6 +1000,18 @@ function SettingsContent() {
     }
   };
 
+  // Add useEffect to get and store userId
+  useEffect(() => {
+    const fetchUserId = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session && session.user) {
+        setUserId(session.user.id);
+      }
+    };
+    
+    fetchUserId();
+  }, []);
+
   return (
     <div className="flex min-h-screen bg-black text-white">
       {/* Left App Navbar - the thin one */}
@@ -1083,11 +1096,22 @@ function SettingsContent() {
                         className="relative bg-zinc-900/50 text-zinc-300 hover:bg-zinc-800 hover:border-[#9334E9] border border-zinc-800 rounded-md backdrop-blur-sm transition-colors duration-200"
                         onClick={async () => {
                           console.log("clicked");
-                          await logUserAction(
-                            "not-required",
-                            "web_memory_chat_tried"
-                          );
-                          router.push("/chat");
+                          
+                          // Track button click with analytics
+                          try {
+                            // Log the user action for analytics using stored userId
+                            await logUserAction(
+                              userId || "not-required", // Use userId if available, fallback to "not-required"
+                              "web_memory_chat_tried"
+                            );
+                            
+                            // Navigate to chat page
+                            router.push("/chat");
+                          } catch (error) {
+                            console.error("Analytics error:", error);
+                            // Still navigate even if analytics fails
+                            router.push("/chat");
+                          }
                         }}
                       >
                         Try Now
@@ -1331,13 +1355,6 @@ function SettingsContent() {
                         {emailLabelingEnabled && !gmailPermissionError && (
                           <p className="text-xs text-zinc-400 mt-2">
                             Uses AI to categorize your unread emails (max 10) and apply labels in Gmail
-                          </p>
-                        )}
-                        
-                        {/* Note about Gmail's color restrictions */}
-                        {emailLabelingEnabled && !gmailPermissionError && (
-                          <p className="text-xs text-zinc-500 mt-1">
-                            Note: Gmail only allows a specific set of colors for labels
                           </p>
                         )}
                         
