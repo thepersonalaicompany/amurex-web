@@ -1305,23 +1305,6 @@ function SettingsContent() {
                               onCheckedChange={handleEmailLabelToggle}
                               className={emailLabelingEnabled ? "bg-[#9334E9]" : ""}
                             />
-                            {emailLabelingEnabled && !gmailPermissionError && (
-                              <Button
-                                variant="outline"
-                                className="bg-zinc-900 text-zinc-300 hover:bg-zinc-800 border-zinc-800 min-w-[100px]"
-                                onClick={processGmailLabels}
-                                disabled={isProcessingEmails}
-                              >
-                                {isProcessingEmails ? (
-                                  <div className="flex items-center">
-                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#9334E9] mr-2"></div>
-                                    Processing...
-                                  </div>
-                                ) : (
-                                  "Process Emails"
-                                )}
-                              </Button>
-                            )}
                             {gmailPermissionError && (
                               <Button
                                 variant="outline"
@@ -1333,6 +1316,8 @@ function SettingsContent() {
                             )}
                           </div>
                         </div>
+                        
+                        {/* Status messages */}
                         {processedEmailCount > 0 && (
                           <p className="text-sm text-green-500 mt-2">
                             Successfully processed {processedEmailCount} emails
@@ -1349,13 +1334,40 @@ function SettingsContent() {
                           </p>
                         )}
                         
-                        {/* Add note about Gmail's color restrictions */}
+                        {/* Note about Gmail's color restrictions */}
                         {emailLabelingEnabled && !gmailPermissionError && (
                           <p className="text-xs text-zinc-500 mt-1">
                             Note: Gmail only allows a specific set of colors for labels
                           </p>
                         )}
                         
+                        {/* Prominent Process Emails button */}
+                        {emailLabelingEnabled && !gmailPermissionError && (
+                          <div className="mt-4 flex justify-end">
+                            <Button
+                              variant="outline"
+                              className="bg-zinc-900 text-zinc-300 hover:bg-zinc-800 hover:border-[#9334E9] border border-zinc-700 min-w-[140px] px-4 py-2"
+                              onClick={processGmailLabels}
+                              disabled={isProcessingEmails}
+                            >
+                              {isProcessingEmails ? (
+                                <div className="flex items-center">
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#9334E9] mr-2"></div>
+                                  Processing...
+                                </div>
+                              ) : (
+                                <div className="flex items-center">
+                                  <img
+                                    src={PROVIDER_ICONS.gmail}
+                                    alt="Gmail"
+                                    className="w-4 h-4 mr-2"
+                                  />
+                                  Process Emails
+                                </div>
+                              )}
+                            </Button>
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                   </div>

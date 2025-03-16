@@ -44,25 +44,47 @@ async function categorizeWithOpenAI(fromEmail, subject, body) {
       messages: [
         {
           role: "system",
-          content: "You are an email categorization assistant. Categorize the email into one of these categories: to respond, FYI, comment, notification, meeting update, awaiting reply, actioned, promotions. Return ONLY the category name, nothing else."
+          content: "You are an email classifier. Classify the email into one of these categories:\n1 = to respond\n2 = FYI\n3 = comment\n4 = notification\n5 = meeting update\n6 = awaiting reply\n7 = actioned\n8 = promotions\n\nRespond ONLY with the number (1-8). Do not include any other text, just the single digit number."
         },
         {
           role: "user",
           content: `Email from: ${fromEmail}\nSubject: ${subject}\n\nBody: ${body}`
         }
       ],
-      max_tokens: 20,
+      max_tokens: 10,
       temperature: 0.3
     });
 
-    const category = response.choices[0].message.content.trim().toLowerCase();
+    // Get the raw response and convert to a number
+    const rawResponse = response.choices[0].message.content.trim();
+    console.log("Raw OpenAI category response:", rawResponse);
     
-    // Make sure the category is one of our predefined categories
-    if (GMAIL_COLORS[category]) {
+    // Extract just the first digit from the response
+    const numberMatch = rawResponse.match(/\d/);
+    const categoryNumber = numberMatch ? parseInt(numberMatch[0]) : null;
+    
+    console.log("Extracted category number:", categoryNumber);
+    
+    // Map from number to category name
+    const categoryMap = {
+      1: "to respond",
+      2: "FYI",
+      3: "comment",
+      4: "notification", 
+      5: "meeting update",
+      6: "awaiting reply",
+      7: "actioned",
+      8: "promotions"
+    };
+    
+    // Look up the category by number
+    if (categoryNumber && categoryMap[categoryNumber]) {
+      const category = categoryMap[categoryNumber];
+      console.log("Mapped to category:", category);
       return category;
     } else {
-      // Default to "FYI" if category doesn't match our options
-      console.log(`Category "${category}" not found in predefined categories, using default`);
+      // Default to "FYI" if we couldn't get a valid number
+      console.log(`Invalid category number "${categoryNumber}", using default`);
       return "FYI";
     }
   } catch (error) {
@@ -219,6 +241,36 @@ export async function POST(req) {
         
         const subject = headers.Subject || "(No Subject)";
         const fromEmail = headers.From || "Unknown";
+        
+        // Check if the email already has an Amurex category label
+        const emailLabels = fullMessage.data.labelIds || [];
+        let alreadyLabeled = false;
+        
+        // Create a reverse map of label IDs to label names for checking
+        const labelIdToName = {};
+        Object.entries(amurexLabels).forEach(([name, id]) => {
+          labelIdToName[id] = name;
+        });
+        
+        // Check if any of the email's labels are Amurex category labels
+        for (const labelId of emailLabels) {
+          if (labelIdToName[labelId]) {
+            console.log(`Email already has Amurex label: ${labelIdToName[labelId]}`);
+            alreadyLabeled = true;
+            break;
+          }
+        }
+        
+        // Skip this email if it already has an Amurex label
+        if (alreadyLabeled) {
+          results.push({
+            messageId: message.id,
+            subject,
+            category: "already_labeled",
+            success: true
+          });
+          continue;
+        }
         
         // Extract email body
         let body = "";
