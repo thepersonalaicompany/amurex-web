@@ -19,7 +19,8 @@ const GMAIL_COLORS = {
   "meeting update": { "backgroundColor": "#8e63ce", "textColor": "#ffffff" }, // Purple (changed from #9334e9)
   "awaiting reply": { "backgroundColor": "#ffad47", "textColor": "#ffffff" }, // Orange
   "actioned": { "backgroundColor": "#4986e7", "textColor": "#ffffff" },    // Blue
-  "promotions": { "backgroundColor": "#2da2bb", "textColor": "#ffffff" }   // Teal
+  "promotions": { "backgroundColor": "#2da2bb", "textColor": "#ffffff" },   // Teal
+  "none": { "backgroundColor": "#999999", "textColor": "#ffffff" }         // Gray
 };
 
 // Standard Gmail colors for reference (uncomment if needed):
@@ -44,7 +45,7 @@ async function categorizeWithOpenAI(fromEmail, subject, body) {
       messages: [
         {
           role: "system",
-          content: "You are an email classifier. Classify the email into one of these categories:\n1 = to respond\n2 = FYI\n3 = comment\n4 = notification\n5 = meeting update\n6 = awaiting reply\n7 = actioned\n8 = promotions\n\nRespond ONLY with the number (1-8). Do not include any other text, just the single digit number."
+          content: "You are an email classifier. Classify the email into one of these categories:\n1 = to respond\n2 = FYI\n3 = comment\n4 = notification\n5 = meeting update\n6 = awaiting reply\n7 = actioned\n8 = promotions\n9 = none\n\nRespond ONLY with the number (1-9). Use category 9 (none) if the email doesn't fit into any of the other categories. Do not include any other text, just the single digit number."
         },
         {
           role: "user",
@@ -74,7 +75,8 @@ async function categorizeWithOpenAI(fromEmail, subject, body) {
       5: "meeting update",
       6: "awaiting reply",
       7: "actioned",
-      8: "promotions"
+      8: "promotions",
+      9: "none"
     };
     
     // Look up the category by number
@@ -83,14 +85,14 @@ async function categorizeWithOpenAI(fromEmail, subject, body) {
       console.log("Mapped to category:", category);
       return category;
     } else {
-      // Default to "FYI" if we couldn't get a valid number
+      // Default to "none" if we couldn't get a valid number
       console.log(`Invalid category number "${categoryNumber}", using default`);
-      return "FYI";
+      return "none";
     }
   } catch (error) {
     console.error("Error categorizing with OpenAI:", error);
-    // Default to "FYI" on error
-    return "FYI";
+    // Default to "none" on error
+    return "none";
   }
 }
 
@@ -291,8 +293,8 @@ export async function POST(req) {
         // Use OpenAI to categorize the email
         const category = await categorizeWithOpenAI(fromEmail, subject, truncatedBody);
         
-        // Apply the label
-        if (amurexLabels[category]) {
+        // Apply the label only if the category is not "none"
+        if (category !== "none" && amurexLabels[category]) {
           await gmail.users.messages.modify({
             userId: 'me',
             id: message.id,

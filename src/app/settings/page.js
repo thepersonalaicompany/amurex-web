@@ -286,8 +286,8 @@ function SettingsContent() {
         },
         body: JSON.stringify({
           userId: session.user.id,
-          // Use Gmail's predefined color palette instead of custom colors
-          useStandardColors: true
+          // Allow custom colors to be applied
+          useStandardColors: false
         }),
       });
       
