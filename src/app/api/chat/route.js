@@ -12,6 +12,13 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
+
+// Use OpenAI client for Groq
+const groq = new OpenAI({
+  apiKey: process.env.GROQ_API_KEY,
+  baseURL: "https://api.groq.com/openai/v1",
+});
+
 // 3. Send payload to Supabase table
 async function sendPayload(content, user_id) {
   await supabase
@@ -389,14 +396,55 @@ async function generateCompletion(messages, modelName) {
   }
 }
 
-// Modify the POST function to handle both chat and prompts endpoints
+// Replace the searchMemory and searchDocuments functions with a unified search function
+async function searchBrain(query, user_id, enabledSources) {
+  try {
+    // const response = await fetch('https://brain.amurex.ai/search', {
+    const response = await fetch('http://localhost:8080/search', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.BRAIN_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        user_id: user_id,
+        content_type: "document",
+        query: query,
+        search_type: "hybrid",
+        ai_enabled: false,
+        limit: 3,
+        offset: 0,
+        sources: enabledSources
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Brain search failed with status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.results || [];
+  } catch (error) {
+    console.error('Error searching brain:', error);
+    throw error;
+  }
+}
+
+// Modify the POST function to remove search time tracking
 export async function POST(req) {
-  const body = await req.json();
+  const startTime = performance.now();
+  console.log("POST request started at:", new Date().toISOString());
   
+  const body = await req.json();
+  console.log(`[${performance.now() - startTime}ms] Request parsed`);
+  
+  // Log the entire request payload
   // Handle prompts generation
   if (body.type === 'prompts') {
     try {
+      const promptsStartTime = performance.now();
       const prompts = await generatePrompts(body.documents);
+      console.log(`[${performance.now() - promptsStartTime}ms] Prompts generated`);
       return Response.json({ prompts });
     } catch (error) {
       console.error('Error generating prompts:', error);
@@ -406,99 +454,136 @@ export async function POST(req) {
   
   // Original chat functionality continues here...
   const { message, user_id, googleDocsEnabled, notionEnabled, memorySearchEnabled, obsidianEnabled } = body;
-
+  
   if (!user_id) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
-    // Start timing
-    const searchStart = performance.now();
-    
-    // Create unified list of enabled sources
+    const sourcesStartTime = performance.now();
+    // Create unified list of enabled sources for document search
     const enabledSources = [
       ...(googleDocsEnabled ? ['google_docs'] : []),
       ...(notionEnabled ? ['notion'] : []),
-      ...(obsidianEnabled ? ['obsidian'] : []),
-      ...(memorySearchEnabled ? ['memory'] : [])
+      ...(obsidianEnabled ? ['obsidian'] : [])
     ];
+    console.log(`[${performance.now() - sourcesStartTime}ms] Sources configured`);
 
-    if (enabledSources.length === 0) {
+    if (enabledSources.length === 0 && !memorySearchEnabled) {
       return Response.json({ 
         success: false, 
         error: "No sources enabled for search" 
       }, { status: 400 });
     }
-
-    // Get embedding for query
-    const response = await fetch('https://api.mistral.ai/v1/embeddings', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.MISTRAL_API_KEY}`
-      },
-      body: JSON.stringify({
-        input: [message],
-        model: "mistral-embed",
-        encoding_format: "float"
+    
+    // Run searches in parallel if both are enabled
+    const searchStartTime = performance.now();
+    const searchPromises = [];
+    let brainResults = [];
+    let meetingsResults = [];
+    let queryEmbedding;
+    
+    // Add brain search promise if document sources are enabled
+    if (enabledSources.length > 0) {
+      const brainSearchPromise = searchBrain(message, user_id, enabledSources)
+        .then(results => {
+          console.log(`[${performance.now() - searchStartTime}ms] Brain search completed`);
+          brainResults = results;
+        });
+      searchPromises.push(brainSearchPromise);
+    }
+    
+    // Add memory search promise if memory search is enabled
+    if (memorySearchEnabled) {
+      // First get embeddings (this needs to be done before the actual search)
+      const embedPromise = fetch('https://api.mistral.ai/v1/embeddings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.MISTRAL_API_KEY}`
+        },
+        body: JSON.stringify({
+          input: [message],
+          model: "mistral-embed",
+          encoding_format: "float"
+        })
       })
-    });
-  
-    const embedData = await response.json();
-    const queryEmbedding = embedData.data[0].embedding;
+      .then(response => response.json())
+      .then(embedData => {
+        console.log(`[${performance.now() - searchStartTime}ms] Embeddings generated`);
+        queryEmbedding = embedData.data[0].embedding;
+        
+        // Now do the actual memory search with the embedding
+        return searchMemory(queryEmbedding, user_id);
+      })
+      .then(results => {
+        console.log(`[${performance.now() - searchStartTime}ms] Memory search completed`);
+        meetingsResults = results;
+      });
+      
+      searchPromises.push(embedPromise);
+    }
     
-    // Get all relevant sources based on enabled types
-    const [memoryChunks, documentChunks] = await Promise.all([
-      enabledSources.includes('memory') ? searchMemory(queryEmbedding, user_id) : [],
-      enabledSources.some(source => ['google_docs', 'notion', 'obsidian'].includes(source)) 
-        ? searchDocuments(queryEmbedding, user_id, enabledSources.filter(source => source !== 'memory'))
-        : []
-    ]);
+    // Wait for all search operations to complete
+    await Promise.all(searchPromises);
+    console.log(`[${performance.now() - searchStartTime}ms] All searches completed`);
     
-    // End timing and log
-    const searchEnd = performance.now();
-    console.log(`Search completed in ${searchEnd - searchStart}ms`);
+    // Process all results
+    let allResults = [...brainResults];
     
-    // Format all chunks uniformly
-    const formattedChunks = [
-      ...memoryChunks.map(item => item.content),
-      ...documentChunks.map(doc => doc.selected_chunks || []).flat()
-    ];
+    // Format meeting results to match brain results structure
+    if (memorySearchEnabled && meetingsResults.length > 0) {
+      const formattedMeetingResults = meetingsResults.map(meeting => ({
+        id: meeting.meeting_id,
+        user_id: user_id,
+        url: `/meetings/${meeting.meeting_id}`,
+        title: meeting.title || "Meeting Transcript",
+        text: meeting.content,
+        type: "meeting"
+      }));
 
+      allResults = [...allResults, ...formattedMeetingResults];
+    }
+    
     // Prepare unified sources list
-    const sources = [
-      ...memoryChunks.map(item => ({
-        text: item.content,
-        meeting_id: item.meeting_id,
-        url: item.meeting_id ? `/meetings/${item.meeting_id}` : null
-      })),
-      ...documentChunks.map(doc => ({
-        id: doc.id,
-        text: doc.selected_chunks?.join('\n') || '',
-        title: doc.title,
-        url: doc.url,
-        type: doc.type
-      }))
-    ];
+    const sourcesProcessStartTime = performance.now();
+    const sources = allResults.map(result => ({
+      id: result.id,
+      text: result.text,
+      title: result.title,
+      url: result.url,
+      type: result.type || 'document'
+    }));
+    console.log(`[${performance.now() - sourcesProcessStartTime}ms] Sources processed`);
     
-    // console.log("documentChunks", documentChunks);
-
     // Create streaming response
+    const streamSetupStartTime = performance.now();
     const stream = new TransformStream();
     const writer = stream.writable.getWriter();
     const encoder = new TextEncoder();
 
     const modelName = process.env.MODEL_NAME;
+    console.log(`[${performance.now() - streamSetupStartTime}ms] Stream setup completed`);
 
-    // If using Ollama, we need to handle streaming differently
-    if (modelName === 'llama3.3') {
-      const response = await fetch('http://localhost:11434/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'llama3.3-70b',
+    // Process the stream using Groq via OpenAI client
+    (async () => {
+      try {
+        let fullResponse = ''; // Track complete response
+
+        // Send sources first - removed search time information
+        const sourcesWriteStartTime = performance.now();
+        const sourcesPayload = JSON.stringify({
+          success: true,
+          sources: sources,
+          chunk: ''
+        });
+        await writer.write(encoder.encode(sourcesPayload + '\n'));
+        console.log(`[${performance.now() - sourcesWriteStartTime}ms] Sources written to stream`);
+
+        // Use Groq for streaming (via OpenAI client)
+        const groqStartTime = performance.now();
+        console.log("Starting Groq stream at:", new Date().toISOString());
+        const groqStream = await groq.chat.completions.create({
           messages: [
             {
               role: "system",
@@ -506,168 +591,79 @@ export async function POST(req) {
             },
             {
               role: "user",
-              content: `Query: ${message};
+              content: `Query: ${message}
               
-                      Retrieved chunks from online conversations: ${JSON.stringify(formattedChunks)}
-              
-                      Retrieved chunks from documents (from files): ${JSON.stringify(documentChunks.map(doc => ({
-                title: doc.title,
-                content: doc.selected_chunks
+              Retrieved documents: ${JSON.stringify(allResults.map(result => ({
+                title: result.title,
+                text: result.text
               })))}`,
             },
           ],
-          stream: true
-        }),
-      });
+          model: "llama-3.3-70b-versatile",
+          temperature: 0.5,
+          max_tokens: 1024,
+          top_p: 1,
+          stream: true,
+        });
+        console.log(`[${performance.now() - groqStartTime}ms] Groq stream created`);
 
-      // Process Ollama stream
-      (async () => {
-        try {
-          let fullResponse = '';
-          
-          // Send sources first
-          const sourcesPayload = JSON.stringify({
-            success: true,
-            sources: sources,
-            chunk: ''
-          });
-          await writer.write(encoder.encode(sourcesPayload + '\n'));
-          
-          const reader = response.body.getReader();
-          
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            
-            const chunk = new TextDecoder().decode(value);
-            const lines = chunk.split('\n').filter(line => line.trim());
-            
-            for (const line of lines) {
-              try {
-                const data = JSON.parse(line);
-                if (data.message && data.message.content) {
-                  fullResponse += data.message.content;
-                  const payload = JSON.stringify({
-                    success: true,
-                    chunk: data.message.content,
-                  });
-                  await writer.write(encoder.encode(payload + '\n'));
-                }
-              } catch (e) {
-                console.error('Error parsing Ollama response:', e);
-              }
-            }
-          }
-          
-          // Save to memory if enabled
-          const { data: user, error } = await supabase.from('users').select('memory_enabled').eq('id', user_id).single();
-          if (user.memory_enabled) {
-            await supabase.from('sessions').insert({
-              user_id: user_id,
-              query: message,
-              response: fullResponse,
-              sources: sources,
+        const streamProcessStartTime = performance.now();
+        let chunkCount = 0;
+        for await (const chunk of groqStream) {
+          chunkCount++;
+          const content = chunk.choices[0]?.delta?.content || '';
+          if (content) {
+            fullResponse += content; // Accumulate the response
+            const payload = JSON.stringify({
+              success: true,
+              chunk: content,
             });
+            await writer.write(encoder.encode(payload + '\n'));
           }
-          
-          // Send final message
-          const finalPayload = JSON.stringify({
-            success: true,
-            done: true,
-          });
-          await writer.write(encoder.encode(finalPayload + '\n'));
-        } catch (error) {
-          const errorPayload = JSON.stringify({
-            success: false,
-            error: error.message,
-          });
-          await writer.write(encoder.encode(errorPayload + '\n'));
-        } finally {
-          await writer.close();
         }
-      })();
-    } else {
-      // Original OpenAI streaming code
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [
-          {
-            role: "system",
-            content: "You are a helpful assistant. Use the provided document chunks to answer the user's query. If the chunks don't contain relevant information, let the user know you couldn't find specific information about their query. Be confident in your answer. Don't say 'I'm not sure' or 'I don't know'.",
-          },
-          {
-            role: "user",
-            content: `Query: ${message};
-            
-                    Retrieved chunks from online conversations: ${JSON.stringify(formattedChunks)}
-            
-                    Retrieved chunks from documents (from files): ${JSON.stringify(documentChunks.map(doc => ({
-              title: doc.title,
-              content: doc.selected_chunks
-            })))}`,
-          },
-        ],
-        stream: true,
-      });
-      
-      // Process the stream
-      (async () => {
-        try {
-          let fullGPTResponse = ''; // Track complete GPT response
+        console.log(`[${performance.now() - streamProcessStartTime}ms] Stream processed (${chunkCount} chunks)`);
+        console.log("Groq stream completed at:", new Date().toISOString());
 
-          // Send sources first
-          const sourcesPayload = JSON.stringify({
-            success: true,
+        // fetch the user's table and find if "memory_enabled" is true
+        const dbStartTime = performance.now();
+        const { data: user, error } = await supabase.from('users').select('memory_enabled').eq('id', user_id).single();
+        
+        if (user.memory_enabled) {
+          // fetch the user's memory table and find if "memory_enabled" is true
+          const sessionInsertStartTime = performance.now();
+          await supabase.from('sessions').insert({
+            user_id: user_id,
+            query: message,
+            response: fullResponse,
             sources: sources,
-            chunk: ''
           });
-          await writer.write(encoder.encode(sourcesPayload + '\n'));
-
-          for await (const chunk of completion) {
-            const content = chunk.choices[0]?.delta?.content || '';
-            if (content) {
-              fullGPTResponse += content; // Accumulate the response
-              const payload = JSON.stringify({
-                success: true,
-                chunk: content,
-              });
-              await writer.write(encoder.encode(payload + '\n'));
-            }
-          }
-
-          // fetch the user's table and find if "memory_enabled" is true
-          const { data: user, error } = await supabase.from('users').select('memory_enabled').eq('id', user_id).single();
-          console.log("user", user);
-          if (user.memory_enabled) {
-            // fetch the user's memory table and find if "memory_enabled" is true
-              await supabase.from('sessions').insert({
-                user_id: user_id,
-                query: message,
-                response: fullGPTResponse,
-                sources: sources,
-              });
-          } else {
-            console.log("Memory is not enabled for this user", error);
-          }
-
-
-          // Send final message
-          const finalPayload = JSON.stringify({
-            success: true,
-            done: true,
-          });
-          await writer.write(encoder.encode(finalPayload + '\n'));
-        } catch (error) {
-          const errorPayload = JSON.stringify({
-            success: false,
-            error: error.message,
-          });
-          await writer.write(encoder.encode(errorPayload + '\n'));
-        } finally {
-          await writer.close();
+          console.log(`[${performance.now() - sessionInsertStartTime}ms] Session inserted into database`);
+        } else {
+          console.log("Memory is not enabled for this user", error);
         }
-      })();
-    }
+        console.log(`[${performance.now() - dbStartTime}ms] Database operations completed`);
+
+        // Send final message
+        const finalWriteStartTime = performance.now();
+        const finalPayload = JSON.stringify({
+          success: true,
+          done: true,
+        });
+        await writer.write(encoder.encode(finalPayload + '\n'));
+        console.log(`[${performance.now() - finalWriteStartTime}ms] Final message written to stream`);
+      } catch (error) {
+        console.error('Error in Groq stream processing:', error);
+        const errorPayload = JSON.stringify({
+          success: false,
+          error: error.message,
+        });
+        await writer.write(encoder.encode(errorPayload + '\n'));
+      } finally {
+        await writer.close();
+        console.log(`[${performance.now() - startTime}ms] Total request processing time`);
+        console.log("POST request completed at:", new Date().toISOString());
+      }
+    })();
 
     return new Response(stream.readable, {
       headers: {
@@ -678,7 +674,8 @@ export async function POST(req) {
     });
 
   } catch (error) {
-    console.error('Error processing query:', error);
+    console.error(`Error processing query:`, error);
+    console.log(`[${performance.now() - startTime}ms] Request failed with error`);
     return Response.json({ 
       success: false, 
       error: error.message 

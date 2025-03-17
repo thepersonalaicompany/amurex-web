@@ -39,6 +39,9 @@ export default function AISearch() {
   const [suggestedPrompts, setSuggestedPrompts] = useState([]);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [hasSeenOnboarding, setHasSeenOnboarding] = useState(false);
+  const [searchStartTime, setSearchStartTime] = useState(null);
+  const [sourcesTime, setSourcesTime] = useState(null);
+  const [completionTime, setCompletionTime] = useState(null);
 
   // Add useRouter
   const router = useRouter();
@@ -244,7 +247,7 @@ export default function AISearch() {
       });
   }, [session?.user?.id]);
 
-  // Update sendMessage to check enabled sources
+  // Update sendMessage to properly track timing
   const sendMessage = (messageToSend) => {
     if (!session?.user?.id) return;
 
@@ -252,7 +255,13 @@ export default function AISearch() {
     setInputValue("");
     setIsSearching(true);
     setIsSearchInitiated(true);
-
+    
+    // Reset all timing metrics
+    const startTime = performance.now();
+    setSearchStartTime(startTime);
+    setSourcesTime(null);
+    setCompletionTime(null);
+    
     setSearchResults({
       query: message,
       sources: [],
@@ -280,45 +289,67 @@ export default function AISearch() {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let buffer = "";
-
-        function processText(text) {
-          const lines = text.split("\n");
-          return lines
-            .filter((line) => line.trim())
-            .map((line) => JSON.parse(line));
-        }
+        let sourcesReceived = false;
+        let firstChunkReceived = false;
 
         function readStream() {
           reader
             .read()
             .then(({ done, value }) => {
               if (done) {
+                // Record final completion time when stream ends
+                const endTime = performance.now();
+                setCompletionTime(((endTime - startTime) / 1000).toFixed(1));
                 setIsSearching(false);
                 return;
               }
 
               buffer += decoder.decode(value, { stream: true });
-              const lines = processText(buffer);
-
-              lines.forEach((data) => {
-                if (data.success) {
-                  setSearchResults((prev) => {
-                    // Only add the new content from this chunk
-                    const newContent = data.chunk || "";
-                    return {
-                      ...prev,
-                      sources: data.sources || prev.sources,
-                      answer: prev.answer + newContent,
-                      done: data.done || false,
-                    };
-                  });
-                  console.log("sources:", data.sources);
-                } else {
-                  console.error("Error:", data.error);
+              
+              try {
+                // Split by newlines and filter out empty lines
+                const lines = buffer.split("\n").filter(line => line.trim());
+                
+                // Process each complete line
+                for (let i = 0; i < lines.length; i++) {
+                  try {
+                    const data = JSON.parse(lines[i]);
+                    
+                    // Update search results
+                    if (data.success) {
+                      // Track when sources first arrive
+                      if (data.sources && data.sources.length > 0 && !sourcesReceived) {
+                        sourcesReceived = true;
+                        const currentTime = performance.now();
+                        setSourcesTime(((currentTime - startTime) / 1000).toFixed(1));
+                      }
+                      
+                      // Track when first text chunk arrives
+                      if (data.chunk && !firstChunkReceived) {
+                        firstChunkReceived = true;
+                      }
+                      
+                      setSearchResults((prev) => ({
+                        ...prev,
+                        sources: data.sources || prev.sources,
+                        answer: prev.answer + (data.chunk || ""),
+                        done: data.done || false,
+                      }));
+                    }
+                  } catch (e) {
+                    console.error("Error parsing JSON:", e, "Line:", lines[i]);
+                  }
                 }
-              });
-
-              buffer = ""; // Clear the buffer after processing
+                
+                // Keep only the incomplete line in the buffer
+                const lastNewlineIndex = buffer.lastIndexOf("\n");
+                if (lastNewlineIndex !== -1) {
+                  buffer = buffer.substring(lastNewlineIndex + 1);
+                }
+              } catch (e) {
+                console.error("Error processing buffer:", e);
+              }
+              
               readStream();
             })
             .catch((err) => {
@@ -668,7 +699,11 @@ export default function AISearch() {
 
               {(isSearching || searchResults?.query) && (
                 <div className="space-y-6">
-                  <Query content={searchResults?.query || ""} />
+                  <Query 
+                    content={searchResults?.query || ""} 
+                    sourcesTime={sourcesTime}
+                    completionTime={completionTime}
+                  />
 
                   <div className="grid grid-cols-1 lg:grid-cols-[2fr,1fr] gap-6">
                     <div>
@@ -723,9 +758,18 @@ export function InputArea({
   );
 }
 /* 21. Query component for displaying content */
-export const Query = ({ content = "" }) => {
+export const Query = ({ content = "", sourcesTime, completionTime }) => {
   return (
-    <div className="text-xl md:text-3xl font-medium text-white">{content}</div>
+    <div className="flex flex-col md:flex-row md:items-center justify-between">
+      <div className="text-xl md:text-3xl font-medium text-white">{content}</div>
+      <div className="text-sm text-zinc-500 mt-1 md:mt-0 flex flex-col md:items-end">
+        {sourcesTime && (
+          <div className="px-2 py-1 rounded-md bg-[#9334E9] text-white">
+            Search time: {sourcesTime}s
+          </div>
+        )}
+      </div>
+    </div>
   );
 };
 /* 22. Sources component for displaying list of sources */
@@ -741,6 +785,7 @@ export const Sources = ({ content = [] }) => {
       }
 
       // Filter only meeting sources
+      console.log("Content:", content);
       const meetingSources = content.filter((source) => source.meeting_id);
       const meetingIds = meetingSources.map((source) => source.meeting_id);
 
@@ -803,84 +848,102 @@ export const Sources = ({ content = [] }) => {
       </div>
       <div className="grid grid-cols-1 gap-2">
         {Array.isArray(content) &&
-          content.map((source, index) =>
-            source.meeting_id ? (
+          content.map((source, index) => {
+            // Determine if it's a meeting or document
+            if (source.meeting_id) {
               // Meeting source
-              <a
-                key={index}
-                href={`/meetings/${source.meeting_id}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block"
-              >
-                <div className="bg-black rounded-lg p-4 border border-zinc-800 hover:border-[#6D28D9] transition-colors h-[160px] relative">
-                  <Link className="absolute top-4 right-4 w-4 h-4 text-zinc-500" />
-                  <div className="text-zinc-300 text-sm font-medium mb-2 flex items-center gap-2">
-                    {meetings[source.meeting_id]?.platform === "google" ? (
-                      <img
-                        src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Google_Meet_icon_%282020%29.svg/1024px-Google_Meet_icon_%282020%29.svg.png?20221213135236"
-                        alt="Google Meet"
-                        className="w-8"
-                      />
-                    ) : (
-                      <img
-                        src="https://www.svgrepo.com/show/303180/microsoft-teams-logo.svg"
-                        alt="Microsoft Teams"
-                        className="w-8"
-                      />
-                    )}
-                    {meetings[source.meeting_id]?.platform === "google"
-                      ? "Google Meet"
-                      : "Microsoft Teams"}
-                    , Meeting ID: {meetings[source.meeting_id]?.meeting_id}
+              return (
+                <a
+                  key={index}
+                  href={`/meetings/${source.meeting_id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block"
+                >
+                  <div className="bg-black rounded-lg p-4 border border-zinc-800 hover:border-[#6D28D9] transition-colors h-[160px] relative">
+                    <Link className="absolute top-4 right-4 w-4 h-4 text-zinc-500" />
+                    <div className="text-zinc-300 text-sm font-medium mb-2 flex items-center gap-2">
+                      {meetings[source.meeting_id]?.platform === "google" ? (
+                        <img
+                          src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Google_Meet_icon_%282020%29.svg/1024px-Google_Meet_icon_%282020%29.svg.png?20221213135236"
+                          alt="Google Meet"
+                          className="w-8"
+                        />
+                      ) : (
+                        <img
+                          src="https://www.svgrepo.com/show/303180/microsoft-teams-logo.svg"
+                          alt="Microsoft Teams"
+                          className="w-8"
+                        />
+                      )}
+                      {meetings[source.meeting_id]?.platform === "google"
+                        ? "Google Meet"
+                        : "Microsoft Teams"}
+                      , Meeting ID: {meetings[source.meeting_id]?.meeting_id}
+                    </div>
+                    <div className="text-zinc-500 text-xs overflow-hidden line-clamp-4">
+                      <ReactMarkdown>{source.text}</ReactMarkdown>
+                    </div>
                   </div>
-                  <div className="text-zinc-500 text-xs overflow-hidden line-clamp-4">
-                    <ReactMarkdown>{source.text}</ReactMarkdown>
+                </a>
+              );
+            } else {
+              // Document source - determine type based on source.type
+              let icon = <Stack size={24} />;
+              let typeName = "Document";
+              
+              if (source.type === "google_docs") {
+                icon = (
+                  <img
+                    src="https://upload.wikimedia.org/wikipedia/commons/0/01/Google_Docs_logo_%282014-2020%29.svg"
+                    alt="Google Docs"
+                    className="w-6"
+                  />
+                );
+                typeName = "Google Docs";
+              } else if (source.type === "notion") {
+                icon = (
+                  <img
+                    src="https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png"
+                    alt="Notion"
+                    className="w-6"
+                  />
+                );
+                typeName = "Notion";
+              } else if (source.type === "obsidian") {
+                icon = (
+                  <img
+                    src="https://obsidian.md/images/obsidian-logo-gradient.svg"
+                    alt="Obsidian"
+                    className="w-6"
+                  />
+                );
+                typeName = "Obsidian";
+              }
+              
+              return (
+                <a
+                  key={index}
+                  href={source.url}
+                  className="block"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <div className="bg-black rounded-lg p-4 border border-zinc-800 hover:border-[#6D28D9] transition-colors h-[160px] relative">
+                    <Link className="absolute top-4 right-4 w-4 h-4 text-zinc-500" />
+                    <div className="text-zinc-300 text-sm font-medium mb-2 flex items-center gap-2">
+                      {icon}
+                      <p>{typeName}</p>
+                      <span className="truncate ml-2">Title: {source.title}</span>
+                    </div>
+                    <div className="text-zinc-500 text-xs overflow-hidden line-clamp-4">
+                      <ReactMarkdown>{source.text}</ReactMarkdown>
+                    </div>
                   </div>
-                </div>
-              </a>
-            ) : (
-              // Document source
-              <a
-                key={index}
-                href={source.url}
-                className="block"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <div className="bg-black rounded-lg p-4 border border-zinc-800 hover:border-[#6D28D9] transition-colors h-[160px] relative">
-                  <Link className="absolute top-4 right-4 w-4 h-4 text-zinc-500" />
-                  <div className="text-zinc-300 text-sm font-medium mb-2 flex items-center gap-2">
-                    {source.type === "google_docs" ? (
-                      <img
-                        src="https://upload.wikimedia.org/wikipedia/commons/0/01/Google_Docs_logo_%282014-2020%29.svg"
-                        alt="Google Docs"
-                        className="w-6"
-                      />
-                    ) : source.type === "notion" ? (
-                      <img
-                        src="https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png"
-                        alt="Notion"
-                        className="w-6"
-                      />
-                    ) : source.type === "obsidian" ? (
-                      <img
-                        src="https://obsidian.md/images/obsidian-logo-gradient.svg"
-                        alt="Obsidian"
-                        className="w-6"
-                      />
-                    ) : (
-                      <Stack size={24} />
-                    )}
-                    <span className="truncate">Title: {source.title}</span>
-                  </div>
-                  <div className="text-zinc-500 text-xs overflow-hidden line-clamp-4">
-                    <ReactMarkdown>{source.text}</ReactMarkdown>
-                  </div>
-                </div>
-              </a>
-            )
-          )}
+                </a>
+              );
+            }
+          })}
       </div>
     </div>
   );

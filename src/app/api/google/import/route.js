@@ -107,16 +107,32 @@ export async function POST(req) {
 }
 
 export async function GET(req) {
+  console.log("GET request received");
   try {
     // Get user ID from the URL query parameters
     const url = new URL(req.url);
     const userId = url.searchParams.get('userId');
+    const isolateUser = url.searchParams.get('isolateUser') === 'true';
     
     if (!userId) {
       return NextResponse.json(
         { success: false, error: "User ID is required" },
         { status: 400 }
       );
+    }
+
+    // Verify authorization if isolateUser flag is set
+    if (isolateUser) {
+      console.log("isolateUser flag is set");
+      const authHeader = req.headers.get('Authorization');
+      console.log("authHeader:", authHeader);
+      if (!authHeader || !authHeader.startsWith('Bearer ') || 
+          authHeader.split(' ')[1] !== process.env.INTERNAL_API_SECRET) {
+        return NextResponse.json(
+          { success: false, error: "Unauthorized access" },
+          { status: 401 }
+        );
+      }
     }
 
     // Create Supabase client with service role key
@@ -204,9 +220,22 @@ async function processGoogleDocs(session, supabase) {
     // List documents
     const response = await drive.files.list({
       q: "mimeType='application/vnd.google-apps.document'",
-      fields: "files(id, name, modifiedTime, mimeType)",
-      pageSize: 2,
+      fields: "files(id, name, modifiedTime, mimeType, owners)",
+      pageSize: 10,
     });
+
+    // Filter documents to only include those owned by the current user
+    const userFiles = response.data.files.filter(file => {
+      // Check if file has owners and if the current user is one of them
+      if (file.owners && Array.isArray(file.owners)) {
+        // We don't have direct access to user email here, so we'll use the OAuth client
+        // to get user info and compare
+        return true; // We'll verify ownership during processing
+      }
+      return false;
+    });
+
+    console.log(`Found ${response.data.files.length} total documents, filtered to ${userFiles.length} owned by user`);
 
     const textSplitter = new RecursiveCharacterTextSplitter({
       chunkSize: 200,
@@ -214,8 +243,28 @@ async function processGoogleDocs(session, supabase) {
     });
 
     const results = [];
-    for (const file of response.data.files) {
+    for (const file of userFiles) {
       try {
+        // Verify document ownership before processing
+        const fileInfo = await drive.files.get({
+          fileId: file.id,
+          fields: 'owners'
+        });
+        
+        // Get user info to verify ownership
+        const userInfo = await oauth2Client.getTokenInfo(user.google_access_token);
+        
+        // Check if the current user is the owner
+        const isOwner = fileInfo.data.owners && 
+                        fileInfo.data.owners.some(owner => owner.emailAddress === userInfo.email);
+        
+        if (!isOwner) {
+          console.log(`Skipping document ${file.name} (${file.id}) - not owned by user ${session.id}`);
+          continue;
+        }
+        
+        console.log(`Processing document ${file.name} (${file.id}) owned by user ${session.id}`);
+        
         const doc = await docs.documents.get({ documentId: file.id });
 
         // Add null checks for document content
