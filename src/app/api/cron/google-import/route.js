@@ -54,22 +54,13 @@ export async function GET(req) {
     for (const user of users) {
       try {
         console.log(`Processing documents for user ${user.id}`);
-        
-        // Create a dedicated endpoint URL with user ID as a parameter
-        // This ensures each user's documents are processed in isolation
-        const importUrl = new URL(`${process.env.NEXT_PUBLIC_APP_URL}/api/google/import`);
-        importUrl.searchParams.append("userId", user.id);
-        importUrl.searchParams.append("isolateUser", "true"); // Add flag to ensure isolation
-        
-        const response = await fetch(importUrl.toString(), { 
-          method: "GET",
-          headers: {
-            'Authorization': `Bearer ${process.env.INTERNAL_API_SECRET}`, // Add auth to prevent unauthorized access
-            'X-User-Context': user.id // Explicitly set user context
-          }
-        });
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_APP_URL}/api/google/import?userId=${user.id}`,
+          { method: "GET" }
+        );
         
         const result = await response.json();
+        console.log(`Result for user ${user.id}:`, result);
         
         results.push({
           userId: user.id,

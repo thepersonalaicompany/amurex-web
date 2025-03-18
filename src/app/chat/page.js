@@ -707,7 +707,30 @@ export default function AISearch() {
 
                   <div className="grid grid-cols-1 lg:grid-cols-[2fr,1fr] gap-6">
                     <div>
-                      <Heading content="Answer" />
+                      <div className="flex justify-between items-center mb-3">
+                        <Heading content="Answer" />
+                        {!isSearching && searchResults?.query && (
+                          <button
+                            onClick={() => sendMessage(searchResults.query)}
+                            className="flex items-center gap-1 text-sm text-zinc-300 hover:text-white bg-black border border-zinc-800 hover:border-[#6D28D9] px-3 py-1.5 rounded-md transition-colors"
+                          >
+                            <svg 
+                              width="16" 
+                              height="16" 
+                              viewBox="0 0 489.645 489.645" 
+                              fill="currentColor" 
+                              xmlns="http://www.w3.org/2000/svg"
+                            >
+                              <path d="M460.656,132.911c-58.7-122.1-212.2-166.5-331.8-104.1c-9.4,5.2-13.5,16.6-8.3,27c5.2,9.4,16.6,13.5,27,8.3
+                                c99.9-52,227.4-14.9,276.7,86.3c65.4,134.3-19,236.7-87.4,274.6c-93.1,51.7-211.2,17.4-267.6-70.7l69.3,14.5
+                                c10.4,2.1,21.8-4.2,23.9-15.6c2.1-10.4-4.2-21.8-15.6-23.9l-122.8-25c-20.6-2-25,16.6-23.9,22.9l15.6,123.8
+                                c1,10.4,9.4,17.7,19.8,17.7c12.8,0,20.8-12.5,19.8-23.9l-6-50.5c57.4,70.8,170.3,131.2,307.4,68.2
+                                C414.856,432.511,548.256,314.811,460.656,132.911z"/>
+                            </svg>
+                            Regenerate
+                          </button>
+                        )}
+                      </div>
                       <div className="bg-black rounded-lg p-4 border border-zinc-800 text-zinc-300">
                         <GPT content={searchResults?.answer || ""} />
                         {isSearching && (
@@ -785,7 +808,6 @@ export const Sources = ({ content = [] }) => {
       }
 
       // Filter only meeting sources
-      console.log("Content:", content);
       const meetingSources = content.filter((source) => source.meeting_id);
       const meetingIds = meetingSources.map((source) => source.meeting_id);
 
@@ -863,6 +885,7 @@ export const Sources = ({ content = [] }) => {
                   <div className="bg-black rounded-lg p-4 border border-zinc-800 hover:border-[#6D28D9] transition-colors h-[160px] relative">
                     <Link className="absolute top-4 right-4 w-4 h-4 text-zinc-500" />
                     <div className="text-zinc-300 text-sm font-medium mb-2 flex items-center gap-2">
+                      {/* Icon commented out
                       {meetings[source.meeting_id]?.platform === "google" ? (
                         <img
                           src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Google_Meet_icon_%282020%29.svg/1024px-Google_Meet_icon_%282020%29.svg.png?20221213135236"
@@ -876,10 +899,13 @@ export const Sources = ({ content = [] }) => {
                           className="w-8"
                         />
                       )}
+                      */}
+                      {/* Type commented out
                       {meetings[source.meeting_id]?.platform === "google"
                         ? "Google Meet"
                         : "Microsoft Teams"}
-                      , Meeting ID: {meetings[source.meeting_id]?.meeting_id}
+                      */}
+                      Meeting ID: {meetings[source.meeting_id]?.meeting_id}
                     </div>
                     <div className="text-zinc-500 text-xs overflow-hidden line-clamp-4">
                       <ReactMarkdown>{source.text}</ReactMarkdown>
@@ -888,39 +914,7 @@ export const Sources = ({ content = [] }) => {
                 </a>
               );
             } else {
-              // Document source - determine type based on source.type
-              let icon = <Stack size={24} />;
-              let typeName = "Document";
-              
-              if (source.type === "google_docs") {
-                icon = (
-                  <img
-                    src="https://upload.wikimedia.org/wikipedia/commons/0/01/Google_Docs_logo_%282014-2020%29.svg"
-                    alt="Google Docs"
-                    className="w-6"
-                  />
-                );
-                typeName = "Google Docs";
-              } else if (source.type === "notion") {
-                icon = (
-                  <img
-                    src="https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png"
-                    alt="Notion"
-                    className="w-6"
-                  />
-                );
-                typeName = "Notion";
-              } else if (source.type === "obsidian") {
-                icon = (
-                  <img
-                    src="https://obsidian.md/images/obsidian-logo-gradient.svg"
-                    alt="Obsidian"
-                    className="w-6"
-                  />
-                );
-                typeName = "Obsidian";
-              }
-              
+              // Document source
               return (
                 <a
                   key={index}
@@ -932,9 +926,11 @@ export const Sources = ({ content = [] }) => {
                   <div className="bg-black rounded-lg p-4 border border-zinc-800 hover:border-[#6D28D9] transition-colors h-[160px] relative">
                     <Link className="absolute top-4 right-4 w-4 h-4 text-zinc-500" />
                     <div className="text-zinc-300 text-sm font-medium mb-2 flex items-center gap-2">
+                      {/* Icon and type commented out
                       {icon}
                       <p>{typeName}</p>
-                      <span className="truncate ml-2">Title: {source.title}</span>
+                      */}
+                      <span className="truncate">Title: {source.title}</span>
                     </div>
                     <div className="text-zinc-500 text-xs overflow-hidden line-clamp-4">
                       <ReactMarkdown>{source.text}</ReactMarkdown>
