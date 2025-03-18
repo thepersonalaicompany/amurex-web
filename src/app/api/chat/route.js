@@ -63,12 +63,14 @@ async function rephraseInput(inputString) {
 
 async function searchMemory(queryEmbedding, user_id) {
     const { data: chunks, error } = await supabase.rpc(
-      "fafsearch_one",
+      "fafsearch_main",
       {
         query_embedding: queryEmbedding,
         input_user_id: user_id,
       }
     );
+
+    console.log("chunks", chunks);
 
     if (error) throw error;
     return chunks;
@@ -534,13 +536,16 @@ export async function POST(req) {
     // Format meeting results to match brain results structure
     if (memorySearchEnabled && meetingsResults.length > 0) {
       const formattedMeetingResults = meetingsResults.map(meeting => ({
-        id: meeting.meeting_id,
+        id: meeting.late_meeting_id,
         user_id: user_id,
-        url: `/meetings/${meeting.meeting_id}`,
+        url: `/meetings/${meeting.late_meeting_id}`,
         title: meeting.title || "Meeting Transcript",
         text: meeting.content,
-        type: "meeting"
+        type: "meeting",
+        platform_id: meeting.platform_id
       }));
+
+      console.log("formattedMeetingResults", formattedMeetingResults);
 
       allResults = [...allResults, ...formattedMeetingResults];
     }
@@ -552,7 +557,8 @@ export async function POST(req) {
       text: result.text,
       title: result.title,
       url: result.url,
-      type: result.type || 'document'
+      type: result.type || 'document',
+      platform_id: result.platform_id || null
     }));
     console.log(`[${performance.now() - sourcesProcessStartTime}ms] Sources processed`);
     

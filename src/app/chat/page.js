@@ -787,8 +787,8 @@ export const Query = ({ content = "", sourcesTime, completionTime }) => {
       <div className="text-xl md:text-3xl font-medium text-white">{content}</div>
       <div className="text-sm text-zinc-500 mt-1 md:mt-0 flex flex-col md:items-end">
         {sourcesTime && (
-          <div className="px-2 py-1 rounded-md bg-[#9334E9] text-white">
-            Search time: {sourcesTime}s
+          <div className="px-2 py-1 rounded-md bg-[#9334E9] text-white w-fit">
+            Searched in: {sourcesTime} seconds
           </div>
         )}
       </div>
@@ -797,50 +797,12 @@ export const Query = ({ content = "", sourcesTime, completionTime }) => {
 };
 /* 22. Sources component for displaying list of sources */
 export const Sources = ({ content = [] }) => {
-  const [meetings, setMeetings] = useState({});
-  const [isLoading, setIsLoading] = useState(true);
-
+  // Debug the content structure
   useEffect(() => {
-    const fetchMeetingTypes = async () => {
-      if (!content.length) {
-        setIsLoading(false);
-        return;
-      }
-
-      // Filter only meeting sources
-      const meetingSources = content.filter((source) => source.meeting_id);
-      const meetingIds = meetingSources.map((source) => source.meeting_id);
-
-      if (meetingIds.length > 0) {
-        const { data, error } = await supabase
-          .from("late_meeting")
-          .select("id, meeting_id")
-          .in("id", meetingIds);
-
-        if (error) {
-          console.error("Error fetching meeting types:", error);
-          setIsLoading(false);
-          return;
-        }
-
-        // Create a map of meeting IDs and their types
-        const meetingMap = {};
-        data.forEach((meeting) => {
-          meetingMap[meeting.id] = {
-            ...meeting,
-            platform: meeting.meeting_id.includes("-") ? "google" : "teams",
-          };
-        });
-        setMeetings(meetingMap);
-      }
-
-      setIsLoading(false);
-    };
-
-    fetchMeetingTypes();
+    console.log("Sources content:", content);
   }, [content]);
 
-  if (isLoading) {
+  if (!content || content.length === 0) {
     return (
       <div>
         <div className="text-[#9334E9] font-medium mb-3 text-md md:text-xl flex items-center gap-2">
@@ -871,22 +833,33 @@ export const Sources = ({ content = [] }) => {
       <div className="grid grid-cols-1 gap-2">
         {Array.isArray(content) &&
           content.map((source, index) => {
-            // Determine if it's a meeting or document
-            if (source.meeting_id) {
-              // Meeting source
+            // For debugging
+            console.log(`Source ${index}:`, source);
+            
+            if (source.type === "meeting") {
+              // Check if platform_id exists and is a string before using includes
+              let platform = "teams"; // Default to teams
+              
+              try {
+                if (source.platform_id && typeof source.platform_id === 'string') {
+                  platform = source.platform_id.includes("-") ? "google" : "teams";
+                }
+              } catch (error) {
+                console.error("Error determining platform:", error);
+              }
+              
               return (
                 <a
                   key={index}
-                  href={`/meetings/${source.meeting_id}`}
+                  href={source.url}
+                  className="block"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block"
                 >
                   <div className="bg-black rounded-lg p-4 border border-zinc-800 hover:border-[#6D28D9] transition-colors h-[160px] relative">
                     <Link className="absolute top-4 right-4 w-4 h-4 text-zinc-500" />
                     <div className="text-zinc-300 text-sm font-medium mb-2 flex items-center gap-2">
-                      {/* Icon commented out
-                      {meetings[source.meeting_id]?.platform === "google" ? (
+                      {platform === "google" ? (
                         <img
                           src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Google_Meet_icon_%282020%29.svg/1024px-Google_Meet_icon_%282020%29.svg.png?20221213135236"
                           alt="Google Meet"
@@ -899,13 +872,7 @@ export const Sources = ({ content = [] }) => {
                           className="w-8"
                         />
                       )}
-                      */}
-                      {/* Type commented out
-                      {meetings[source.meeting_id]?.platform === "google"
-                        ? "Google Meet"
-                        : "Microsoft Teams"}
-                      */}
-                      Meeting ID: {meetings[source.meeting_id]?.meeting_id}
+                      {source.title}
                     </div>
                     <div className="text-zinc-500 text-xs overflow-hidden line-clamp-4">
                       <ReactMarkdown>{source.text}</ReactMarkdown>
@@ -914,7 +881,35 @@ export const Sources = ({ content = [] }) => {
                 </a>
               );
             } else {
-              // Document source
+              // Handle document types with appropriate icons
+              let icon = null;
+              
+              if (source.type === "google_docs") {
+                icon = (
+                  <img
+                    src="https://upload.wikimedia.org/wikipedia/commons/0/01/Google_Docs_logo_%282014-2020%29.svg"
+                    alt="Google Docs"
+                    className="w-6 h-6"
+                  />
+                );
+              } else if (source.type === "notion") {
+                icon = (
+                  <img
+                    src="https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png"
+                    alt="Notion"
+                    className="w-6 h-6"
+                  />
+                );
+              } else if (source.type === "obsidian") {
+                icon = (
+                  <img
+                    src="https://obsidian.md/images/obsidian-logo-gradient.svg"
+                    alt="Obsidian"
+                    className="w-6 h-6"
+                  />
+                );
+              }
+              
               return (
                 <a
                   key={index}
@@ -926,11 +921,8 @@ export const Sources = ({ content = [] }) => {
                   <div className="bg-black rounded-lg p-4 border border-zinc-800 hover:border-[#6D28D9] transition-colors h-[160px] relative">
                     <Link className="absolute top-4 right-4 w-4 h-4 text-zinc-500" />
                     <div className="text-zinc-300 text-sm font-medium mb-2 flex items-center gap-2">
-                      {/* Icon and type commented out
                       {icon}
-                      <p>{typeName}</p>
-                      */}
-                      <span className="truncate">Title: {source.title}</span>
+                      <span className="truncate">{source.title || "Document"}</span>
                     </div>
                     <div className="text-zinc-500 text-xs overflow-hidden line-clamp-4">
                       <ReactMarkdown>{source.text}</ReactMarkdown>
