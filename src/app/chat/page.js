@@ -1317,28 +1317,39 @@ const OnboardingFlow = ({ onClose, setHasSeenOnboarding }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
-      <div className="absolute top-4 right-20 z-50">
+    <div className="fixed inset-0 flex items-center justify-center z-40 pointer-events-none">
+      {/* Overlay with click-through for navbar */}
+      <div className="absolute inset-0 bg-zinc-800 bg-opacity-40 pointer-events-auto" style={{ marginLeft: '64px' }}></div>
+      
+      {/* Top right skip button */}
+      <div className="absolute top-4 right-4 z-50 pointer-events-auto">
         <button
           onClick={handleClose}
-          className="px-5 py-2.5 bg-[#1E1E24] text-zinc-300 hover:text-white hover:bg-[#2A2A36] rounded-lg border border-zinc-700 transition-colors font-medium shadow-lg"
+          className="px-5 py-2.5 bg-black text-zinc-300 hover:text-white hover:bg-zinc-900 rounded-lg border border-zinc-700 transition-colors font-medium shadow-lg"
         >
           Skip for now
         </button>
       </div>
 
-      <div className="bg-[#09090A] rounded-lg border border-zinc-800 max-w-4xl w-full p-6 relative">
+      {/* Main content positioned to avoid navbar */}
+      <div className="bg-black bg-opacity-90 rounded-lg border border-zinc-700 max-w-4xl w-full p-6 relative pointer-events-auto" style={{ marginLeft: '64px' }}>
+        <div className="absolute -top-2 -left-2 bg-zinc-700 p-2 rounded-full shadow-lg">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        
         <h2 className="text-2xl font-bold text-white mb-6">
-          Welcome to Amurex!
+          Welcome to Amurex Chat!
         </h2>
 
         <p className="text-zinc-300 mb-6">
-          To get the most out of Amurex, connect your accounts to access your
+          To get the most out of Amurex Chat, connect your accounts to access your
           documents and information.
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-black rounded-lg p-6 border border-zinc-800">
+          <div className="bg-zinc-900 rounded-lg p-6 border border-zinc-800 hover:border-zinc-600 transition-all duration-300">
             <div className="flex items-center gap-3 mb-4">
               <img
                 src="https://upload.wikimedia.org/wikipedia/commons/0/01/Google_Docs_logo_%282014-2020%29.svg"
@@ -1359,7 +1370,7 @@ const OnboardingFlow = ({ onClose, setHasSeenOnboarding }) => {
             </a>
           </div>
 
-          <div className="bg-black rounded-lg p-6 border border-zinc-800">
+          <div className="bg-zinc-900 rounded-lg p-6 border border-zinc-800 hover:border-zinc-600 transition-all duration-300">
             <div className="flex items-center gap-3 mb-4">
               <img
                 src="https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png"
@@ -1379,7 +1390,7 @@ const OnboardingFlow = ({ onClose, setHasSeenOnboarding }) => {
             </a>
           </div>
 
-          <div className="bg-black rounded-lg p-6 border border-zinc-800">
+          <div className="bg-zinc-900 rounded-lg p-6 border border-zinc-800 hover:border-zinc-600 transition-all duration-300">
             <div className="flex items-center gap-3 mb-4">
               <img
                 src="https://obsidian.md/images/obsidian-logo-gradient.svg"
@@ -1399,6 +1410,7 @@ const OnboardingFlow = ({ onClose, setHasSeenOnboarding }) => {
             </a>
           </div>
         </div>
+        
       </div>
     </div>
   );
