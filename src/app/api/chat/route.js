@@ -398,37 +398,109 @@ async function generateCompletion(messages, modelName) {
   }
 }
 
-// Replace the searchMemory and searchDocuments functions with a unified search function
+// Replace the searchBrain function with a unified search function that handles both hosted and self-hosted options
 async function searchBrain(query, user_id, enabledSources) {
-  try {
-    // const response = await fetch('https://brain.amurex.ai/search', {
-    const response = await fetch('http://localhost:8080/search', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.BRAIN_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        user_id: user_id,
-        content_type: "document",
-        query: query,
-        search_type: "hybrid",
-        ai_enabled: false,
-        limit: 3,
-        offset: 0,
-        sources: enabledSources
-      })
-    });
+  // Check if we're using self-hosted mode
+  const isSelfHosted = process.env.DEPLOYMENT_MODE === 'self_hosted';
+  
+  if (isSelfHosted) {
+    try {
+      // For self-hosted, we need to get embeddings first
+      const response = await fetch('https://api.mistral.ai/v1/embeddings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.MISTRAL_API_KEY}`
+        },
+        body: JSON.stringify({
+          input: [query],
+          model: "mistral-embed",
+          encoding_format: "float"
+        })
+      });
+      
+      const embedData = await response.json();
+      const queryEmbedding = embedData.data[0].embedding;
 
-    if (!response.ok) {
-      throw new Error(`Brain search failed with status: ${response.status}`);
+      console.log("enabledSources", enabledSources);
+      
+      // Use Supabase RPC for document search in self-hosted mode
+      const { data: documents, error } = await supabase.rpc(
+        "fafsearch_documents",
+        {
+          input_user_id: user_id,
+          query_embedding: queryEmbedding,
+          input_types: enabledSources
+        }
+      );
+
+      console.log("documents", documents);
+      
+      if (error) throw error;
+      
+      // Transform the results to match the format returned by the Brain API
+      return (documents || []).map(doc => {
+        // Handle email type specifically
+        if (doc.type === 'email') {
+          return {
+            id: doc.id,
+            user_id: doc.user_id,
+            url: `/emails/${doc.id}`,
+            title: doc.subject || "Email",
+            text: doc.snippet || doc.content || "",
+            sender: doc.sender,
+            received_at: doc.received_at,
+            type: "email"
+          };
+        }
+        
+        // Handle other document types
+        return {
+          id: doc.id,
+          user_id: doc.user_id,
+          url: doc.url,
+          title: doc.title || "Document",
+          text: doc.selected_chunks?.[0] || doc.text,
+          type: doc.type || "document",
+          selected_chunks: doc.selected_chunks || []
+        };
+      });
+    } catch (error) {
+      console.error('Error in self-hosted document search:', error);
+      throw error;
     }
+  } else {
+    // Use the Brain API for hosted mode
+    try {
+      // const response = await fetch('https://brain.amurex.ai/search', {
+      const response = await fetch('http://localhost:8080/search', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.BRAIN_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: user_id,
+          query: query,
+          search_type: "hybrid",
+          ai_enabled: false,
+          limit: 3,
+          offset: 0,
+          sources: enabledSources
+        })
+      });
 
-    const data = await response.json();
-    return data.results || [];
-  } catch (error) {
-    console.error('Error searching brain:', error);
-    throw error;
+      if (!response.ok) {
+        throw new Error(`Brain search failed with status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log("data", data);
+      return data.results || [];
+    } catch (error) {
+      console.error('Error searching brain:', error);
+      throw error;
+    }
   }
 }
 
@@ -440,7 +512,6 @@ export async function POST(req) {
   const body = await req.json();
   console.log(`[${performance.now() - startTime}ms] Request parsed`);
   
-  // Log the entire request payload
   // Handle prompts generation
   if (body.type === 'prompts') {
     try {
@@ -455,7 +526,7 @@ export async function POST(req) {
   }
   
   // Original chat functionality continues here...
-  const { message, user_id, googleDocsEnabled, notionEnabled, memorySearchEnabled, obsidianEnabled } = body;
+  const { message, user_id, googleDocsEnabled, notionEnabled, memorySearchEnabled, obsidianEnabled, gmailEnabled } = body;
   
   if (!user_id) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
@@ -467,8 +538,10 @@ export async function POST(req) {
     const enabledSources = [
       ...(googleDocsEnabled ? ['google_docs'] : []),
       ...(notionEnabled ? ['notion'] : []),
-      ...(obsidianEnabled ? ['obsidian'] : [])
+      ...(obsidianEnabled ? ['obsidian'] : []),
+      ...(gmailEnabled ? ['email'] : [])
     ];
+    console.log("enabledSources", enabledSources);
     console.log(`[${performance.now() - sourcesStartTime}ms] Sources configured`);
 
     if (enabledSources.length === 0 && !memorySearchEnabled) {
@@ -552,14 +625,30 @@ export async function POST(req) {
     
     // Prepare unified sources list
     const sourcesProcessStartTime = performance.now();
-    const sources = allResults.map(result => ({
-      id: result.id,
-      text: result.text,
-      title: result.title,
-      url: result.url,
-      type: result.type || 'document',
-      platform_id: result.platform_id || null
-    }));
+    const sources = allResults.map(result => {
+      if (result.type === "email") {
+        return {
+          id: result.id,
+          text: result.snippet || result.text,
+          title: result.subject || "Email",
+          url: result.url || `/emails/${result.id}`,
+          type: "email",
+          sender: result.sender,
+          received_at: result.received_at,
+          message_id: result.message_id,
+          thread_id: result.thread_id
+        };
+      }
+      
+      return {
+        id: result.id,
+        text: result.text,
+        title: result.title,
+        url: result.url,
+        type: result.type || 'document',
+        platform_id: result.platform_id || null
+      };
+    });
     console.log(`[${performance.now() - sourcesProcessStartTime}ms] Sources processed`);
     
     // Create streaming response
@@ -589,6 +678,32 @@ export async function POST(req) {
         // Use Groq for streaming (via OpenAI client)
         const groqStartTime = performance.now();
         console.log("Starting Groq stream at:", new Date().toISOString());
+        
+        // Prepare document content for the model, handling different source types
+        const formattedDocuments = allResults.map(result => {
+          if (result.type === "email") {
+            return {
+              title: result.subject || "Email",
+              text: result.snippet || result.text,
+              sender: result.sender,
+              type: "email",
+              date: result.received_at ? new Date(result.received_at).toLocaleDateString() : "Unknown date"
+            };
+          } else if (result.type === "meeting") {
+            return {
+              title: result.title || "Meeting Transcript",
+              text: result.text,
+              type: "meeting"
+            };
+          } else {
+            return {
+              title: result.title,
+              text: result.text,
+              type: result.type || "document"
+            };
+          }
+        });
+        
         const groqStream = await groq.chat.completions.create({
           messages: [
             {
@@ -599,10 +714,7 @@ export async function POST(req) {
               role: "user",
               content: `Query: ${message}
               
-              Retrieved documents: ${JSON.stringify(allResults.map(result => ({
-                title: result.title,
-                text: result.text
-              })))}`,
+              Retrieved documents: ${JSON.stringify(formattedDocuments)}`,
             },
           ],
           model: "llama-3.3-70b-versatile",
