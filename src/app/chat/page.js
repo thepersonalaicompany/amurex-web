@@ -1330,11 +1330,11 @@ const OnboardingFlow = ({ onClose, setHasSeenOnboarding }) => {
         </div>
         
         <h2 className="text-2xl font-bold text-white mb-6">
-          Welcome to Amurex Chat!
+          Welcome to Amurex!
         </h2>
 
         <p className="text-zinc-300 mb-6">
-          To get the most out of Amurex Chat, connect your accounts to access your
+          To get the most out of Amurex, connect your accounts to access your
           documents and information.
         </p>
 
