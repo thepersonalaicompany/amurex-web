@@ -212,11 +212,11 @@ export async function POST(req) {
         }
       }
 
-      // Fetch recent unread emails
+      // Fetch recent unread emails - fetch more for storage
       const messages = await gmail.users.messages.list({
         userId: 'me',
-        q: 'is:unread -label:Amurex/processed',
-        maxResults: 10
+        q: 'is:unread',  // Simplified query without processed label filter
+        maxResults: 100  // Fetch up to 100 emails
       });
       
       if (!messages.data.messages || messages.data.messages.length === 0) {
@@ -227,10 +227,44 @@ export async function POST(req) {
         });
       }
 
+      // Create a set of already processed message IDs to avoid duplicates
+      const { data: processedEmails, error: processedError } = await supabase
+        .from('emails')
+        .select('message_id')
+        .eq('user_id', userId);
+        
+      const processedMessageIds = new Set();
+      
+      if (!processedError && processedEmails) {
+        processedEmails.forEach(email => {
+          processedMessageIds.add(email.message_id);
+        });
+      }
+
+      // Filter out already processed messages
+      const newMessages = messages.data.messages.filter(message => 
+        !processedMessageIds.has(message.id)
+      );
+      
+      console.log(`Found ${messages.data.messages.length} unread emails, ${newMessages.length} new to process`);
+      
+      if (newMessages.length === 0) {
+        return NextResponse.json({ 
+          success: true, 
+          message: "No new emails to process", 
+          processed: 0 
+        });
+      }
+
       // Process each email
       const results = [];
+      const categorizedCount = Math.min(20, newMessages.length); // Only categorize the first 20
+      let totalStoredCount = 0;
       
-      for (const message of messages.data.messages) {
+      for (let i = 0; i < newMessages.length; i++) {
+        const message = newMessages[i];
+        const shouldCategorize = i < categorizedCount; // Only categorize first 20 emails
+        
         const fullMessage = await gmail.users.messages.get({
           userId: 'me',
           id: message.id
@@ -243,80 +277,241 @@ export async function POST(req) {
         
         const subject = headers.Subject || "(No Subject)";
         const fromEmail = headers.From || "Unknown";
+        const threadId = fullMessage.data.threadId || message.id;
+        const receivedAt = new Date(parseInt(fullMessage.data.internalDate));
+        const isRead = !fullMessage.data.labelIds.includes('UNREAD');
+        const snippet = fullMessage.data.snippet || "";
         
-        // Check if the email already has an Amurex category label
-        const emailLabels = fullMessage.data.labelIds || [];
+        // Check if the email already has an Amurex category label (only for emails we'll categorize)
         let alreadyLabeled = false;
+        let category = "none";
         
-        // Create a reverse map of label IDs to label names for checking
-        const labelIdToName = {};
-        Object.entries(amurexLabels).forEach(([name, id]) => {
-          labelIdToName[id] = name;
-        });
-        
-        // Check if any of the email's labels are Amurex category labels
-        for (const labelId of emailLabels) {
-          if (labelIdToName[labelId]) {
-            console.log(`Email already has Amurex label: ${labelIdToName[labelId]}`);
-            alreadyLabeled = true;
-            break;
+        if (shouldCategorize) {
+          const emailLabels = fullMessage.data.labelIds || [];
+          
+          // Create a reverse map of label IDs to label names for checking
+          const labelIdToName = {};
+          Object.entries(amurexLabels).forEach(([name, id]) => {
+            labelIdToName[id] = name;
+          });
+          
+          // Check if any of the email's labels are Amurex category labels
+          for (const labelId of emailLabels) {
+            if (labelIdToName[labelId]) {
+              console.log(`Email already has Amurex label: ${labelIdToName[labelId]}`);
+              category = labelIdToName[labelId];
+              alreadyLabeled = true;
+              break;
+            }
           }
         }
         
-        // Skip this email if it already has an Amurex label
-        if (alreadyLabeled) {
+        // Skip categorization if email already has an Amurex label
+        if (shouldCategorize && alreadyLabeled) {
           results.push({
             messageId: message.id,
             subject,
             category: "already_labeled",
             success: true
           });
+          
+          // Still store the email in database but continue to next email for categorization
+          try {
+            const wasStored = await storeEmailInDatabase(userId, message.id, threadId, fromEmail, subject, "", receivedAt, isRead, snippet);
+            if (wasStored) {
+              totalStoredCount++;
+            }
+          } catch (dbError) {
+            console.error("Database error while storing already labeled email:", dbError);
+          }
+          
           continue;
         }
         
         // Extract email body
         let body = "";
         
-        if (fullMessage.data.payload.parts) {
-          for (const part of fullMessage.data.payload.parts) {
-            if (part.mimeType === "text/plain" && part.body.data) {
-              body = Buffer.from(part.body.data, 'base64').toString('utf-8');
-              break;
+        // Recursive function to extract text content from any part of the email
+        function extractTextFromParts(part) {
+          if (!part) return "";
+          
+          try {
+            // If this part has plain text content, extract it
+            if (part.mimeType === "text/plain" && part.body && part.body.data) {
+              return Buffer.from(part.body.data, 'base64').toString('utf-8');
             }
+            
+            // If this part has HTML content and we don't have plain text yet
+            if (part.mimeType === "text/html" && part.body && part.body.data && body === "") {
+              // Convert HTML to plain text (simple version - strips tags)
+              const htmlContent = Buffer.from(part.body.data, 'base64').toString('utf-8');
+              return htmlContent.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+            }
+            
+            // If this part has sub-parts, process them recursively
+            if (part.parts && Array.isArray(part.parts)) {
+              for (const subPart of part.parts) {
+                const textContent = extractTextFromParts(subPart);
+                if (textContent) {
+                  return textContent;
+                }
+              }
+            }
+          } catch (extractError) {
+            console.error("Error extracting text from email part:", extractError);
           }
-        } else if (fullMessage.data.payload.body.data) {
-          body = Buffer.from(fullMessage.data.payload.body.data, 'base64').toString('utf-8');
+          
+          return "";
         }
         
-        const truncatedBody = body.length > 1500 ? body.substring(0, 1500) + "..." : body;
-
-        // Use OpenAI to categorize the email
-        const category = await categorizeWithOpenAI(fromEmail, subject, truncatedBody);
-        
-        // Apply the label only if the category is not "none"
-        if (category !== "none" && amurexLabels[category]) {
-          await gmail.users.messages.modify({
-            userId: 'me',
-            id: message.id,
-            requestBody: {
-              addLabelIds: [amurexLabels[category]]
+        // Try to extract text from the email payload
+        try {
+          if (fullMessage.data.payload) {
+            // If payload has direct parts
+            if (fullMessage.data.payload.parts && Array.isArray(fullMessage.data.payload.parts)) {
+              // First try to find text/plain parts
+              for (const part of fullMessage.data.payload.parts) {
+                const textContent = extractTextFromParts(part);
+                if (textContent) {
+                  body = textContent;
+                  break;
+                }
+              }
+            } 
+            // If payload has direct body content
+            else if (fullMessage.data.payload.body && fullMessage.data.payload.body.data) {
+              body = Buffer.from(fullMessage.data.payload.body.data, 'base64').toString('utf-8');
             }
+            // If payload is multipart but structured differently
+            else if (fullMessage.data.payload.mimeType && fullMessage.data.payload.mimeType.startsWith('multipart/')) {
+              body = extractTextFromParts(fullMessage.data.payload);
+            }
+          }
+          
+          // If we still don't have body content, use the snippet as a fallback
+          if (!body && fullMessage.data.snippet) {
+            body = fullMessage.data.snippet.replace(/&#(\d+);/g, (match, dec) => {
+              return String.fromCharCode(dec);
+            });
+            body += " [Extracted from snippet]";
+          }
+          
+          // Always ensure we have some content
+          if (!body) {
+            body = "[No content could be extracted]";
+            console.log(`Could not extract content for email ${message.id}, using placeholder`);
+          } else {
+            console.log(`Successfully extracted ${body.length} characters of content for email ${message.id}`);
+          }
+        } catch (bodyExtractionError) {
+          console.error("Error extracting email body:", bodyExtractionError);
+          body = "[Error extracting content: " + (bodyExtractionError.message || "Unknown error") + "]";
+        }
+        
+        // Only use OpenAI to categorize selected emails
+        if (shouldCategorize) {
+          const truncatedBody = body.length > 1500 ? body.substring(0, 1500) + "..." : body;
+          category = await categorizeWithOpenAI(fromEmail, subject, truncatedBody);
+          
+          // Apply the label only if the category is not "none"
+          if (category !== "none" && amurexLabels[category]) {
+            await gmail.users.messages.modify({
+              userId: 'me',
+              id: message.id,
+              requestBody: {
+                addLabelIds: [amurexLabels[category]]
+              }
+            });
+          }
+          
+          // Add to processed results (only for categorized emails)
+          results.push({
+            messageId: message.id,
+            subject,
+            category,
+            success: true
           });
         }
         
-        // Add to processed
-        results.push({
-          messageId: message.id,
-          subject,
-          category,
-          success: true
-        });
+        // Store email in the database
+        try {
+          const wasStored = await storeEmailInDatabase(userId, message.id, threadId, fromEmail, subject, body, receivedAt, isRead, snippet);
+          if (wasStored) {
+            totalStoredCount++;
+          }
+        } catch (dbError) {
+          console.error("Database error while storing email:", dbError);
+        }
+      }
+      
+      // Helper function to store email in database
+      async function storeEmailInDatabase(userId, messageId, threadId, sender, subject, content, receivedAt, isRead, snippet) {
+        // Check if email already exists in the database
+        const { data: existingEmail } = await supabase
+          .from('emails')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('message_id', messageId)
+          .maybeSingle();
+          
+        if (!existingEmail) {
+          // Insert email into database
+          const emailData = {
+            user_id: userId,
+            message_id: messageId,
+            thread_id: threadId,
+            sender: sender,
+            subject: subject,
+            content: content,
+            received_at: receivedAt.toISOString(),
+            created_at: new Date().toISOString(),
+            is_read: isRead,
+            snippet: snippet,
+          };
+          
+          console.log(`Storing email in database:`, {
+            message_id: messageId,
+            thread_id: threadId,
+            subject: subject,
+            content_length: content ? content.length : 0
+          });
+          
+          const { error: insertError } = await supabase
+            .from('emails')
+            .insert(emailData);
+            
+          if (insertError) {
+            console.error("Error inserting email into database:", insertError);
+            
+            // Check if the error is related to the category or is_categorized column
+            if (insertError.message && (insertError.message.includes('category') || insertError.message.includes('is_categorized'))) {
+              // Try again without those fields
+              delete emailData.category;
+              delete emailData.is_categorized;
+              
+              const { error: retryError } = await supabase
+                .from('emails')
+                .insert(emailData);
+                
+              if (retryError) {
+                console.error("Error inserting email with simplified fields:", retryError);
+              } else {
+                console.log(`Email ${messageId} stored in database with simplified fields`);
+              }
+            }
+          } else {
+            console.log(`Email ${messageId} stored in database successfully`);
+          }
+        }
+        return !existingEmail; // Return true if we inserted a new email
       }
       
       return NextResponse.json({ 
         success: true, 
         message: "Emails processed successfully", 
-        processed: results.length, 
+        processed: results.length,
+        total_stored: totalStoredCount,
+        total_found: newMessages.length,
         results 
       });
     } catch (gmailError) {
