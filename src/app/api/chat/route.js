@@ -472,8 +472,7 @@ async function searchBrain(query, user_id, enabledSources) {
   } else {
     // Use the Brain API for hosted mode
     try {
-      // const response = await fetch('https://brain.amurex.ai/search', {
-      const response = await fetch('http://localhost:8080/search', {
+      const response = await fetch('https://brain.amurex.ai/search', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${process.env.BRAIN_API_KEY}`,
