@@ -1321,16 +1321,6 @@ const OnboardingFlow = ({ onClose, setHasSeenOnboarding }) => {
       {/* Overlay with click-through for navbar */}
       <div className="absolute inset-0 bg-zinc-800 bg-opacity-40 pointer-events-auto" style={{ marginLeft: '64px' }}></div>
       
-      {/* Top right skip button */}
-      <div className="absolute top-4 right-4 z-50 pointer-events-auto">
-        <button
-          onClick={handleClose}
-          className="px-5 py-2.5 bg-black text-zinc-300 hover:text-white hover:bg-zinc-900 rounded-lg border border-zinc-700 transition-colors font-medium shadow-lg"
-        >
-          Skip for now
-        </button>
-      </div>
-
       {/* Main content positioned to avoid navbar */}
       <div className="bg-black bg-opacity-90 rounded-lg border border-zinc-700 max-w-4xl w-full p-6 relative pointer-events-auto" style={{ marginLeft: '64px' }}>
         <div className="absolute -top-2 -left-2 bg-zinc-700 p-2 rounded-full shadow-lg">
