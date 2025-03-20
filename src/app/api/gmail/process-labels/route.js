@@ -37,11 +37,20 @@ const GMAIL_COLORS = {
 //   "brown": { "backgroundColor": "#b65775", "textColor": "#ffffff" }
 // };
 
-// Helper function to categorize emails using OpenAI
-async function categorizeWithOpenAI(fromEmail, subject, body) {
+// Helper function to categorize emails using OpenAI or Groq
+async function categorizeWithAI(fromEmail, subject, body, useGroq = false) {
   try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+    const client = useGroq ? 
+      new OpenAI({
+        apiKey: process.env.GROQ_API_KEY,
+        baseURL: "https://api.groq.com/openai/v1",
+      }) : 
+      openai;
+    
+    const model = useGroq ? "llama-3.3-70b-versatile" : "gpt-4o";
+    
+    const response = await client.chat.completions.create({
+      model: model,
       messages: [
         {
           role: "system",
@@ -52,13 +61,13 @@ async function categorizeWithOpenAI(fromEmail, subject, body) {
           content: `Email from: ${fromEmail}\nSubject: ${subject}\n\nBody: ${body}`
         }
       ],
-      max_tokens: 10,
+      max_tokens: 20,
       temperature: 0.3
     });
 
     // Get the raw response and convert to a number
     const rawResponse = response.choices[0].message.content.trim();
-    console.log("Raw OpenAI category response:", rawResponse);
+    console.log(`Raw ${useGroq ? 'Groq' : 'OpenAI'} category response:`, rawResponse);
     
     // Extract just the first digit from the response
     const numberMatch = rawResponse.match(/\d/);
@@ -90,7 +99,7 @@ async function categorizeWithOpenAI(fromEmail, subject, body) {
       return "none";
     }
   } catch (error) {
-    console.error("Error categorizing with OpenAI:", error);
+    console.error(`Error categorizing with ${useGroq ? 'Groq' : 'OpenAI'}:`, error);
     // Default to "none" on error
     return "none";
   }
@@ -216,7 +225,7 @@ export async function POST(req) {
       const messages = await gmail.users.messages.list({
         userId: 'me',
         q: 'is:unread',  // Simplified query without processed label filter
-        maxResults: 100  // Fetch up to 100 emails
+        maxResults: 10  // Fetch up to 100 emails
       });
       
       if (!messages.data.messages || messages.data.messages.length === 0) {
@@ -411,7 +420,7 @@ export async function POST(req) {
         // Only use OpenAI to categorize selected emails
         if (shouldCategorize) {
           const truncatedBody = body.length > 1500 ? body.substring(0, 1500) + "..." : body;
-          category = await categorizeWithOpenAI(fromEmail, subject, truncatedBody);
+          category = await categorizeWithAI(fromEmail, subject, truncatedBody, requestData.useGroq);
           
           // Apply the label only if the category is not "none"
           if (category !== "none" && amurexLabels[category]) {
