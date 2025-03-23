@@ -149,7 +149,7 @@ function GoogleCallbackContent() {
           <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
         </div>
         <p className="text-gray-700 mb-2">Connecting to Google...</p>
-        <p className="text-sm text-gray-500">You'll be redirected in a moment.</p>
+        <p className="text-sm text-gray-500">You&apos;ll be redirected in a moment.</p>
       </div>
     </div>
   );

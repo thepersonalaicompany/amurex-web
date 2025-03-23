@@ -1,10 +1,13 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
+import { Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 
-export default function NotionCallbackPage() {
+// Component that uses useSearchParams
+function NotionCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -106,7 +109,7 @@ export default function NotionCallbackPage() {
     };
 
     handleNotionCallback();
-  }, [router, searchParams]); // Add searchParams to dependency array
+  }, [router, searchParams]);
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-black">
@@ -116,5 +119,21 @@ export default function NotionCallbackPage() {
         <p className="mt-4 text-gray-400">Please wait while we connect your Notion account...</p>
       </div>
     </div>
+  );
+}
+
+// Main component with Suspense boundary
+export default function NotionCallbackPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen bg-black">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4 text-white">Loading...</h1>
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-purple-500 mx-auto"></div>
+        </div>
+      </div>
+    }>
+      <NotionCallbackContent />
+    </Suspense>
   );
 }

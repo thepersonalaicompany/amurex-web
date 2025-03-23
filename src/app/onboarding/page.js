@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Mail, FileText, Calendar, ArrowRight, Tag, Star, Briefcase, User, Clock } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { toast } from 'react-hot-toast';
 
-export default function OnboardingPage() {
+// Create a client component that uses useSearchParams
+function OnboardingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [currentStep, setCurrentStep] = useState(1);
@@ -612,7 +613,7 @@ export default function OnboardingPage() {
                   <span className="text-[#9334E9] text-sm font-bold">i</span>
                 </div>
                 <p className="text-white text-sm">
-                  We never send email on your behalf. We leave drafts for you to edit and send. If it doesn't work out with us, we'll leave your inbox as we found it.
+                  We never send email on your behalf. We leave drafts for you to edit and send. If it doesn&apos;t work out with us, we&apos;ll leave your inbox as we found it.
                 </p>
               </div>
               
@@ -1006,7 +1007,7 @@ export default function OnboardingPage() {
             </div>
             <h3 className="text-xl font-medium text-white mb-2">Gmail Connected Successfully</h3>
             <p className="text-gray-400 text-center mb-6">
-              We've processed {emailStats.processed} emails and stored {emailStats.stored} for quick access.
+              We&apos;ve processed {emailStats.processed} emails and stored {emailStats.stored} for quick access.
             </p>
             <button
               onClick={() => setCurrentStep(2)}
@@ -1019,5 +1020,14 @@ export default function OnboardingPage() {
         )}
       </div>
     </div>
+  );
+}
+
+// Main component that wraps the content with Suspense
+export default function OnboardingPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-black text-white flex items-center justify-center">Loading...</div>}>
+      <OnboardingContent />
+    </Suspense>
   );
 } 
