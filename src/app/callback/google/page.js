@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { Suspense } from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 import { supabase } from '@/lib/supabaseClient';
@@ -11,9 +11,6 @@ import { supabase } from '@/lib/supabaseClient';
 function GoogleCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [processingStep, setProcessingStep] = useState('');
-  const [emailStats, setEmailStats] = useState({ processed: 0, stored: 0, total: 0 });
 
   useEffect(() => {
     const handleCallback = async () => {
@@ -29,7 +26,6 @@ function GoogleCallbackContent() {
 
       if (code) {
         try {
-          setIsProcessing(true);
           // Get current session
           const { data: { session } } = await supabase.auth.getSession();
           
@@ -38,7 +34,6 @@ function GoogleCallbackContent() {
           }
           
           // Exchange code for tokens
-          setProcessingStep('Connecting to Google...');
           const response = await fetch('/api/google/callback', {
             method: 'POST',
             headers: {
@@ -61,21 +56,19 @@ function GoogleCallbackContent() {
           toast.success('Google account connected successfully!');
           
           // Enable email tagging for the user
-          setProcessingStep('Enabling email categorization...');
-          const { error: updateError } = await supabase
+          await supabase
             .from('users')
             .update({ email_tagging_enabled: true })
             .eq('id', session.user.id);
-            
-          if (updateError) {
-            console.error("Error enabling email tagging:", updateError);
-          }
           
-          // If we're in the onboarding flow, import Google Docs
+          // If we're in the onboarding flow, redirect immediately and trigger background processes
           if (source === 'onboarding') {
-            // Step 1: Import Google Docs
-            setProcessingStep('Importing Google Docs...');
-            const docsResponse = await fetch("/api/google/import", {
+            // Redirect user immediately to onboarding
+            router.push('/onboarding?connection=success');
+            
+            // Trigger background processes
+            // We don't await these calls, so they run in the background
+            fetch("/api/google/import", {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
@@ -84,20 +77,22 @@ function GoogleCallbackContent() {
               body: JSON.stringify({
                 userId: session.user.id,
                 accessToken: session.access_token,
+                runInBackground: true
               }),
-            });
+            }).then(response => response.json())
+              .then(data => {
+                if (data.success) {
+                  console.log('Google Docs import started in background');
+                } else {
+                  console.error('Failed to start Google Docs import:', data.error);
+                }
+              })
+              .catch(err => {
+                console.error('Error starting Google Docs import:', err);
+              });
             
-            const docsData = await docsResponse.json();
-            
-            if (!docsData.success) {
-              throw new Error(docsData.error || 'Failed to import Google Docs');
-            }
-            
-            toast.success('Google Docs imported successfully!');
-            
-            // Step 2: Process Gmail emails
-            setProcessingStep('Processing emails...');
-            const emailResponse = await fetch("/api/gmail/process-labels", {
+            // Also trigger email processing in background
+            fetch("/api/gmail/process-labels", {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
@@ -105,33 +100,20 @@ function GoogleCallbackContent() {
               body: JSON.stringify({
                 userId: session.user.id,
                 categories: ['to respond', 'FYI', 'comment', 'notification', 'meeting update'],
-                useStandardColors: false
+                useStandardColors: false,
+                runInBackground: true
               }),
-            });
-            
-            const emailData = await emailResponse.json();
-            
-            if (!emailData.success) {
-              if (emailData.errorType === "insufficient_permissions") {
-                throw new Error('Insufficient Gmail permissions. Please reconnect your Google account.');
-              } else {
-                throw new Error(emailData.error || 'Failed to process emails');
-              }
-            }
-            
-            // Store email stats
-            setEmailStats({
-              processed: emailData.processed || 0,
-              stored: emailData.total_stored || 0,
-              total: emailData.total_found || 0
-            });
-            
-            toast.success(`Successfully processed ${emailData.total_stored} emails`);
-            
-            // Redirect to onboarding with success
-            setTimeout(() => {
-              router.push('/onboarding?import=success');
-            }, 2000);
+            }).then(response => response.json())
+              .then(data => {
+                if (data.success) {
+                  console.log('Email processing started in background');
+                } else {
+                  console.error('Failed to start email processing:', data.error);
+                }
+              })
+              .catch(err => {
+                console.error('Error starting email processing:', err);
+              });
           } else {
             // For settings page, just redirect back
             router.push('/settings?connection=success');
@@ -143,8 +125,6 @@ function GoogleCallbackContent() {
           // Redirect based on source
           const redirectPath = source === 'onboarding' ? '/onboarding' : '/settings';
           router.push(`${redirectPath}?error=${encodeURIComponent(err.message || 'Failed to connect Google account')}`);
-        } finally {
-          setIsProcessing(false);
         }
       } else if (error) {
         toast.error(`Connection failed: ${error}`);
@@ -165,35 +145,11 @@ function GoogleCallbackContent() {
     <div className="flex items-center justify-center min-h-screen">
       <div className="text-center max-w-md mx-auto p-6 bg-white rounded-lg shadow-md">
         <h1 className="text-xl font-semibold mb-4">Google Integration</h1>
-        
-        {isProcessing ? (
-          <>
-            <div className="mb-4">
-              <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
-            </div>
-            <p className="text-gray-700 mb-2">{processingStep}</p>
-            <p className="text-sm text-gray-500">This may take a few moments...</p>
-          </>
-        ) : (
-          <p className="text-gray-500">Connecting to Google...</p>
-        )}
-        
-        {emailStats.stored > 0 && (
-          <div className="mt-4 p-4 bg-blue-50 rounded-lg text-left">
-            <h3 className="text-lg font-medium text-blue-800">Email Processing Complete</h3>
-            <div className="mt-2 space-y-1">
-              <p className="text-sm text-blue-700">
-                <span className="font-medium">Total emails found:</span> {emailStats.total}
-              </p>
-              <p className="text-sm text-blue-700">
-                <span className="font-medium">Emails processed:</span> {emailStats.processed}
-              </p>
-              <p className="text-sm text-blue-700">
-                <span className="font-medium">Emails stored:</span> {emailStats.stored}
-              </p>
-            </div>
-          </div>
-        )}
+        <div className="mb-4">
+          <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+        </div>
+        <p className="text-gray-700 mb-2">Connecting to Google...</p>
+        <p className="text-sm text-gray-500">You'll be redirected in a moment.</p>
       </div>
     </div>
   );

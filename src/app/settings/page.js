@@ -445,33 +445,26 @@ function SettingsContent() {
     setLoading(false);
   };
 
-  const handleNotionConnect = async () => {
-    console.log("Starting Notion connection flow...");
+  const connectNotion = async () => {
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (session) {
-        const response = await fetch("/api/notion/auth", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ userId: session.user.id }),
-        });
-        const data = await response.json();
-        if (data.url) {
-          console.log("Setting pendingNotionImport flag before OAuth redirect");
-          localStorage.setItem("pendingNotionImport", "true");
-          router.push(data.url);
-        } else {
-          console.error("Error starting Notion OAuth flow:", data.error);
-          toast.error("Failed to connect Notion");
-        }
+      const response = await fetch('/api/notion/auth', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ source: 'settings' }),
+      });
+      
+      const data = await response.json();
+      
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error(data.error || 'Failed to get Notion authorization URL');
       }
     } catch (error) {
-      console.error("Error connecting Notion:", error);
-      toast.error("Failed to connect Notion");
+      console.error('Error connecting to Notion:', error);
+      toast.error('Failed to connect to Notion');
     }
   };
 
@@ -1222,7 +1215,7 @@ function SettingsContent() {
                                 ? "bg-green-900 hover:bg-green-800"
                                 : ""
                             } min-w-[100px]`}
-                            onClick={handleNotionConnect}
+                            onClick={connectNotion}
                             disabled={isImporting && importSource === "Notion"}
                           >
                             {isImporting && importSource === "Notion" ? (
