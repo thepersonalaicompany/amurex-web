@@ -96,7 +96,6 @@ function NotionCallbackContent() {
           });
         
         // Redirect based on source
-        alert(source);
         if (source === 'onboarding') {
           router.push('/onboarding?connection=success');
         } else {
