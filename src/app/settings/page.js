@@ -24,17 +24,17 @@ import {
   Minus,
 } from "lucide-react";
 import Cookies from "js-cookie";
-import { X } from "@phosphor-icons/react";
 import { Navbar } from "@/components/Navbar";
 import { toast } from "react-hot-toast";
-import Intercom from '@intercom/messenger-js-sdk';
+
 const PROVIDER_ICONS = {
   google:
     "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/768px-Google_%22G%22_logo.svg.png",
   notion:
     "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/Notion-logo.svg/2048px-Notion-logo.svg.png",
   obsidian: "https://obsidian.md/images/obsidian-logo-gradient.svg",
-  gmail: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/2560px-Gmail_icon_%282020%29.svg.png",
+  gmail:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/2560px-Gmail_icon_%282020%29.svg.png",
 };
 
 const BASE_URL_BACKEND = "https://api.amurex.ai";
@@ -269,17 +269,17 @@ function SettingsContent() {
       setIsProcessingEmails(true);
       setProcessedEmailCount(0);
       setGmailPermissionError(false);
-      
+
       const {
         data: { session },
       } = await supabase.auth.getSession();
-      
+
       if (!session) {
         toast.error("You must be logged in to process emails");
         setIsProcessingEmails(false);
         return;
       }
-      
+
       const response = await fetch("/api/gmail/process-labels", {
         method: "POST",
         headers: {
@@ -288,19 +288,21 @@ function SettingsContent() {
         body: JSON.stringify({
           userId: session.user.id,
           // Allow custom colors to be applied
-          useStandardColors: false
+          useStandardColors: false,
         }),
       });
-      
+
       const data = await response.json();
-      
+
       if (data.success) {
         setProcessedEmailCount(data.processed || 0);
         toast.success(`Successfully processed ${data.processed} emails`);
       } else {
         if (data.errorType === "insufficient_permissions") {
           setGmailPermissionError(true);
-          toast.error("Insufficient Gmail permissions. Please reconnect your Google account.");
+          toast.error(
+            "Insufficient Gmail permissions. Please reconnect your Google account."
+          );
         } else {
           toast.error(data.error || "Failed to process emails");
         }
@@ -316,7 +318,9 @@ function SettingsContent() {
   const handleReconnectGoogle = useCallback(() => {
     localStorage.setItem("pendingGmailReconnect", "true");
     handleGoogleDocsConnect();
-    toast.success("Please reconnect your Google account with the necessary permissions");
+    toast.success(
+      "Please reconnect your Google account with the necessary permissions"
+    );
   }, [handleGoogleDocsConnect]);
 
   // Update the useEffect to check for pending imports as well
@@ -327,7 +331,9 @@ function SettingsContent() {
         "pendingGoogleDocsImport"
       );
       const pendingNotionImport = localStorage.getItem("pendingNotionImport");
-      const pendingGmailReconnect = localStorage.getItem("pendingGmailReconnect");
+      const pendingGmailReconnect = localStorage.getItem(
+        "pendingGmailReconnect"
+      );
 
       if (pendingGoogleImport === "true" && googleDocsConnected) {
         console.log(
@@ -342,7 +348,7 @@ function SettingsContent() {
         localStorage.removeItem("pendingNotionImport");
         await importNotionDocuments();
       }
-      
+
       if (pendingGmailReconnect === "true" && googleDocsConnected) {
         console.log("Found pending Gmail reconnect, checking permissions...");
         localStorage.removeItem("pendingGmailReconnect");
@@ -992,7 +998,9 @@ function SettingsContent() {
 
         if (error) throw error;
         setEmailLabelingEnabled(checked);
-        toast.success(checked ? "Email labeling enabled" : "Email labeling disabled");
+        toast.success(
+          checked ? "Email labeling enabled" : "Email labeling disabled"
+        );
       }
     } catch (error) {
       console.error("Error updating email labeling settings:", error);
@@ -1003,16 +1011,16 @@ function SettingsContent() {
   // Add useEffect to get and store userId
   useEffect(() => {
     const fetchUserId = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (session && session.user) {
         setUserId(session.user.id);
       }
     };
-    
+
     fetchUserId();
   }, []);
-
-
 
   return (
     <div className="flex min-h-screen bg-black text-white">
@@ -1098,7 +1106,7 @@ function SettingsContent() {
                         className="relative bg-zinc-900/50 text-zinc-300 hover:bg-zinc-800 hover:border-[#9334E9] border border-zinc-800 rounded-md backdrop-blur-sm transition-colors duration-200"
                         onClick={async () => {
                           console.log("clicked");
-                          
+
                           // Track button click with analytics
                           try {
                             // Log the user action for analytics using stored userId
@@ -1106,7 +1114,7 @@ function SettingsContent() {
                               userId || "not-required", // Use userId if available, fallback to "not-required"
                               "web_memory_chat_tried"
                             );
-                            
+
                             // Navigate to chat page
                             router.push("/chat");
                           } catch (error) {
@@ -1329,7 +1337,9 @@ function SettingsContent() {
                             <Switch
                               checked={emailLabelingEnabled}
                               onCheckedChange={handleEmailLabelToggle}
-                              className={emailLabelingEnabled ? "bg-[#9334E9]" : ""}
+                              className={
+                                emailLabelingEnabled ? "bg-[#9334E9]" : ""
+                              }
                             />
                             {gmailPermissionError && (
                               <Button
@@ -1342,7 +1352,7 @@ function SettingsContent() {
                             )}
                           </div>
                         </div>
-                        
+
                         {/* Status messages */}
                         {processedEmailCount > 0 && (
                           <p className="text-sm text-green-500 mt-2">
@@ -1351,15 +1361,17 @@ function SettingsContent() {
                         )}
                         {gmailPermissionError && (
                           <p className="text-sm text-amber-500 mt-2">
-                            Additional Gmail permissions are required. Please reconnect your Google account.
+                            Additional Gmail permissions are required. Please
+                            reconnect your Google account.
                           </p>
                         )}
                         {emailLabelingEnabled && !gmailPermissionError && (
                           <p className="text-xs text-zinc-400 mt-2">
-                            Uses AI to categorize your unread emails (max 10) and apply labels in Gmail
+                            Uses AI to categorize your unread emails (max 10)
+                            and apply labels in Gmail
                           </p>
                         )}
-                        
+
                         {/* Prominent Process Emails button */}
                         {emailLabelingEnabled && !gmailPermissionError && (
                           <div className="mt-4 flex justify-end">
