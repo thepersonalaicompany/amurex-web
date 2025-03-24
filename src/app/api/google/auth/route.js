@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server';
-import { google } from 'googleapis';
+import { NextResponse } from "next/server";
+import { google } from "googleapis";
 
 const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_CLIENT_ID,
@@ -17,9 +17,9 @@ export async function GET(req) {
   ];
 
   const url = oauth2Client.generateAuthUrl({
-    access_type: 'offline',
+    access_type: "offline",
     scope: scopes,
-    prompt: 'consent'
+    prompt: "consent",
   });
 
   return NextResponse.redirect(url);
@@ -27,20 +27,7 @@ export async function GET(req) {
 
 export async function POST(req) {
   try {
-    const { userId, source = 'settings' } = await req.json();
-    
-    if (!userId) {
-      return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
-    }
-
-    const oauth2Client = new google.auth.OAuth2(
-      process.env.GOOGLE_CLIENT_ID,
-      process.env.GOOGLE_CLIENT_SECRET,
-      process.env.GOOGLE_REDIRECT_URI
-    );
-
-    // Include the source in the state parameter
-    const state = `${userId}:${source}`;
+    const { userId } = await req.json();
 
     const scopes = [
       "https://www.googleapis.com/auth/documents.readonly",
@@ -50,11 +37,11 @@ export async function POST(req) {
       "https://www.googleapis.com/auth/gmail.labels",
     ];
 
-    const authUrl = oauth2Client.generateAuthUrl({
-      access_type: 'offline',
+    const url = oauth2Client.generateAuthUrl({
+      access_type: "offline",
       scope: scopes,
-      state: state,
-      prompt: 'consent'
+      prompt: "consent",
+      state: userId,
     });
 
     // Add source as a query parameter to the redirect URI
@@ -63,7 +50,11 @@ export async function POST(req) {
     
     return NextResponse.json({ url: urlWithSource.toString() });
   } catch (error) {
-    console.error('Error generating auth URL:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("Error generating Google OAuth URL:", error);
+    return NextResponse.json(
+      { success: false, error: error.message },
+      { status: 500 }
+    );
   }
 }
+
