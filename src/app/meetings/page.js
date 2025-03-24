@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation'
 import { Navbar } from '@/components/Navbar'
 import { Card } from "@/components/ui/card"
 import { CardContent } from "@/components/ui/card"
+import Intercom from '@intercom/messenger-js-sdk';
 
 export default function TranscriptList() {
   const [searchTerm, setSearchTerm] = useState('')
@@ -18,9 +19,12 @@ export default function TranscriptList() {
   const router = useRouter()
   const [userTeams, setUserTeams] = useState([])
 
+
+
   useEffect(() => {
     fetchTranscripts()
     fetchUserTeams()
+
   }, [filter])
 
   const fetchTranscripts = async () => {

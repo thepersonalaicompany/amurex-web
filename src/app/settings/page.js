@@ -27,7 +27,7 @@ import Cookies from "js-cookie";
 import { X } from "@phosphor-icons/react";
 import { Navbar } from "@/components/Navbar";
 import { toast } from "react-hot-toast";
-
+import Intercom from '@intercom/messenger-js-sdk';
 const PROVIDER_ICONS = {
   google:
     "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/768px-Google_%22G%22_logo.svg.png",
@@ -1011,6 +1011,8 @@ function SettingsContent() {
     
     fetchUserId();
   }, []);
+
+
 
   return (
     <div className="flex min-h-screen bg-black text-white">

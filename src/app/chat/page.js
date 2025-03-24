@@ -7,7 +7,6 @@ import {
   Stack,
   GitBranch,
   Link,
-  EnvelopeSimple,
 } from "@phosphor-icons/react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";

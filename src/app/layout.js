@@ -6,6 +6,7 @@ import { Noto_Serif } from "next/font/google";
 import { AuthProvider } from "@/components/AuthProvider";
 import { defaultSEOConfig } from "./seo";
 import { Inter } from "next/font/google";
+import IntercomProvider from "@/components/IntercomProvider";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -75,20 +76,22 @@ export default function RootLayout({ children }) {
         className={`${geistSans.variable} ${geistMono.variable} ${notoSerif.variable} antialiased ${inter.className}`}
       >
         <AuthProvider>
-          <span
-            className="flex h-screen overflow-hidden"
-            // style={{ backgroundColor: "var(--surface-color-2)" }}
-          >
-            <main
-              className={`flex-1 overflow-y-auto`}
-
+          <IntercomProvider>
+            <span
+              className="flex h-screen overflow-hidden"
               // style={{ backgroundColor: "var(--surface-color-2)" }}
             >
-              {children}
-            </main>
-          </span>
-          <SpeedInsights />
-          <Analytics />
+              <main
+                className={`flex-1 overflow-y-auto`}
+
+                // style={{ backgroundColor: "var(--surface-color-2)" }}
+              >
+                {children}
+              </main>
+            </span>
+            <SpeedInsights />
+            <Analytics />
+          </IntercomProvider>
         </AuthProvider>
       </body>
     </html>
