@@ -85,104 +85,7 @@ function SettingsContent() {
   const [session, setSession] = useState(null);
   const [gmailPermissionError, setGmailPermissionError] = useState(false);
 
-  // Modify the session check useEffect
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      // Redirect if no session
-      if (!session) {
-        const currentPath = window.location.pathname + window.location.search;
-        const encodedRedirect = encodeURIComponent(currentPath);
-        router.push(`/web_app/signin?redirect=${encodedRedirect}`);
-      }
-    });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      // Redirect if session is terminated
-      if (!session) {
-        const currentPath = window.location.pathname + window.location.search;
-        const encodedRedirect = encodeURIComponent(currentPath);
-        router.push(`/web_app/signin?redirect=${encodedRedirect}`);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [router]);
-
-  useEffect(() => {
-    checkIntegrations();
-  }, []);
-
-  useEffect(() => {
-    const connection = searchParams.get("connection");
-    const error = searchParams.get("error");
-
-    if (connection === "success") {
-      toast.success("Google Docs connected successfully!");
-    }
-    if (error) {
-      toast.error(`Connection failed: ${error}`);
-    }
-  }, [searchParams]);
-
-  useEffect(() => {
-    const checkEmailSettings = async () => {
-      try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        if (session) {
-          const { data: user, error } = await supabase
-            .from("users")
-            .select("emails_enabled")
-            .eq("id", session.user.id)
-            .single();
-
-          if (user) {
-            setEmailNotificationsEnabled(user.emails_enabled);
-          }
-        }
-      } catch (error) {
-        console.error("Error checking email settings:", error);
-      }
-    };
-
-    checkEmailSettings();
-  }, []);
-
-  const handleGoogleDocsConnect = useCallback(async () => {
-    console.log("Starting Google Docs connection flow...");
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (session) {
-        const response = await fetch("/api/google/auth", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ userId: session.user.id }),
-        });
-        const data = await response.json();
-        if (data.url) {
-          console.log(
-            "Setting pendingGoogleDocsImport flag before OAuth redirect"
-          );
-          localStorage.setItem("pendingGoogleDocsImport", "true");
-          router.push(data.url);
-        } else {
-          console.error("Error starting Google OAuth flow:", data.error);
-        }
-      }
-    } catch (error) {
-      console.error("Error connecting Google Docs:", error);
-    }
-  }, [router]);
-
+  // Define importGoogleDocs and other functions before using them in useEffect
   const importGoogleDocs = useCallback(async () => {
     if (googleDocsConnected) {
       console.log("Starting Google Docs import process...");
@@ -315,68 +218,143 @@ function SettingsContent() {
     }
   }, []);
 
-  const handleReconnectGoogle = useCallback(() => {
-    localStorage.setItem("pendingGmailReconnect", "true");
-    handleGoogleDocsConnect();
-    toast.success(
-      "Please reconnect your Google account with the necessary permissions"
-    );
-  }, [handleGoogleDocsConnect]);
-
-  // Update the useEffect to check for pending imports as well
+  // Modify the session check useEffect
   useEffect(() => {
-    const checkPendingImports = async () => {
-      console.log("Checking for pending imports...");
-      const pendingGoogleImport = localStorage.getItem(
-        "pendingGoogleDocsImport"
-      );
-      const pendingNotionImport = localStorage.getItem("pendingNotionImport");
-      const pendingGmailReconnect = localStorage.getItem(
-        "pendingGmailReconnect"
-      );
-
-      if (pendingGoogleImport === "true" && googleDocsConnected) {
-        console.log(
-          "Found pending Google import, starting Google Docs import..."
-        );
-        localStorage.removeItem("pendingGoogleDocsImport");
-        await importGoogleDocs();
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      // Redirect if no session
+      if (!session) {
+        const currentPath = window.location.pathname + window.location.search;
+        const encodedRedirect = encodeURIComponent(currentPath);
+        router.push(`/web_app/signin?redirect=${encodedRedirect}`);
       }
+    });
 
-      if (pendingNotionImport === "true" && notionConnected) {
-        console.log("Found pending Notion import, starting Notion import...");
-        localStorage.removeItem("pendingNotionImport");
-        await importNotionDocuments();
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      // Redirect if session is terminated
+      if (!session) {
+        const currentPath = window.location.pathname + window.location.search;
+        const encodedRedirect = encodeURIComponent(currentPath);
+        router.push(`/web_app/signin?redirect=${encodedRedirect}`);
       }
+    });
 
-      if (pendingGmailReconnect === "true" && googleDocsConnected) {
-        console.log("Found pending Gmail reconnect, checking permissions...");
-        localStorage.removeItem("pendingGmailReconnect");
-        setGmailPermissionError(false);
-        if (emailLabelingEnabled) {
-          await processGmailLabels();
+    return () => subscription.unsubscribe();
+  }, [router]);
+
+  useEffect(() => {
+    checkIntegrations();
+  }, []);
+
+  useEffect(() => {
+    const connection = searchParams.get("connection");
+    const error = searchParams.get("error");
+
+    if (connection === "success") {
+      toast.success("Google Docs connected successfully!");
+    }
+    if (error) {
+      toast.error(`Connection failed: ${error}`);
+    }
+  }, [searchParams]);
+
+  // Simplified approach: Just trigger the import when connection=success is detected
+  useEffect(() => {
+    const connection = searchParams.get("connection");
+    const source = searchParams.get("source");
+    
+    console.log("Detected URL params:", { connection, source });
+    
+    if (connection === "success") {
+      console.log("Connection successful, triggering appropriate action");
+      
+      // Force a check of integrations first to ensure we have the latest status
+      checkIntegrations().then(() => {
+        // Handle based on the source parameter
+        if (source === "gmail") {
+          console.log("Gmail connection detected, processing emails");
+          toast.success("Gmail connected successfully!");
+          processGmailLabels();
+        }
+        else if (source === "notion") {
+          console.log("Notion connection detected, importing documents");
+          toast.success("Notion connected successfully!");
+          importNotionDocuments();
+        }
+        else {
+          // Default to Google Docs import for any other source or no source
+          console.log("Google Docs connection detected, importing documents");
+          toast.success("Google Docs connected successfully!");
+          importGoogleDocs();
+        }
+      });
+    }
+  }, [searchParams]); // Only depend on searchParams to avoid re-running
+
+  const handleGoogleDocsConnect = useCallback(async () => {
+    console.log("Starting Google Docs connection flow...");
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (session) {
+        const response = await fetch("/api/google/auth", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ 
+            userId: session.user.id,
+            source: "docs" // Specify the source for the redirect
+          }),
+        });
+        const data = await response.json();
+        if (data.url) {
+          router.push(data.url);
+        } else {
+          console.error("Error starting Google OAuth flow:", data.error);
         }
       }
-    };
+    } catch (error) {
+      console.error("Error connecting Google Docs:", error);
+    }
+  }, [router]);
 
-    checkPendingImports();
-  }, [
-    googleDocsConnected,
-    notionConnected,
-    importGoogleDocs,
-    importNotionDocuments,
-    emailLabelingEnabled,
-    processGmailLabels,
-  ]);
+  const handleReconnectGoogle = useCallback(() => {
+    try {
+      const {
+        data: { session },
+      } = supabase.auth.getSession();
+      if (session) {
+        const response = fetch("/api/google/auth", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ 
+            userId: session.user.id,
+            source: "gmail" // Specify the source for the redirect
+          }),
+        });
+        toast.success("Please reconnect your Google account with the necessary permissions");
+      }
+    } catch (error) {
+      console.error("Error reconnecting Google account:", error);
+    }
+  }, []);
 
   const checkIntegrations = async () => {
     try {
-      console.log("checkIntegrations");
+      console.log("Checking integrations...");
       const {
         data: { session },
         error,
       } = await supabase.auth.getSession();
       if (session) {
+        console.log("Session found, fetching user data");
         const { data: user, error } = await supabase
           .from("users")
           .select(
@@ -384,7 +362,7 @@ function SettingsContent() {
           )
           .eq("id", session.user.id)
           .single();
-        console.log("user", user);
+        console.log("User data:", user);
 
         if (user) {
           setUserEmail(user.email);
@@ -397,6 +375,7 @@ function SettingsContent() {
           );
           setNotionConnected(user.notion_connected);
           setGoogleDocsConnected(user.google_docs_connected);
+          console.log("Setting googleDocsConnected to:", user.google_docs_connected);
           setCalendarConnected(user.calendar_connected);
           setMemoryEnabled(user.memory_enabled);
           setEmailLabelingEnabled(user.email_tagging_enabled || false);

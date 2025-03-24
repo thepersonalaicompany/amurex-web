@@ -9,9 +9,9 @@ const oauth2Client = new google.auth.OAuth2(
 
 export async function GET(req) {
   const scopes = [
-    // "https://www.googleapis.com/auth/drive.readonly",
-    // "https://www.googleapis.com/auth/documents.readonly",
-    "https://www.googleapis.com/auth/drive.file",
+    "https://www.googleapis.com/auth/drive.readonly",
+    "https://www.googleapis.com/auth/documents.readonly",
+    // "https://www.googleapis.com/auth/drive.file",
     "https://www.googleapis.com/auth/gmail.readonly",
     "https://www.googleapis.com/auth/gmail.modify",
     "https://www.googleapis.com/auth/gmail.labels",
@@ -28,12 +28,12 @@ export async function GET(req) {
 
 export async function POST(req) {
   try {
-    const { userId } = await req.json();
+    const { userId, source } = await req.json();
 
     const scopes = [
-      // "https://www.googleapis.com/auth/documents.readonly",
-      // "https://www.googleapis.com/auth/drive.readonly",
-      "https://www.googleapis.com/auth/drive.file",
+      "https://www.googleapis.com/auth/documents.readonly",
+      "https://www.googleapis.com/auth/drive.readonly",
+      // "https://www.googleapis.com/auth/drive.file",
       "https://www.googleapis.com/auth/gmail.readonly",
       "https://www.googleapis.com/auth/gmail.modify",
       "https://www.googleapis.com/auth/gmail.labels",
@@ -47,8 +47,10 @@ export async function POST(req) {
     });
 
     // Add source as a query parameter to the redirect URI
-    const urlWithSource = new URL(authUrl);
-    urlWithSource.searchParams.append('source', source);
+    const urlWithSource = new URL(url);
+    if (source) {
+      urlWithSource.searchParams.append('source', source);
+    }
     
     return NextResponse.json({ url: urlWithSource.toString() });
   } catch (error) {

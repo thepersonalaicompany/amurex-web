@@ -115,7 +115,33 @@ function GoogleCallbackContent() {
                 console.error('Error starting email processing:', err);
               });
           } else {
-            // For settings page, just redirect back
+            // For settings page, always start the import regardless of source
+            console.log('Starting Google import after successful connection');
+            
+            // Start the import process immediately
+            fetch("/api/google/import", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${session.access_token}`,
+              },
+              body: JSON.stringify({
+                userId: session.user.id,
+                accessToken: session.access_token
+              }),
+            }).then(response => response.json())
+              .then(data => {
+                if (data.success) {
+                  console.log('Google import completed successfully');
+                } else {
+                  console.error('Failed to import Google data:', data.error);
+                }
+              })
+              .catch(err => {
+                console.error('Error importing Google data:', err);
+              });
+            
+            // Redirect to settings with connection success parameter
             router.push('/settings?connection=success');
           }
         } catch (err) {
@@ -123,17 +149,17 @@ function GoogleCallbackContent() {
           toast.error(err.message || 'Failed to process Google connection');
           
           // Redirect based on source
-          const redirectPath = source === 'onboarding' ? '/onboarding' : '/settings';
+          const redirectPath = source === 'onboarding' ? '/onboarding' : '/settings?connection=success';
           router.push(`${redirectPath}?error=${encodeURIComponent(err.message || 'Failed to connect Google account')}`);
         }
       } else if (error) {
         toast.error(`Connection failed: ${error}`);
         // Redirect based on source
-        const redirectPath = source === 'onboarding' ? '/onboarding' : '/settings';
+        const redirectPath = source === 'onboarding' ? '/onboarding' : '/settings?connection=success';
         router.push(`${redirectPath}?error=${encodeURIComponent(error)}`);
       } else {
         // Redirect based on source
-        const redirectPath = source === 'onboarding' ? '/onboarding' : '/settings';
+        const redirectPath = source === 'onboarding' ? '/onboarding' : '/settings?connection=success';
         router.push(redirectPath);
       }
     };

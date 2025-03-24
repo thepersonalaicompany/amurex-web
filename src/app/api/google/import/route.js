@@ -68,10 +68,37 @@ export async function POST(req) {
     }
 
     // Process the documents
-    const results = await processGoogleDocs({ id: userId }, supabase);
+    const docsResults = await processGoogleDocs({ id: userId }, supabase);
+
+    // Process Gmail emails by calling the existing Gmail process-labels endpoint
+    let gmailResults = { success: false, error: "Gmail processing not attempted" };
+    try {
+      const gmailResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_APP_URL}/api/gmail/process-labels`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            userId: userId,
+            useStandardColors: false,
+          }),
+        }
+      );
+      
+      gmailResults = await gmailResponse.json();
+      console.log("Gmail processing results:", gmailResults);
+    } catch (gmailError) {
+      console.error("Error processing Gmail:", gmailError);
+      gmailResults = { 
+        success: false, 
+        error: gmailError.message || "Failed to process Gmail" 
+      };
+    }
 
     // Send email notification
-    if (results.length > 0) {
+    if (docsResults.length > 0) {
       await fetch(
         `${process.env.NEXT_PUBLIC_APP_URL}/api/notifications/email`,
         {
@@ -81,7 +108,7 @@ export async function POST(req) {
           },
           body: JSON.stringify({
             userEmail: userEmail,
-            importResults: results,
+            importResults: docsResults,
             platform: "google_docs",
           }),
         }
@@ -91,14 +118,15 @@ export async function POST(req) {
     return NextResponse.json({
       success: true,
       message: "Import complete. Check your email for details.",
-      documents: results.map((result) => ({
+      documents: docsResults.map((result) => ({
         id: result.id,
         title: result.title || `Document ${result.id}`,
         status: result.status,
       })),
+      gmail: gmailResults
     });
   } catch (error) {
-    console.error("Error initiating Google Docs import:", error);
+    console.error("Error initiating Google import:", error);
     return NextResponse.json(
       { success: false, error: error.message },
       { status: 500 }
@@ -126,19 +154,47 @@ export async function GET(req) {
     );
 
     // Process the documents
-    const results = await processGoogleDocs({ id: userId }, adminSupabase);
+    const docsResults = await processGoogleDocs({ id: userId }, adminSupabase);
+
+    // Process Gmail emails by calling the existing Gmail process-labels endpoint
+    let gmailResults = { success: false, error: "Gmail processing not attempted" };
+    try {
+      const gmailResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_APP_URL}/api/gmail/process-labels`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            userId: userId,
+            useStandardColors: false,
+          }),
+        }
+      );
+      
+      gmailResults = await gmailResponse.json();
+      console.log("Gmail processing results:", gmailResults);
+    } catch (gmailError) {
+      console.error("Error processing Gmail:", gmailError);
+      gmailResults = { 
+        success: false, 
+        error: gmailError.message || "Failed to process Gmail" 
+      };
+    }
 
     return NextResponse.json({
       success: true,
       message: "Import complete",
-      documents: results.map((result) => ({
+      documents: docsResults.map((result) => ({
         id: result.id,
         title: result.title || `Document ${result.id}`,
         status: result.status,
       })),
+      gmail: gmailResults
     });
   } catch (error) {
-    console.error("Error fetching Google Docs:", error);
+    console.error("Error fetching Google data:", error);
     return NextResponse.json(
       { success: false, error: error.message },
       { status: 500 }
@@ -205,9 +261,12 @@ async function processGoogleDocs(session, supabase) {
     const response = await drive.files.list({
       q: "mimeType='application/vnd.google-apps.document'",
       fields: "files(id, name, modifiedTime, mimeType)",
-      pageSize: 2,
+      pageSize: 5,
     });
 
+    // Print fetched results
+    console.log("Fetched Google Docs:", JSON.stringify(response.data.files, null, 2));
+    
     const textSplitter = new RecursiveCharacterTextSplitter({
       chunkSize: 200,
       chunkOverlap: 50,
