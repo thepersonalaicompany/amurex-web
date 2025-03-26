@@ -106,8 +106,14 @@ export async function POST(req) {
     const results = [];
     for (const page of response.results) {
       try {
-        console.log("Processing page:", page);
+        console.log("Processing page:", page.id);
         const pageContent = await fetchNotionPageContent(notion, page.id);
+        
+        // Debug content length
+        console.log(`Page content length: ${pageContent.length} characters`);
+        // Log a preview of the content
+        console.log(`Content preview: ${pageContent.substring(0, 200)}...`);
+        
         const tags = await generateTags(pageContent);
         const checksum = crypto
           .createHash("sha256")
@@ -135,92 +141,146 @@ export async function POST(req) {
         );
 
         // Create new page
-        const { data: newPage, error: pageError } = await supabase
-          .from("documents")
-          .insert({
-            url: page.url,
-            title:
-              page.properties?.name?.title?.[0]?.plain_text ||
-              page.properties?.title?.title?.[0]?.plain_text ||
-              "Untitled",
-            text: pageContent,
-            tags: tags,
-            user_id: session.user.id,
-            type: "notion",
-            checksum,
-            created_at: new Date().toISOString(),
-            meta: {
+        try {
+          console.log(`Attempting to insert document with ${pageContent.length} characters`);
+          
+          let newPage;
+          let pageError;
+          
+          // First attempt with full content
+          const fullContentResult = await supabase
+            .from("documents")
+            .insert({
+              url: page.url,
               title:
                 page.properties?.name?.title?.[0]?.plain_text ||
                 page.properties?.title?.title?.[0]?.plain_text ||
                 "Untitled",
-              type: "notion",
-              created_at: new Date().toISOString(),
+              text: pageContent, // Try with full content
               tags: tags,
-            },
-          })
-          .select()
-          .single();
-
-        if (pageError) {
-          console.error("Error creating page:", pageError, page);
-          continue; // Skip this page and move to the next one
-        }
-
-        // Process embeddings
-        try {
-          const sections = await textSplitter.createDocuments([pageContent]);
-          const chunkTexts = sections.map((section) => section.pageContent);
-
-          const embeddingResponse = await fetch(
-            "https://api.mistral.ai/v1/embeddings",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${process.env.MISTRAL_API_KEY}`,
+              user_id: session.user.id,
+              type: "notion",
+              checksum,
+              created_at: new Date().toISOString(),
+              meta: {
+                title:
+                  page.properties?.name?.title?.[0]?.plain_text ||
+                  page.properties?.title?.title?.[0]?.plain_text ||
+                  "Untitled",
+                type: "notion",
+                created_at: new Date().toISOString(),
+                tags: tags,
               },
-              body: JSON.stringify({
-                input: chunkTexts,
-                model: "mistral-embed",
-                encoding_format: "float",
-              }),
-            }
-          );
-
-          const embedData = await embeddingResponse.json();
-          const embeddings = embedData.data.map(
-            (item) => `[${item.embedding.join(",")}]`
-          );
-          const centroid = `[${calculateCentroid(
-            embedData.data.map((item) => item.embedding)
-          ).join(",")}]`;
-
-          const { error: updateError } = await supabase
-            .from("documents")
-            .update({
-              chunks: chunkTexts,
-              embeddings: embeddings,
-              centroid: centroid,
             })
-            .eq("id", newPage.id)
             .select()
             .single();
+            
+          newPage = fullContentResult.data;
+          pageError = fullContentResult.error;
 
-          if (updateError) {
-            console.error("Error updating embeddings:", updateError);
-            // Don't throw error, just log it and continue
+          if (pageError) {
+            console.error("Error creating page with full content:", pageError);
+            console.log("Trying with truncated content...");
+            
+            // If full content fails, try with truncated content
+            const truncatedContent = pageContent.substring(0, 10000) + 
+              "\n[Content truncated due to size limitations]";
+            
+            const truncatedResult = await supabase
+              .from("documents")
+              .insert({
+                url: page.url,
+                title:
+                  page.properties?.name?.title?.[0]?.plain_text ||
+                  page.properties?.title?.title?.[0]?.plain_text ||
+                  "Untitled",
+                text: truncatedContent,
+                tags: tags,
+                user_id: session.user.id,
+                type: "notion",
+                checksum,
+                created_at: new Date().toISOString(),
+                meta: {
+                  title:
+                    page.properties?.name?.title?.[0]?.plain_text ||
+                    page.properties?.title?.title?.[0]?.plain_text ||
+                    "Untitled",
+                  type: "notion",
+                  created_at: new Date().toISOString(),
+                  tags: tags,
+                  original_length: pageContent.length,
+                  truncated: true,
+                },
+              })
+              .select()
+              .single();
+              
+            if (truncatedResult.error) {
+              console.error("Error even with truncated content:", truncatedResult.error);
+              throw truncatedResult.error;
+            }
+            
+            newPage = truncatedResult.data;
           }
-        } catch (embeddingError) {
-          console.error("Error processing embeddings:", embeddingError);
-          // Continue with next page even if embeddings fail
-        }
+          
+          // Process embeddings
+          try {
+            const sections = await textSplitter.createDocuments([pageContent]);
+            const chunkTexts = sections.map((section) => section.pageContent);
 
-        results.push({
-          id: newPage.id,
-          status: "created",
-          title: newPage.title,
-        });
+            const embeddingResponse = await fetch(
+              "https://api.mistral.ai/v1/embeddings",
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${process.env.MISTRAL_API_KEY}`,
+                },
+                body: JSON.stringify({
+                  input: chunkTexts,
+                  model: "mistral-embed",
+                  encoding_format: "float",
+                }),
+              }
+            );
+
+            const embedData = await embeddingResponse.json();
+            const embeddings = embedData.data.map(
+              (item) => `[${item.embedding.join(",")}]`
+            );
+            const centroid = `[${calculateCentroid(
+              embedData.data.map((item) => item.embedding)
+            ).join(",")}]`;
+
+            const { error: updateError } = await supabase
+              .from("documents")
+              .update({
+                chunks: chunkTexts,
+                embeddings: embeddings,
+                centroid: centroid,
+              })
+              .eq("id", newPage.id)
+              .select()
+              .single();
+
+            if (updateError) {
+              console.error("Error updating embeddings:", updateError);
+              // Don't throw error, just log it and continue
+            }
+          } catch (embeddingError) {
+            console.error("Error processing embeddings:", embeddingError);
+            // Continue with next page even if embeddings fail
+          }
+
+          results.push({
+            id: newPage.id,
+            status: "created",
+            title: newPage.title,
+          });
+        } catch (insertError) {
+          console.error("Error during document insertion:", insertError);
+          continue; // Skip this page and move to the next one
+        }
       } catch (pageError) {
         console.error("Error processing page:", pageError, page);
         continue; // Skip this page and move to the next one
@@ -265,13 +325,113 @@ export async function POST(req) {
 
 async function fetchNotionPageContent(notion, pageId) {
   const response = await notion.blocks.children.list({ block_id: pageId });
-  return response.results
-    .filter(
-      (block) =>
-        block.type === "paragraph" && block.paragraph.rich_text.length > 0
-    )
-    .map((block) => block.paragraph.rich_text[0].plain_text)
-    .join("\n");
+  let content = [];
+  
+  for (const block of response.results) {
+    const blockContent = extractBlockContent(block);
+    if (blockContent) {
+      content.push(blockContent);
+    }
+    
+    // Recursively fetch child blocks if they exist
+    if (block.has_children) {
+      const childContent = await fetchNotionPageContent(notion, block.id);
+      if (childContent) {
+        content.push(childContent);
+      }
+    }
+  }
+  
+  return content.join("\n");
+}
+
+function extractBlockContent(block) {
+  if (!block || !block.type) return "";
+  
+  switch (block.type) {
+    case "paragraph":
+      return block.paragraph.rich_text.map(text => text.plain_text).join("");
+    case "heading_1":
+      return `# ${block.heading_1.rich_text.map(text => text.plain_text).join("")}`;
+    case "heading_2":
+      return `## ${block.heading_2.rich_text.map(text => text.plain_text).join("")}`;
+    case "heading_3":
+      return `### ${block.heading_3.rich_text.map(text => text.plain_text).join("")}`;
+    case "bulleted_list_item":
+      return `• ${block.bulleted_list_item.rich_text.map(text => text.plain_text).join("")}`;
+    case "numbered_list_item":
+      return `- ${block.numbered_list_item.rich_text.map(text => text.plain_text).join("")}`;
+    case "to_do":
+      const checked = block.to_do.checked ? "[x]" : "[ ]";
+      return `${checked} ${block.to_do.rich_text.map(text => text.plain_text).join("")}`;
+    case "toggle":
+      return block.toggle.rich_text.map(text => text.plain_text).join("");
+    case "code":
+      return `\`\`\`${block.code.language || ""}\n${block.code.rich_text.map(text => text.plain_text).join("")}\n\`\`\``;
+    case "quote":
+      return `> ${block.quote.rich_text.map(text => text.plain_text).join("")}`;
+    case "callout":
+      return `> ${block.callout.rich_text.map(text => text.plain_text).join("")}`;
+    case "divider":
+      return "---";
+    case "table":
+      return "[Table content]";
+    case "table_row":
+      return block.table_row.cells.map(cell => 
+        cell.map(text => text.plain_text).join("")
+      ).join(" | ");
+    case "image":
+      const imgCaption = block.image.caption?.map(text => text.plain_text).join("") || "";
+      const imgUrl = block.image.type === "external" ? block.image.external.url : 
+                    (block.image.file ? block.image.file.url : "");
+      return `[Image${imgCaption ? `: ${imgCaption}` : ""}](${imgUrl})`;
+    case "video":
+      const vidCaption = block.video.caption?.map(text => text.plain_text).join("") || "";
+      const vidUrl = block.video.type === "external" ? block.video.external.url : 
+                    (block.video.file ? block.video.file.url : "");
+      return `[Video${vidCaption ? `: ${vidCaption}` : ""}](${vidUrl})`;
+    case "file":
+      const fileCaption = block.file.caption?.map(text => text.plain_text).join("") || "";
+      const fileUrl = block.file.type === "external" ? block.file.external.url : 
+                     (block.file.file ? block.file.file.url : "");
+      return `[File${fileCaption ? `: ${fileCaption}` : ""}](${fileUrl})`;
+    case "pdf":
+      const pdfCaption = block.pdf.caption?.map(text => text.plain_text).join("") || "";
+      const pdfUrl = block.pdf.type === "external" ? block.pdf.external.url : 
+                    (block.pdf.file ? block.pdf.file.url : "");
+      return `[PDF${pdfCaption ? `: ${pdfCaption}` : ""}](${pdfUrl})`;
+    case "bookmark":
+      return `[Bookmark: ${block.bookmark.url}](${block.bookmark.url})`;
+    case "link_preview":
+      return `[Link Preview: ${block.link_preview.url}](${block.link_preview.url})`;
+    case "embed":
+      return `[Embedded content: ${block.embed.url}](${block.embed.url})`;
+    case "equation":
+      return `Equation: ${block.equation.expression}`;
+    case "synced_block":
+      return "[Synced block content]";
+    case "template":
+      return block.template.rich_text.map(text => text.plain_text).join("");
+    case "link_to_page":
+      return "[Link to another page]";
+    case "child_page":
+      return `[Child page: ${block.child_page.title || "Untitled"}]`;
+    case "child_database":
+      return `[Child database: ${block.child_database.title || "Untitled"}]`;
+    case "column_list":
+      return "[Column list]"; // Children will be processed separately
+    case "column":
+      return "[Column]"; // Children will be processed separately
+    case "table_of_contents":
+      return "[Table of contents]";
+    case "breadcrumb":
+      return "[Breadcrumb]";
+    case "unsupported":
+      return "[Unsupported content]";
+    default:
+      // Return block type for any unhandled types
+      return `[${block.type} block]`;
+  }
 }
 
 async function generateTags(text) {
