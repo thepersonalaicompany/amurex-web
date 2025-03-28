@@ -8,6 +8,47 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+// Function to get OAuth2 client based on user signup date
+async function getOAuth2Client(userId) {
+  try {
+    // Query Supabase for user's created_at timestamp
+    const { data, error } = await supabase
+      .from('users')
+      .select('created_at')
+      .eq('id', userId)
+      .single();
+
+    if (error) throw error;
+
+    const cutoffDate = new Date('2025-03-28T08:33:14.69671Z');
+    const userSignupDate = new Date(data.created_at);
+
+    // Use old credentials for users who signed up before the cutoff date
+    if (userSignupDate < cutoffDate) {
+      return new google.auth.OAuth2(
+        process.env.GOOGLE_CLIENT_ID_OLD,
+        process.env.GOOGLE_CLIENT_SECRET_OLD,
+        process.env.GOOGLE_REDIRECT_URI_OLD
+      );
+    } else {
+      // Use new credentials for users who signed up after the cutoff date
+      return new google.auth.OAuth2(
+        process.env.GOOGLE_CLIENT_ID_NEW,
+        process.env.GOOGLE_CLIENT_SECRET_NEW,
+        process.env.GOOGLE_REDIRECT_URI_NEW
+      );
+    }
+  } catch (error) {
+    console.error("Error checking user signup date:", error);
+    // Fallback to old credentials if there's an error
+    return new google.auth.OAuth2(
+      process.env.GOOGLE_CLIENT_ID_OLD,
+      process.env.GOOGLE_CLIENT_SECRET_OLD,
+      process.env.GOOGLE_REDIRECT_URI_OLD
+    );
+  }
+}
+
 export async function GET(req) {
   console.log('Callback route hit');
   try {
@@ -26,11 +67,8 @@ export async function GET(req) {
       throw new Error('No code provided');
     }
 
-    const oauth2Client = new google.auth.OAuth2(
-      process.env.GOOGLE_CLIENT_ID,
-      process.env.GOOGLE_CLIENT_SECRET,
-      process.env.GOOGLE_REDIRECT_URI
-    );
+    // Get the appropriate OAuth client based on user signup date
+    const oauth2Client = await getOAuth2Client(userId);
 
     // Get tokens from Google
     const { tokens } = await oauth2Client.getToken(code);
@@ -90,11 +128,8 @@ export async function POST(req) {
       }, { status: 400 });
     }
 
-    const oauth2Client = new google.auth.OAuth2(
-      process.env.GOOGLE_CLIENT_ID,
-      process.env.GOOGLE_CLIENT_SECRET,
-      process.env.GOOGLE_REDIRECT_URI
-    );
+    // Get the appropriate OAuth client based on user signup date
+    const oauth2Client = await getOAuth2Client(userId);
 
     try {
       // Exchange code for tokens

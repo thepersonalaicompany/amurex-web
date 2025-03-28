@@ -208,15 +208,16 @@ export async function GET(req) {
 
 async function processGoogleDocs(session, supabase) {
   try {
-    // Get user's Google tokens
+    // Create admin Supabase client
     const adminSupabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
     
+    // Get user's Google tokens
     const { data: user, error: userError } = await adminSupabase
       .from("users")
-      .select("google_access_token, google_refresh_token, google_token_expiry")
+      .select("google_access_token, google_refresh_token, google_token_expiry, created_at")
       .eq("id", session.id)
       .single();
 
@@ -225,10 +226,28 @@ async function processGoogleDocs(session, supabase) {
       throw new Error("Google Docs not connected");
     }
 
+    // Determine which OAuth credentials to use based on user signup date
+    const cutoffDate = new Date('2025-03-28T08:33:14.69671Z');
+    const userSignupDate = new Date(user.created_at);
+    
+    let clientId, clientSecret, redirectUri;
+    
+    // Use old credentials for users who signed up before the cutoff date
+    if (userSignupDate < cutoffDate) {
+      clientId = process.env.GOOGLE_CLIENT_ID_OLD;
+      clientSecret = process.env.GOOGLE_CLIENT_SECRET_OLD;
+      redirectUri = process.env.GOOGLE_REDIRECT_URI_OLD;
+    } else {
+      // Use new credentials for users who signed up after the cutoff date
+      clientId = process.env.GOOGLE_CLIENT_ID_NEW;
+      clientSecret = process.env.GOOGLE_CLIENT_SECRET_NEW;
+      redirectUri = process.env.GOOGLE_REDIRECT_URI_NEW;
+    }
+
     const oauth2Client = new google.auth.OAuth2(
-      process.env.GOOGLE_CLIENT_ID,
-      process.env.GOOGLE_CLIENT_SECRET,
-      process.env.GOOGLE_REDIRECT_URI
+      clientId,
+      clientSecret,
+      redirectUri
     );
 
     // Set credentials including expiry

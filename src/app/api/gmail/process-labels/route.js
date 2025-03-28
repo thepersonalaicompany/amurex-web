@@ -98,6 +98,53 @@ async function categorizeWithAI(fromEmail, subject, body) {
   }
 }
 
+// Set up OAuth2 credentials based on user signup date
+async function getOAuth2Client(userId) {
+  // Create admin Supabase client
+  const adminSupabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
+
+  try {
+    // Query Supabase for user's created_at timestamp
+    const { data, error } = await adminSupabase
+      .from('users')
+      .select('created_at')
+      .eq('id', userId)
+      .single();
+
+    if (error) throw error;
+
+    const cutoffDate = new Date('2025-03-28T08:33:14.69671Z');
+    const userSignupDate = new Date(data.created_at);
+
+    // Use old credentials for users who signed up before the cutoff date
+    if (userSignupDate < cutoffDate) {
+      return new google.auth.OAuth2(
+        process.env.GOOGLE_CLIENT_ID_OLD,
+        process.env.GOOGLE_CLIENT_SECRET_OLD,
+        process.env.GOOGLE_REDIRECT_URI_OLD
+      );
+    } else {
+      // Use new credentials for users who signed up after the cutoff date
+      return new google.auth.OAuth2(
+        process.env.GOOGLE_CLIENT_ID_NEW,
+        process.env.GOOGLE_CLIENT_SECRET_NEW,
+        process.env.GOOGLE_REDIRECT_URI_NEW
+      );
+    }
+  } catch (error) {
+    console.error("Error checking user signup date:", error);
+    // Fallback to old credentials if there's an error
+    return new google.auth.OAuth2(
+      process.env.GOOGLE_CLIENT_ID_OLD,
+      process.env.GOOGLE_CLIENT_SECRET_OLD,
+      process.env.GOOGLE_REDIRECT_URI_OLD
+    );
+  }
+}
+
 export async function POST(req) {
   try {
     const requestData = await req.json();
@@ -143,12 +190,8 @@ export async function POST(req) {
       }, { status: 400 });
     }
 
-    // Set up OAuth2 credentials
-    const oauth2Client = new google.auth.OAuth2(
-      process.env.GOOGLE_CLIENT_ID,
-      process.env.GOOGLE_CLIENT_SECRET,
-      process.env.GOOGLE_REDIRECT_URI
-    );
+    // Get the appropriate OAuth client based on user signup date
+    const oauth2Client = await getOAuth2Client(userId);
 
     oauth2Client.setCredentials({
       refresh_token: userData.google_refresh_token
