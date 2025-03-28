@@ -9,8 +9,8 @@ const oauth2Client = new google.auth.OAuth2(
 
 export async function GET(req) {
   const scopes = [
-    "https://www.googleapis.com/auth/drive.readonly",
-    "https://www.googleapis.com/auth/documents.readonly",
+    // "https://www.googleapis.com/auth/drive.readonly",
+    // "https://www.googleapis.com/auth/documents.readonly",
     // "https://www.googleapis.com/auth/drive.file",
     "https://www.googleapis.com/auth/gmail.readonly",
     "https://www.googleapis.com/auth/gmail.modify",
@@ -31,8 +31,8 @@ export async function POST(req) {
     const { userId, source } = await req.json();
 
     const scopes = [
-      "https://www.googleapis.com/auth/documents.readonly",
-      "https://www.googleapis.com/auth/drive.readonly",
+      // "https://www.googleapis.com/auth/documents.readonly",
+      // "https://www.googleapis.com/auth/drive.readonly",
       // "https://www.googleapis.com/auth/drive.file",
       "https://www.googleapis.com/auth/gmail.readonly",
       "https://www.googleapis.com/auth/gmail.modify",
@@ -49,9 +49,9 @@ export async function POST(req) {
     // Add source as a query parameter to the redirect URI
     const urlWithSource = new URL(url);
     if (source) {
-      urlWithSource.searchParams.append('source', source);
+      urlWithSource.searchParams.append("source", source);
     }
-    
+
     return NextResponse.json({ url: urlWithSource.toString() });
   } catch (error) {
     console.error("Error generating Google OAuth URL:", error);
