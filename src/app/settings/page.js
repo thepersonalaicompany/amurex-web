@@ -1136,7 +1136,7 @@ function SettingsContent() {
                     />
                   </div>
 
-                  <div className="flex gap-4">
+                  <div className="flex gap-4 hidden">
                     <Card className="bg-black border-zinc-800 flex-1">
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between">

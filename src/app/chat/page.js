@@ -258,13 +258,13 @@ export default function AISearch() {
     setInputValue("");
     setIsSearching(true);
     setIsSearchInitiated(true);
-    
+
     // Reset all timing metrics
     const startTime = performance.now();
     setSearchStartTime(startTime);
     setSourcesTime(null);
     setCompletionTime(null);
-    
+
     setSearchResults({
       query: message,
       sources: [],
@@ -309,30 +309,36 @@ export default function AISearch() {
               }
 
               buffer += decoder.decode(value, { stream: true });
-              
+
               try {
                 // Split by newlines and filter out empty lines
-                const lines = buffer.split("\n").filter(line => line.trim());
-                
+                const lines = buffer.split("\n").filter((line) => line.trim());
+
                 // Process each complete line
                 for (let i = 0; i < lines.length; i++) {
                   try {
                     const data = JSON.parse(lines[i]);
-                    
+
                     // Update search results
                     if (data.success) {
                       // Track when sources first arrive
-                      if (data.sources && data.sources.length > 0 && !sourcesReceived) {
+                      if (
+                        data.sources &&
+                        data.sources.length > 0 &&
+                        !sourcesReceived
+                      ) {
                         sourcesReceived = true;
                         const currentTime = performance.now();
-                        setSourcesTime(((currentTime - startTime) / 1000).toFixed(1));
+                        setSourcesTime(
+                          ((currentTime - startTime) / 1000).toFixed(1)
+                        );
                       }
-                      
+
                       // Track when first text chunk arrives
                       if (data.chunk && !firstChunkReceived) {
                         firstChunkReceived = true;
                       }
-                      
+
                       setSearchResults((prev) => ({
                         ...prev,
                         sources: data.sources || prev.sources,
@@ -344,7 +350,7 @@ export default function AISearch() {
                     console.error("Error parsing JSON:", e, "Line:", lines[i]);
                   }
                 }
-                
+
                 // Keep only the incomplete line in the buffer
                 const lastNewlineIndex = buffer.lastIndexOf("\n");
                 if (lastNewlineIndex !== -1) {
@@ -353,7 +359,7 @@ export default function AISearch() {
               } catch (e) {
                 console.error("Error processing buffer:", e);
               }
-              
+
               readStream();
             })
             .catch((err) => {
@@ -422,7 +428,7 @@ export default function AISearch() {
               </a>
             </div>
           )}
-          
+
           <div className="bg-zinc-900/70 rounded-lg border border-zinc-800 relative">
             <div className="p-4 md:p-6 border-b border-zinc-800">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -624,8 +630,8 @@ export default function AISearch() {
 
               {(isSearching || searchResults?.query) && (
                 <div className="space-y-6">
-                  <Query 
-                    content={searchResults?.query || ""} 
+                  <Query
+                    content={searchResults?.query || ""}
                     sourcesTime={sourcesTime}
                     completionTime={completionTime}
                   />
@@ -639,18 +645,20 @@ export default function AISearch() {
                             onClick={() => sendMessage(searchResults.query)}
                             className="flex items-center gap-1 text-sm text-zinc-300 hover:text-white bg-black border border-zinc-800 hover:border-[#6D28D9] px-3 py-1.5 rounded-md transition-colors"
                           >
-                            <svg 
-                              width="16" 
-                              height="16" 
-                              viewBox="0 0 489.645 489.645" 
-                              fill="currentColor" 
+                            <svg
+                              width="16"
+                              height="16"
+                              viewBox="0 0 489.645 489.645"
+                              fill="currentColor"
                               xmlns="http://www.w3.org/2000/svg"
                             >
-                              <path d="M460.656,132.911c-58.7-122.1-212.2-166.5-331.8-104.1c-9.4,5.2-13.5,16.6-8.3,27c5.2,9.4,16.6,13.5,27,8.3
+                              <path
+                                d="M460.656,132.911c-58.7-122.1-212.2-166.5-331.8-104.1c-9.4,5.2-13.5,16.6-8.3,27c5.2,9.4,16.6,13.5,27,8.3
                                 c99.9-52,227.4-14.9,276.7,86.3c65.4,134.3-19,236.7-87.4,274.6c-93.1,51.7-211.2,17.4-267.6-70.7l69.3,14.5
                                 c10.4,2.1,21.8-4.2,23.9-15.6c2.1-10.4-4.2-21.8-15.6-23.9l-122.8-25c-20.6-2-25,16.6-23.9,22.9l15.6,123.8
                                 c1,10.4,9.4,17.7,19.8,17.7c12.8,0,20.8-12.5,19.8-23.9l-6-50.5c57.4,70.8,170.3,131.2,307.4,68.2
-                                C414.856,432.511,548.256,314.811,460.656,132.911z"/>
+                                C414.856,432.511,548.256,314.811,460.656,132.911z"
+                              />
                             </svg>
                             Regenerate
                           </button>
@@ -674,13 +682,11 @@ export default function AISearch() {
               )}
             </div>
           </div>
-          
+
           {/* Suggested prompts moved outside the main box */}
           {!isSearchInitiated && (
             <div className="mt-6 space-y-2">
-              <div className="text-zinc-500 text-md">
-                Personalized searches
-              </div>
+              <div className="text-zinc-500 text-md">Personalized searches</div>
               <div className="flex flex-col gap-3">
                 {suggestedPrompts.length === 0 ? (
                   <>
@@ -709,16 +715,16 @@ export default function AISearch() {
                         >
                           {item.text}
                           <div className="absolute right-4 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <svg 
-                              xmlns="http://www.w3.org/2000/svg" 
-                              width="24" 
-                              height="20" 
-                              viewBox="0 0 24 24" 
-                              fill="none" 
-                              stroke="currentColor" 
-                              strokeWidth="2" 
-                              strokeLinecap="round" 
-                              strokeLinejoin="round" 
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="24"
+                              height="20"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
                               className="text-white"
                             >
                               <path d="M3 12h18"></path>
@@ -741,16 +747,16 @@ export default function AISearch() {
                         >
                           <span>{item.text}</span>
                           <div className="absolute right-4 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <svg 
-                              xmlns="http://www.w3.org/2000/svg" 
-                              width="24" 
-                              height="20" 
-                              viewBox="0 0 24 24" 
-                              fill="none" 
-                              stroke="currentColor" 
-                              strokeWidth="2" 
-                              strokeLinecap="round" 
-                              strokeLinejoin="round" 
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="24"
+                              height="20"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
                               className="text-white"
                             >
                               <path d="M3 12h18"></path>
@@ -780,15 +786,15 @@ export function InputArea({
     <div className={`flex items-center ${className}`}>
       <div className="relative flex-1 flex items-center">
         <div className="absolute left-3 md:left-4 text-zinc-500">
-          <svg 
-            xmlns="http://www.w3.org/2000/svg" 
-            width="20" 
-            height="20" 
-            viewBox="0 0 24 24" 
-            fill="none" 
-            stroke="currentColor" 
-            strokeWidth="2" 
-            strokeLinecap="round" 
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
             strokeLinejoin="round"
           >
             <circle cx="11" cy="11" r="8"></circle>
@@ -817,7 +823,9 @@ export function InputArea({
 export const Query = ({ content = "", sourcesTime, completionTime }) => {
   return (
     <div className="flex flex-col md:flex-row md:items-center justify-between">
-      <div className="text-xl md:text-3xl font-medium text-white">{content}</div>
+      <div className="text-xl md:text-3xl font-medium text-white">
+        {content}
+      </div>
       <div className="text-sm text-zinc-500 mt-1 md:mt-0 flex flex-col md:items-end">
         {sourcesTime && (
           <div className="px-2 py-1 rounded-md bg-[#9334E9] text-white w-fit">
@@ -880,19 +888,24 @@ export const Sources = ({ content = [] }) => {
           content.map((source, index) => {
             // For debugging
             console.log(`Source ${index}:`, source);
-            
+
             if (source.type === "meeting") {
               // Check if platform_id exists and is a string before using includes
               let platform = "teams"; // Default to teams
-              
+
               try {
-                if (source.platform_id && typeof source.platform_id === 'string') {
-                  platform = source.platform_id.includes("-") ? "google" : "teams";
+                if (
+                  source.platform_id &&
+                  typeof source.platform_id === "string"
+                ) {
+                  platform = source.platform_id.includes("-")
+                    ? "google"
+                    : "teams";
                 }
               } catch (error) {
                 console.error("Error determining platform:", error);
               }
-              
+
               return (
                 <a
                   key={index}
@@ -928,7 +941,7 @@ export const Sources = ({ content = [] }) => {
             } else if (source.type === "email") {
               // Create Gmail URL from message_id or thread_id
               const gmailUrl = createGmailUrl(source);
-              
+
               return (
                 <a
                   key={index}
@@ -968,7 +981,7 @@ export const Sources = ({ content = [] }) => {
             } else {
               // Handle document types with appropriate icons
               let icon = null;
-              
+
               if (source.type === "google_docs") {
                 icon = (
                   <img
@@ -994,7 +1007,7 @@ export const Sources = ({ content = [] }) => {
                   />
                 );
               }
-              
+
               return (
                 <a
                   key={index}
@@ -1007,7 +1020,9 @@ export const Sources = ({ content = [] }) => {
                     <Link className="absolute top-4 right-4 w-4 h-4 text-zinc-500" />
                     <div className="text-zinc-300 text-sm font-medium mb-2 flex items-center gap-2">
                       {icon}
-                      <span className="truncate">{source.title || "Document"}</span>
+                      <span className="truncate">
+                        {source.title || "Document"}
+                      </span>
                     </div>
                     <div className="text-zinc-500 text-xs overflow-hidden line-clamp-4">
                       <ReactMarkdown>{source.text}</ReactMarkdown>
@@ -1292,16 +1307,33 @@ const OnboardingFlow = ({ onClose, setHasSeenOnboarding }) => {
   return (
     <div className="fixed inset-0 flex items-center justify-center z-40 pointer-events-none">
       {/* Overlay with click-through for navbar */}
-      <div className="absolute inset-0 bg-zinc-800 bg-opacity-40 pointer-events-auto" style={{ marginLeft: '64px' }}></div>
-      
+      <div
+        className="absolute inset-0 bg-zinc-800 bg-opacity-40 pointer-events-auto"
+        style={{ marginLeft: "64px" }}
+      ></div>
+
       {/* Main content positioned to avoid navbar */}
-      <div className="bg-black bg-opacity-90 rounded-lg border border-zinc-700 max-w-4xl w-full p-6 relative pointer-events-auto" style={{ marginLeft: '64px' }}>
+      <div
+        className="bg-black bg-opacity-90 rounded-lg border border-zinc-700 max-w-4xl w-full p-6 relative pointer-events-auto"
+        style={{ marginLeft: "64px" }}
+      >
         <div className="absolute -top-2 -left-2 bg-zinc-700 p-2 rounded-full shadow-lg">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-6 w-6 text-white"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
           </svg>
         </div>
-        
+
         <h2 className="text-2xl font-bold text-white mb-6">
           Welcome to Amurex!
         </h2>
@@ -1312,7 +1344,7 @@ const OnboardingFlow = ({ onClose, setHasSeenOnboarding }) => {
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-zinc-900 rounded-lg p-6 border border-zinc-800 hover:border-zinc-600 transition-all duration-300">
+          <div className="hidden bg-zinc-900 rounded-lg p-6 border border-zinc-800 hover:border-zinc-600 transition-all duration-300">
             <div className="flex items-center gap-3 mb-4">
               <img
                 src="https://upload.wikimedia.org/wikipedia/commons/0/01/Google_Docs_logo_%282014-2020%29.svg"
@@ -1373,7 +1405,6 @@ const OnboardingFlow = ({ onClose, setHasSeenOnboarding }) => {
             </a>
           </div>
         </div>
-        
       </div>
     </div>
   );
