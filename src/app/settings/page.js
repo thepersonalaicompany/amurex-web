@@ -86,50 +86,216 @@ function SettingsContent() {
   const [gmailPermissionError, setGmailPermissionError] = useState(false);
 
   // Define importGoogleDocs and other functions before using them in useEffect
-  const importGoogleDocs = useCallback(async () => {
-    if (googleDocsConnected) {
-      console.log("Starting Google Docs import process...");
+  const loadGooglePickerAPI = useCallback(() => {
+    if (window.gapi) return Promise.resolve();
+    
+    return new Promise((resolve) => {
+      const script = document.createElement('script');
+      script.src = 'https://apis.google.com/js/api.js';
+      script.onload = () => {
+        window.gapi.load('picker', {
+          callback: resolve,
+          onerror: () => {
+            console.error("Failed to load Google Picker API");
+            toast.error("Failed to load Google document picker");
+          }
+        });
+      };
+      document.body.appendChild(script);
+    });
+  }, []);
+
+  const openGooglePicker = useCallback(async () => {
+    try {
       setIsImporting(true);
       setImportSource("Google Docs");
-
+      
       const {
         data: { session },
       } = await supabase.auth.getSession();
-      const accessToken = session?.access_token;
+      if (!session) {
+        toast.error("You must be logged in to import documents");
+        setIsImporting(false);
+        return;
+      }
+      
+      // Get Google tokens from Supabase users table
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('google_access_token')
+        .eq('id', session.user.id)
+        .single();
+        
+      if (userError || !userData?.google_access_token) {
+        toast.error("Failed to get Google authorization. Please reconnect your account.");
+        setIsImporting(false);
+        return;
+      }
+      
+      // Load the Google Picker API
+      await loadGooglePickerAPI();
 
+      console.log("Google API key:", process.env.NEXT_PUBLIC_GOOGLE_API_KEY);
+      
+      // Create and render the picker
       try {
-        const response = await fetch("/api/google/import", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify({
-            userId: session.user.id,
-            accessToken: accessToken,
-          }),
-        });
-
-        const data = await response.json();
-
-        if (data.success) {
-          console.log("Google Docs import initiated:", data);
-          toast.success("Import complete! Check your email for details.");
-        } else {
-          console.error("Error importing Google docs:", data.error);
-          toast.error("Import failed. Please try again.");
-        }
-      } catch (error) {
-        console.error("Error importing Google docs:", error);
-        toast.error("Import failed. Please try again.");
-      } finally {
-        console.log("Import process completed");
+        const picker = new window.google.picker.PickerBuilder()
+          .addView(window.google.picker.ViewId.DOCUMENTS)
+          .addView(window.google.picker.ViewId.FOLDERS)
+          .setOAuthToken(userData.google_access_token)
+          .setDeveloperKey(process.env.NEXT_PUBLIC_GOOGLE_API_KEY)
+          .setCallback(async (data) => {
+            if (data.action === window.google.picker.Action.PICKED) {
+              const documents = data.docs;
+              console.log("Selected documents:", documents);
+              
+              // Import the selected documents using existing API
+              const importResponse = await fetch("/api/google/import", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  userId: session.user.id,
+                  documents: documents,
+                }),
+              });
+              
+              const importData = await importResponse.json();
+              if (importData.success) {
+                toast.success("Documents imported successfully!");
+              } else {
+                toast.error("Failed to import documents");
+              }
+            } else if (data.action === window.google.picker.Action.CANCEL) {
+              console.log("User canceled the picker");
+            }
+            setIsImporting(false);
+            setImportSource("");
+          })
+          .build();
+          
+        picker.setVisible(true);
+      } catch (pickerError) {
+        console.error("Error creating Google Picker:", pickerError);
+        toast.error("Failed to create document picker");
         setIsImporting(false);
         setImportSource("");
-        setImportProgress(0);
       }
+      
+    } catch (error) {
+      console.error("Error opening Google Picker:", error);
+      toast.error("Failed to open document picker");
+      setIsImporting(false);
+      setImportSource("");
+    }
+  }, [loadGooglePickerAPI]);
+
+  // Add this function to initialize the Google Picker
+  const initGooglePicker = useCallback(async () => {
+    if (!googleDocsConnected) {
+      toast.error("Please connect your Google account first");
+      return;
+    }
+    
+    try {
+      setIsImporting(true);
+      setImportSource("Google Docs");
+      
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error("You must be logged in to import documents");
+        setIsImporting(false);
+        return;
+      }
+      
+      // Get Google tokens from Supabase users table
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('google_access_token')
+        .eq('id', session.user.id)
+        .single();
+      
+      if (userError || !userData?.google_access_token) {
+        toast.error("Failed to get Google authorization. Please reconnect your account.");
+        setIsImporting(false);
+        return;
+      }
+      
+      // Load the Google API client library
+      if (!window.gapi) {
+        await new Promise((resolve) => {
+          const script = document.createElement('script');
+          script.src = 'https://apis.google.com/js/api.js';
+          script.onload = resolve;
+          document.body.appendChild(script);
+        });
+      }
+      
+      // Load the picker
+      await new Promise((resolve) => {
+        window.gapi.load('picker', resolve);
+      });
+      
+      // Create and show the picker
+      const view = new google.picker.View(google.picker.ViewId.DOCS);
+      const picker = new google.picker.PickerBuilder()
+        .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
+        .setOAuthToken(userData.google_access_token)
+        .setDeveloperKey(process.env.NEXT_PUBLIC_GOOGLE_API_KEY)
+        .addView(view)
+        .setCallback(async (data) => {
+          if (data.action === google.picker.Action.PICKED) {
+            const documents = data.docs;
+            console.log("Selected documents:", documents);
+            
+            // Log the exact structure of the first document to debug
+            if (documents.length > 0) {
+              console.log("First document structure:", JSON.stringify(documents[0], null, 2));
+            }
+            
+            // Import the selected documents
+            const importResponse = await fetch("/api/google/import", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "x-user-email": session.user.email
+              },
+              body: JSON.stringify({
+                userId: session.user.id,
+                accessToken: userData.google_access_token,
+                documents: documents
+              }),
+            });
+            
+            const importData = await importResponse.json();
+            if (importData.success) {
+              toast.success(`Successfully imported ${documents.length} documents`);
+            } else {
+              toast.error(importData.error || "Failed to import documents");
+            }
+          }
+          setIsImporting(false);
+          setImportSource("");
+        })
+        .build();
+        
+      picker.setVisible(true);
+      
+    } catch (error) {
+      console.error("Error initializing Google Picker:", error);
+      toast.error("Failed to open document picker");
+      setIsImporting(false);
+      setImportSource("");
     }
   }, [googleDocsConnected]);
+
+  // Update the importGoogleDocs function to use the new implementation
+  const importGoogleDocs = useCallback(() => {
+    initGooglePicker();
+  }, [initGooglePicker]);
 
   const importNotionDocuments = useCallback(async () => {
     if (notionConnected) {
@@ -1162,29 +1328,31 @@ function SettingsContent() {
                               </p>
                             </div>
                           </div>
-                          <Button
-                            variant="outline"
-                            className={`bg-zinc-900 text-zinc-300 hover:bg-zinc-800 border-zinc-800 ${
-                              googleDocsConnected
-                                ? "bg-green-900 hover:bg-green-800"
-                                : ""
-                            } min-w-[100px]`}
-                            onClick={handleGoogleDocsConnect}
-                            disabled={
-                              isImporting && importSource === "Google Docs"
-                            }
-                          >
-                            {isImporting && importSource === "Google Docs" ? (
-                              <div className="flex items-center">
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#9334E9] mr-2"></div>
-                                Importing...
-                              </div>
-                            ) : googleDocsConnected ? (
-                              "Connected"
-                            ) : (
-                              "Connect"
-                            )}
-                          </Button>
+                          {googleDocsConnected ? (
+                            <Button
+                              variant="outline"
+                              className="bg-green-900 text-zinc-300 hover:bg-green-800 border-zinc-800 min-w-[100px]"
+                              onClick={importGoogleDocs}
+                              disabled={isImporting && importSource === "Google Docs"}
+                            >
+                              {isImporting && importSource === "Google Docs" ? (
+                                <div className="flex items-center">
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#9334E9] mr-2"></div>
+                                  Importing...
+                                </div>
+                              ) : (
+                                "Select Files"
+                              )}
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              className="bg-zinc-900 text-zinc-300 hover:bg-zinc-800 border-zinc-800 min-w-[100px]"
+                              onClick={handleGoogleDocsConnect}
+                            >
+                              Connect
+                            </Button>
+                          )}
                         </div>
                       </CardContent>
                     </Card>

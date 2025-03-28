@@ -40,7 +40,7 @@ async function generateTags(text) {
 
 export async function POST(req) {
   try {
-    const { userId, accessToken } = await req.json();
+    const { userId, accessToken, documents } = await req.json();
     let userEmail = req.headers.get("x-user-email");
 
     // Create new Supabase client with the access token
@@ -71,8 +71,8 @@ export async function POST(req) {
       userEmail = userData.email;
     }
 
-    // Process the documents
-    const docsResults = await processGoogleDocs({ id: userId }, supabase);
+    // Process only the selected documents
+    const docsResults = await processSelectedGoogleDocs({ id: userId }, supabase, documents);
 
     // Process Gmail emails by calling the existing Gmail process-labels endpoint
     let gmailResults = { success: false, error: "Gmail processing not attempted" };
@@ -530,4 +530,192 @@ function calculateCentroid(embeddings) {
   }
 
   return centroid;
+}
+
+// New function to process only selected documents
+async function processSelectedGoogleDocs(session, supabase, selectedDocs) {
+  try {
+    // Create admin Supabase client
+    const adminSupabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+    
+    // Get user's Google tokens
+    const { data: user, error: userError } = await adminSupabase
+      .from("users")
+      .select("google_access_token, google_refresh_token, google_token_expiry, created_at")
+      .eq("id", session.id)
+      .single();
+
+    if (userError || !user.google_access_token) {
+      console.error("Google credentials not found:", userError);
+      throw new Error("Google Docs not connected");
+    }
+
+    // Determine which OAuth credentials to use based on user signup date
+    const cutoffDate = new Date('2025-03-28T08:33:14.69671Z');
+    const userSignupDate = new Date(user.created_at);
+    
+    let clientId, clientSecret, redirectUri;
+    
+    // Use old credentials for users who signed up before the cutoff date
+    if (userSignupDate < cutoffDate) {
+      clientId = process.env.GOOGLE_CLIENT_ID_OLD;
+      clientSecret = process.env.GOOGLE_CLIENT_SECRET_OLD;
+      redirectUri = process.env.GOOGLE_REDIRECT_URI_OLD;
+    } else {
+      // Use new credentials for users who signed up after the cutoff date
+      clientId = process.env.GOOGLE_CLIENT_ID_NEW;
+      clientSecret = process.env.GOOGLE_CLIENT_SECRET_NEW;
+      redirectUri = process.env.GOOGLE_REDIRECT_URI_NEW;
+    }
+
+    const oauth2Client = new google.auth.OAuth2(
+      clientId,
+      clientSecret,
+      redirectUri
+    );
+
+    // Set credentials including expiry
+    oauth2Client.setCredentials({
+      access_token: user.google_access_token,
+      refresh_token: user.google_refresh_token,
+      expiry_date: new Date(user.google_token_expiry).getTime(),
+    });
+
+    // Force token refresh if it's expired or about to expire
+    if (
+      !user.google_token_expiry ||
+      new Date(user.google_token_expiry) <= new Date()
+    ) {
+      console.log("Token expired or missing expiry, refreshing...");
+      const { credentials } = await oauth2Client.refreshAccessToken();
+
+      // Update tokens in database
+      const { error: updateError } = await adminSupabase
+        .from("users")
+        .update({
+          google_access_token: credentials.access_token,
+          google_refresh_token:
+            credentials.refresh_token || user.google_refresh_token,
+          google_token_expiry: new Date(credentials.expiry_date).toISOString(),
+        })
+        .eq("id", session.id);
+
+      if (updateError) {
+        console.error("Error updating refreshed tokens:", updateError);
+        throw new Error("Failed to update Google credentials");
+      }
+    }
+
+    const docs = google.docs({ version: "v1", auth: oauth2Client });
+    const drive = google.drive({ version: "v3", auth: oauth2Client });
+
+    const textSplitter = new RecursiveCharacterTextSplitter({
+      chunkSize: 200,
+      chunkOverlap: 50,
+    });
+
+    const results = [];
+    
+    // Process each selected document
+    for (const file of selectedDocs) {
+      try {
+        console.log(`Processing document:`, file);
+        
+        // Extract the file ID and other metadata
+        const fileId = file.id;
+        const fileName = file.name;
+        const mimeType = file.mimeType;
+        
+        if (!fileId) {
+          throw new Error("Invalid file object: missing ID");
+        }
+        
+        console.log(`Processing file ID: ${fileId}, name: ${fileName}, type: ${mimeType}`);
+        
+        // For Google Docs, use the URL from the picker to extract content
+        if (mimeType === 'application/vnd.google-apps.document') {
+          try {
+            // Instead of trying to access the file directly, use the URL from the picker
+            // and ask the user to provide the content
+            
+            // For now, let's try to use the embedUrl which might be accessible
+            const embedUrl = file.embedUrl;
+            
+            if (!embedUrl) {
+              throw new Error("No embed URL available for this document");
+            }
+            
+            // Create a placeholder document with minimal information
+            // The actual content can be fetched later or provided by the user
+            const content = `This is a placeholder for the document "${fileName}" (ID: ${fileId}).\nPlease access the document at: ${file.url}`;
+            
+            // Generate a checksum for this placeholder
+            const checksum = crypto
+              .createHash("sha256")
+              .update(content)
+              .digest("hex");
+            
+            // Insert document with minimal information
+            const { data: newDoc, error: newDocError } = await adminSupabase
+              .from("documents")
+              .insert({
+                title: fileName,
+                text: content,
+                url: file.url || `https://docs.google.com/document/d/${fileId}`,
+                type: "google_docs",
+                user_id: session.id,
+                checksum: checksum,
+                tags: ["placeholder", "google_docs"],
+                created_at: new Date().toISOString(),
+                chunks: [content],
+                meta: {
+                  lastModified: file.lastEditedUtc ? new Date(parseInt(file.lastEditedUtc)).toISOString() : new Date().toISOString(),
+                  mimeType: mimeType,
+                  documentId: fileId,
+                  isPlaceholder: true,
+                  embedUrl: embedUrl
+                },
+              })
+              .select()
+              .single();
+            
+            if (newDocError) {
+              throw new Error(`Failed to create document: ${newDocError.message}`);
+            }
+            
+            results.push({
+              id: newDoc.id,
+              status: "created_placeholder",
+              title: fileName,
+              message: "Created placeholder. Full content not accessible due to permissions."
+            });
+            
+          } catch (docsError) {
+            console.error(`Error handling document ${fileName} (${fileId}):`, docsError);
+            throw new Error(`Could not process document: ${docsError.message}`);
+          }
+        } else {
+          // For non-Google Docs, we might need different handling
+          throw new Error(`Unsupported file type: ${mimeType}`);
+        }
+      } catch (error) {
+        console.error(`Error processing document:`, file, error);
+        results.push({
+          id: file.id || "unknown",
+          status: "error",
+          title: file.name || "Unknown Document",
+          error: error.message,
+        });
+        continue;
+      }
+    }
+
+    return results;
+  } catch (error) {
+    console.error("Error in processSelectedGoogleDocs:", error);
+    throw error;
+  }
 }

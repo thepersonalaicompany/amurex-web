@@ -63,9 +63,9 @@ export async function GET(req) {
   const oauth2Client = await getOAuth2Client();
   
   const scopes = [
-    "https://www.googleapis.com/auth/drive.readonly",
-    "https://www.googleapis.com/auth/documents.readonly",
-    // "https://www.googleapis.com/auth/drive.file",
+    // "https://www.googleapis.com/auth/drive.readonly",
+    // "https://www.googleapis.com/auth/documents.readonly",
+    "https://www.googleapis.com/auth/drive.file",
     "https://www.googleapis.com/auth/gmail.readonly",
     "https://www.googleapis.com/auth/gmail.modify",
     "https://www.googleapis.com/auth/gmail.labels",
@@ -88,9 +88,9 @@ export async function POST(req) {
     const oauth2Client = await getOAuth2Client(userId);
 
     const scopes = [
-      "https://www.googleapis.com/auth/documents.readonly",
-      "https://www.googleapis.com/auth/drive.readonly",
-      // "https://www.googleapis.com/auth/drive.file",
+      // "https://www.googleapis.com/auth/documents.readonly",
+      // "https://www.googleapis.com/auth/drive.readonly",
+      "https://www.googleapis.com/auth/drive.file",
       "https://www.googleapis.com/auth/gmail.readonly",
       "https://www.googleapis.com/auth/gmail.modify",
       "https://www.googleapis.com/auth/gmail.labels",
