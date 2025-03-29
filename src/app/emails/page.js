@@ -1,11 +1,91 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { Switch } from "@/components/ui/switch";
 import { Navbar } from "@/components/Navbar";
 import { Plus } from "lucide-react";
+import { createClient } from '@supabase/supabase-js';
+import { toast } from "sonner";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
 
 function EmailsContent() {
+  const [userId, setUserId] = useState(null);
+  const [categories, setCategories] = useState({
+    categories: {
+      to_respond: true,
+      fyi: true,
+      comment: true,
+      notification: true,
+      meeting_update: true,
+      awaiting_reply: true,
+      actioned: true
+    },
+    custom_properties: {}
+  });
+
+  useEffect(() => {
+    const fetchUserId = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.id) {
+        setUserId(session.user.id);
+        fetchCategories(session.user.id);
+      }
+    };
+
+    fetchUserId();
+  }, []);
+
+  const fetchCategories = async (uid) => {
+    try {
+      const response = await fetch(`/api/email-preferences?userId=${uid}`);
+      const data = await response.json();
+      if (data.success) {
+        setCategories(data.categories);
+      }
+    } catch (error) {
+      console.error("Error fetching email categories:", error);
+      toast.error("Failed to load email preferences");
+    }
+  };
+
+  const handleCategoryToggle = async (category, checked) => {
+    try {
+      const newCategories = {
+        ...categories,
+        categories: {
+          ...categories.categories,
+          [category]: checked
+        }
+      };
+
+      const response = await fetch('/api/email-preferences', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId,
+          categories: newCategories
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setCategories(newCategories);
+        toast.success(`${category.replace('_', ' ')} category updated`);
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (error) {
+      console.error("Error updating category:", error);
+      toast.error("Failed to update category");
+    }
+  };
+
   return (
     <div className="flex min-h-screen bg-black">
       <Navbar />
@@ -71,7 +151,8 @@ function EmailsContent() {
               {/* To respond */}
               <div className="px-6 py-4 flex items-center justify-between">
                 <Switch
-                  defaultChecked
+                  checked={categories.categories.to_respond}
+                  onCheckedChange={(checked) => handleCategoryToggle('to_respond', checked)}
                   className="data-[state=checked]:bg-[#F87171] data-[state=unchecked]:bg-zinc-700"
                 />
                 <div className="flex-1 flex items-center gap-3 ml-6">
@@ -87,7 +168,8 @@ function EmailsContent() {
               {/* FYI */}
               <div className="px-6 py-4 flex items-center justify-between">
                 <Switch
-                  defaultChecked
+                  checked={categories.categories.fyi}
+                  onCheckedChange={(checked) => handleCategoryToggle('fyi', checked)}
                   className="data-[state=checked]:bg-[#F59E0B] data-[state=unchecked]:bg-zinc-700"
                 />
                 <div className="flex-1 flex items-center gap-3 ml-6">
@@ -104,7 +186,8 @@ function EmailsContent() {
               {/* Comment */}
               <div className="px-6 py-4 flex items-center justify-between">
                 <Switch
-                  defaultChecked
+                  checked={categories.categories.comment}
+                  onCheckedChange={(checked) => handleCategoryToggle('comment', checked)}
                   className="data-[state=checked]:bg-[#F59E0B] data-[state=unchecked]:bg-zinc-700"
                 />
                 <div className="flex-1 flex items-center gap-3 ml-6">
@@ -120,7 +203,8 @@ function EmailsContent() {
               {/* Notification */}
               <div className="px-6 py-4 flex items-center justify-between">
                 <Switch
-                  defaultChecked
+                  checked={categories.categories.notification}
+                  onCheckedChange={(checked) => handleCategoryToggle('notification', checked)}
                   className="data-[state=checked]:bg-[#34D399] data-[state=unchecked]:bg-zinc-700"
                 />
                 <div className="flex-1 flex items-center gap-3 ml-6">
@@ -136,7 +220,8 @@ function EmailsContent() {
               {/* Meeting update */}
               <div className="px-6 py-4 flex items-center justify-between">
                 <Switch
-                  defaultChecked
+                  checked={categories.categories.meeting_update}
+                  onCheckedChange={(checked) => handleCategoryToggle('meeting_update', checked)}
                   className="data-[state=checked]:bg-[#60A5FA] data-[state=unchecked]:bg-zinc-700"
                 />
                 <div className="flex-1 flex items-center gap-3 ml-6">
@@ -152,7 +237,8 @@ function EmailsContent() {
               {/* Awaiting reply */}
               <div className="px-6 py-4 flex items-center justify-between">
                 <Switch
-                  defaultChecked
+                  checked={categories.categories.awaiting_reply}
+                  onCheckedChange={(checked) => handleCategoryToggle('awaiting_reply', checked)}
                   className="data-[state=checked]:bg-[#8B5CF6] data-[state=unchecked]:bg-zinc-700"
                 />
                 <div className="flex-1 flex items-center gap-3 ml-6">
@@ -169,7 +255,8 @@ function EmailsContent() {
               {/* Actioned */}
               <div className="px-6 py-4 flex items-center justify-between">
                 <Switch
-                  defaultChecked
+                  checked={categories.categories.actioned}
+                  onCheckedChange={(checked) => handleCategoryToggle('actioned', checked)}
                   className="data-[state=checked]:bg-[#8B5CF6] data-[state=unchecked]:bg-zinc-700"
                 />
                 <div className="flex-1 flex items-center gap-3 ml-6">
