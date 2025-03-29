@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Button } from "@/components/ui/Button";
-import { Calendar, Compass, Bell, MessageCircle, Settings, Plus, Brain, Search } from "lucide-react";
+import { Calendar, Compass, Bell, Mail, Settings, Plus, Brain, Search } from "lucide-react";
 import { supabase } from '@/lib/supabaseClient';
 
 export function Navbar() {
@@ -57,6 +57,19 @@ export function Navbar() {
           </Button>
           <span className="absolute left-12 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-white">
             Search
+          </span>
+        </div>
+        <div className="relative group">
+          <Button 
+            variant={isActive('/emails') ? "active-navbar" : "navbar"} 
+            size="icon" 
+            onClick={() => router.push('/emails')}
+            className={isActive('/emails') ? "bg-[#3c1671] border border-[#6D28D9]" : ""}
+          >
+            <Mail className="h-6 w-6" style={{ color: "var(--color-4)" }} />
+          </Button>
+          <span className="absolute left-12 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-white">
+            Emails
           </span>
         </div>
         <div className="relative group">
