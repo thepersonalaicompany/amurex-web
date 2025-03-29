@@ -99,7 +99,7 @@ function GoogleCallbackContent() {
               },
               body: JSON.stringify({
                 userId: session.user.id,
-                categories: ['to respond', 'FYI', 'comment', 'notification', 'meeting update'],
+                categories: ['to_respond', 'FYI', 'comment', 'notification', 'meeting_update'],
                 useStandardColors: false,
                 runInBackground: true
               }),
