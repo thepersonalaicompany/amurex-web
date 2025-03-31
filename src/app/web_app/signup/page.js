@@ -33,9 +33,7 @@ export default function SignUp() {
   const createUserEntry = async (userId) => {
     const { data, error } = await supabase
       .from("users")
-      .insert([{ id: userId, email: email }])
-      .select()
-      .single();
+      .insert([{ id: userId, email: email }]);
 
     if (error) {
       // If error code is 23505, it means the record already exists (unique constraint violation)
