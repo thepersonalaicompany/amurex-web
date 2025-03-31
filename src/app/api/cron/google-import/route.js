@@ -7,8 +7,8 @@ export const maxDuration = 300; // 5 minutes in seconds
 export const revalidate = 0;
 export const runtime = 'nodejs';
 
-// Vercel Cron configuration using the new format
-export const schedule = "*/5 * * * *"; // Cron syntax: every 5 minutes
+// Vercel Cron configuration - updated to run every hour
+export const schedule = "0 * * * *"; // Cron syntax: at minute 0 of every hour
 
 export async function GET(req) {
   try {

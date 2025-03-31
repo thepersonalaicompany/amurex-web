@@ -20,20 +20,29 @@ export default function SignUp() {
   // Add useEffect to get redirect URL from query params
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const redirect = params.get('redirect');
+    const redirect = params.get("redirect");
     if (redirect) {
       setRedirectUrl(decodeURIComponent(redirect));
     }
   }, []);
 
-  let signinRedirect = `/web_app/signin${redirectUrl ? `?redirect=${encodeURIComponent(redirectUrl)}` : ''}`;
+  let signinRedirect = `/web_app/signin${
+    redirectUrl ? `?redirect=${encodeURIComponent(redirectUrl)}` : ""
+  }`;
 
   const createUserEntry = async (userId) => {
     const { data, error } = await supabase
       .from("users")
-      .insert([{ id: userId, email: email }]);
+      .insert([{ id: userId, email: email }])
+      .select()
+      .single();
 
     if (error) {
+      // If error code is 23505, it means the record already exists (unique constraint violation)
+      if (error.code === '23505') {
+        // User already exists, no need to do anything
+        return;
+      }
       console.error("Error creating user entry:", error);
       setMessage(
         "Account created, but there was an error setting up your profile. Please contact support."
@@ -76,10 +85,10 @@ export default function SignUp() {
       });
 
       await createUserEntry(data.user.id);
-      setMessage(
-        "Account created successfully!"
-      );
+      setMessage("Account created successfully!");
 
+
+      console.log("Sending email to", email);
       // Send email to external endpoint
       try {
         const response = await fetch("https://api.amurex.ai/send_user_email", {
@@ -87,9 +96,9 @@ export default function SignUp() {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ 
-            "email": email,
-            "type": "signup"
+          body: JSON.stringify({
+            email: email,
+            type: "signup",
           }),
         });
 
@@ -102,8 +111,12 @@ export default function SignUp() {
         console.error("Error sending email to external endpoint:", err);
       }
 
-      // Redirect to the original URL if it exists, otherwise to /meetings
-      router.push(redirectUrl || "/search");
+      // Log the redirect destination for debugging
+      const destination = redirectUrl || "/search";
+      console.log("Attempting to redirect to:", destination);
+
+      // Try a more direct approach to redirection
+      window.location.href = destination;
     } else {
       setMessage("An unexpected error occurred. Please try again.");
     }
@@ -149,7 +162,7 @@ export default function SignUp() {
           <hr className="mb-6 border-gray-800" />
 
           <form onSubmit={handleSignUp} className="space-y-4 md:space-y-6">
-          <div className="flex gap-4">
+            <div className="flex gap-4">
               <div className="flex-1">
                 <label className="block text-sm font-medium font-semibold text-white mb-1">
                   First Name
