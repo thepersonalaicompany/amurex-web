@@ -7,6 +7,15 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+// Configure Vercel Cron
+export const dynamic = 'force-dynamic';
+export const maxDuration = 300; // 5 minutes in seconds
+export const revalidate = 0;
+export const runtime = 'nodejs';
+
+// Vercel Cron configuration - updated to run every hour
+export const schedule = "0 * * * *"; // Cron syntax: at minute 0 of every hour
+
 export async function GET(req) {
   // Verify this is a legitimate cron job request
   const authHeader = req.headers.get('authorization');
