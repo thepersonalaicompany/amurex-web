@@ -39,7 +39,7 @@ export default function SignUp() {
 
     if (error) {
       // If error code is 23505, it means the record already exists (unique constraint violation)
-      if (error.code === '23505') {
+      if (error.code === "23505") {
         // User already exists, no need to do anything
         return;
       }
@@ -84,9 +84,15 @@ export default function SignUp() {
         sameSite: "strict",
       });
 
-      await createUserEntry(data.user.id);
-      setMessage("Account created successfully!");
-
+      try {
+        await createUserEntry(data.user.id);
+        setMessage("Account created successfully!");
+      } catch (err) {
+        console.error("Error creating user entry:", err);
+        setMessage(
+          "Account created, but there was an error setting up your profile. Please contact support."
+        );
+      }
 
       console.log("Sending email to", email);
       // Send email to external endpoint
