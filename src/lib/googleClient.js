@@ -1,4 +1,10 @@
-import { supabase } from '@/lib/supabaseClient';
+import { createClient } from '@supabase/supabase-js';
+
+// Create a Supabase client with the service role key
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
 /**
  * Get the appropriate Google client credentials based on user's token version
@@ -7,27 +13,33 @@ import { supabase } from '@/lib/supabaseClient';
  */
 export async function getGoogleClientCredentials(userId) {
   try {
-    // First, check the user's google_token_version
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('google_token_version')
-      .eq('id', userId)
-      .single();
+    // Default to client ID 2
+    let clientId = 2;
     
-    if (userError) {
-      console.error('Error fetching user data:', userError);
-      throw new Error('Failed to fetch user data');
-    }
-    
-    // Determine which client ID to use based on token version
-    let clientId = 2; // Default to ID 2 for NULL or 'old'
-    
-    if (userData.google_token_version === 'gmail_only') {
-      clientId = 3;
+    // If userId is provided, try to get the user's token version
+    if (userId) {
+      try {
+        // Use the admin client to fetch user data
+        const { data: userData, error: userError } = await supabaseAdmin
+          .from('users')
+          .select('google_token_version')
+          .eq('id', userId)
+          .single();
+        
+        if (userError) {
+          console.error('Error fetching user data:', userError);
+          // Continue with default client ID 2
+        } else if (userData?.google_token_version === 'gmail_only') {
+          clientId = 3;
+        }
+      } catch (userFetchError) {
+        console.error('Error in user data fetch:', userFetchError);
+        // Continue with default client ID 2
+      }
     }
     
     // Fetch the client credentials from google_clients table
-    const { data: clientData, error: clientError } = await supabase
+    const { data: clientData, error: clientError } = await supabaseAdmin
       .from('google_clients')
       .select('client_id, client_secret')
       .eq('id', clientId)

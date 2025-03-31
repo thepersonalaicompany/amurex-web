@@ -64,8 +64,8 @@ export async function GET(req) {
   const oauth2Client = await getOAuth2Client();
   
   const scopes = [
-    "https://www.googleapis.com/auth/drive.readonly",
-    "https://www.googleapis.com/auth/documents.readonly",
+    // "https://www.googleapis.com/auth/drive.readonly",
+    // "https://www.googleapis.com/auth/documents.readonly",
     // "https://www.googleapis.com/auth/drive.file",
     "https://www.googleapis.com/auth/gmail.readonly",
     "https://www.googleapis.com/auth/gmail.modify",
@@ -94,7 +94,7 @@ export async function POST(request) {
     
     // Create the OAuth URL with the fetched credentials
     const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/callback/google`;
-    const scope = 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.labels https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/drive.readonly';
+    const scope = 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.labels https://www.googleapis.com/auth/gmail.modify';
     
     // Include the source in the state parameter
     const state = `${userId}:${source}`;

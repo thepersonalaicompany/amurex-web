@@ -84,52 +84,60 @@ function SettingsContent() {
   const searchParams = useSearchParams();
   const [session, setSession] = useState(null);
   const [gmailPermissionError, setGmailPermissionError] = useState(false);
+  const [showBroaderAccessModal, setShowBroaderAccessModal] = useState(false);
+  const [googleTokenVersion, setGoogleTokenVersion] = useState(null);
+  const [gmailConnected, setGmailConnected] = useState(false);
 
   // Define importGoogleDocs and other functions before using them in useEffect
   const importGoogleDocs = useCallback(async () => {
-    if (googleDocsConnected) {
-      console.log("Starting Google Docs import process...");
-      setIsImporting(true);
-      setImportSource("Google Docs");
-
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      const accessToken = session?.access_token;
-
-      try {
-        const response = await fetch("/api/google/import", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify({
-            userId: session.user.id,
-            accessToken: accessToken,
-          }),
-        });
-
-        const data = await response.json();
-
-        if (data.success) {
-          console.log("Google Docs import initiated:", data);
-          toast.success("Import complete! Check your email for details.");
-        } else {
-          console.error("Error importing Google docs:", data.error);
-          toast.error("Import failed. Please try again.");
-        }
-      } catch (error) {
-        console.error("Error importing Google docs:", error);
-        toast.error("Import failed. Please try again.");
-      } finally {
-        console.log("Import process completed");
-        setIsImporting(false);
-        setImportSource("");
-        setImportProgress(0);
-      }
+    // Only proceed if we have full access
+    if (googleTokenVersion !== "full") {
+      console.log("Skipping Google Docs import - no full access");
+      toast.error("Google Docs import requires full access permissions");
+      return;
     }
-  }, [googleDocsConnected]);
+
+    console.log("Starting Google Docs import process...");
+    setIsImporting(true);
+    setImportSource("Google Docs");
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const accessToken = session?.access_token;
+
+    try {
+      const response = await fetch("/api/google/import", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          userId: session.user.id,
+          accessToken: accessToken,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        console.log("Google Docs import initiated:", data);
+        toast.success("Import complete! Check your email for details.");
+      } else {
+        console.error("Error importing Google docs:", data.error);
+        toast.error("Import failed. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error importing Google docs:", error);
+      toast.error("Import failed. Please try again.");
+    } finally {
+      console.log("Import process completed");
+      setIsImporting(false);
+      setImportSource("");
+      setImportProgress(0);
+    }
+  }, [googleTokenVersion]); // Add googleTokenVersion as a dependency
 
   const importNotionDocuments = useCallback(async () => {
     if (notionConnected) {
@@ -218,18 +226,43 @@ function SettingsContent() {
     }
   }, []);
 
-  // Modify the session check useEffect
+  // Update the useEffect for session checking
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      // Redirect if no session
-      if (!session) {
-        const currentPath = window.location.pathname + window.location.search;
-        const encodedRedirect = encodeURIComponent(currentPath);
-        router.push(`/web_app/signin?redirect=${encodedRedirect}`);
+    const checkSession = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        setSession(session);
+        
+        if (session) {
+          setUserId(session.user.id);
+          // Fetch user data and integrations
+          await checkIntegrations();
+          
+          // Fetch Google token version
+          const { data, error: tokenError } = await supabase
+            .from("users")
+            .select("google_token_version")
+            .eq("id", session.user.id)
+            .single();
+            
+          if (!tokenError && data) {
+            setGoogleTokenVersion(data.google_token_version);
+            setGoogleDocsConnected(data.google_token_version === "full");
+            setGmailConnected(data.google_token_version === "full" || data.google_token_version === "gmail_only");
+          }
+        } else {
+          // Redirect if no session
+          const currentPath = window.location.pathname + window.location.search;
+          const encodedRedirect = encodeURIComponent(currentPath);
+          router.push(`/web_app/signin?redirect=${encodedRedirect}`);
+        }
+      } catch (error) {
+        console.error("Error checking session:", error);
       }
-    });
-
+    };
+    
+    checkSession();
+    
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -245,107 +278,7 @@ function SettingsContent() {
     return () => subscription.unsubscribe();
   }, [router]);
 
-  useEffect(() => {
-    checkIntegrations();
-  }, []);
-
-  useEffect(() => {
-    const connection = searchParams.get("connection");
-    const error = searchParams.get("error");
-
-    if (connection === "success") {
-      toast.success("Google Docs connected successfully!");
-    }
-    if (error) {
-      toast.error(`Connection failed: ${error}`);
-    }
-  }, [searchParams]);
-
-  // Simplified approach: Just trigger the import when connection=success is detected
-  useEffect(() => {
-    const connection = searchParams.get("connection");
-    const source = searchParams.get("source");
-
-    console.log("Detected URL params:", { connection, source });
-
-    if (connection === "success") {
-      console.log("Connection successful, triggering appropriate action");
-
-      // Force a check of integrations first to ensure we have the latest status
-      checkIntegrations().then(() => {
-        // Handle based on the source parameter
-        if (source === "gmail") {
-          console.log("Gmail connection detected, processing emails");
-          toast.success("Gmail connected successfully!");
-          processGmailLabels();
-        } else if (source === "notion") {
-          console.log("Notion connection detected, importing documents");
-          toast.success("Notion connected successfully!");
-          importNotionDocuments();
-        } else {
-          // Default to Google Docs import for any other source or no source
-          console.log("Google Docs connection detected, importing documents");
-          toast.success("Google Docs connected successfully!");
-          importGoogleDocs();
-        }
-      });
-    }
-  }, [searchParams]); // Only depend on searchParams to avoid re-running
-
-  const handleGoogleDocsConnect = useCallback(async () => {
-    console.log("Starting Google Docs connection flow...");
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (session) {
-        const response = await fetch("/api/google/auth", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            userId: session.user.id,
-            source: "docs", // Specify the source for the redirect
-          }),
-        });
-        const data = await response.json();
-        if (data.url) {
-          router.push(data.url);
-        } else {
-          console.error("Error starting Google OAuth flow:", data.error);
-        }
-      }
-    } catch (error) {
-      console.error("Error connecting Google Docs:", error);
-    }
-  }, [router]);
-
-  const handleReconnectGoogle = useCallback(() => {
-    try {
-      const {
-        data: { session },
-      } = supabase.auth.getSession();
-      if (session) {
-        const response = fetch("/api/google/auth", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            userId: session.user.id,
-            source: "gmail", // Specify the source for the redirect
-          }),
-        });
-        toast.success(
-          "Please reconnect your Google account with the necessary permissions"
-        );
-      }
-    } catch (error) {
-      console.error("Error reconnecting Google account:", error);
-    }
-  }, []);
-
+  // Move checkIntegrations function above the useEffect
   const checkIntegrations = async () => {
     try {
       console.log("Checking integrations...");
@@ -384,10 +317,61 @@ function SettingsContent() {
           setEmailLabelingEnabled(user.email_tagging_enabled || false);
         }
       }
+      return true;
     } catch (error) {
       console.error("Error checking integrations:", error);
+      return false;
     }
   };
+
+  // Now the useEffect can reference checkIntegrations
+  useEffect(() => {
+    const connection = searchParams.get("connection");
+    const source = searchParams.get("source");
+
+    console.log("Detected URL params:", { connection, source });
+
+    if (connection === "success") {
+      console.log("Connection successful, triggering appropriate action");
+
+      // Force a check of integrations first to ensure we have the latest status
+      checkIntegrations().then(() => {
+        // Handle based on the source parameter
+        if (source === "gmail") {
+          console.log("Gmail connection detected, processing emails");
+          toast.success("Gmail connected successfully!");
+          processGmailLabels();
+        } else if (source === "notion") {
+          console.log("Notion connection detected, importing documents");
+          toast.success("Notion connected successfully!");
+          importNotionDocuments();
+        } else {
+          // Only import Google Docs if we have full access
+          if (googleTokenVersion === "full") {
+            console.log("Google Docs connection detected, importing documents");
+            toast.success("Google Docs connected successfully!");
+            importGoogleDocs();
+          } else {
+            console.log("Google connection detected, but no full access for Docs");
+            toast.success("Google account connected successfully!");
+            // Don't attempt to import Google Docs
+          }
+        }
+      });
+    }
+  }, [searchParams, googleTokenVersion, importGoogleDocs, importNotionDocuments, processGmailLabels]);
+
+  useEffect(() => {
+    const connection = searchParams.get("connection");
+    const error = searchParams.get("error");
+
+    if (connection === "success") {
+      toast.success("Google Docs connected successfully!");
+    }
+    if (error) {
+      toast.error(`Connection failed: ${error}`);
+    }
+  }, [searchParams]);
 
   const initiateLogout = () => {
     setShowSignOutConfirm(true);
@@ -997,6 +981,45 @@ function SettingsContent() {
     fetchUserId();
   }, []);
 
+  // Update the handleGoogleDocsConnect function to use userId from state
+  const handleGoogleDocsConnect = async () => {
+    try {
+      if (!userId) {
+        toast.error("You must be logged in to connect Google Docs");
+        return;
+      }
+      
+      setIsImporting(true);
+      setImportSource("Google Docs");
+      
+      const response = await fetch("/api/google/auth", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userId: userId,
+          clientId: 2  // Always use client ID 2
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (data.url) {
+        // Store a flag to indicate we want to import after connection
+        localStorage.setItem("pendingGoogleDocsImport", "true");
+        window.location.href = data.url;
+      } else {
+        throw new Error("Failed to get Google auth URL");
+      }
+    } catch (error) {
+      console.error("Error connecting Google Docs:", error);
+      toast.error("Failed to connect Google Docs");
+      setIsImporting(false);
+      setImportSource("");
+    }
+  };
+
   return (
     <div className="flex min-h-screen bg-black text-white">
       {/* Left App Navbar - the thin one */}
@@ -1142,24 +1165,21 @@ function SettingsContent() {
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-4">
                             <img
-                              src={PROVIDER_ICONS.google}
+                              src={PROVIDER_ICONS.gmail}
                               alt="Google"
-                              className="w-6 h-6"
+                              className="w-6"
                             />
                             <div>
                               <h3 className="font-medium text-white text-lg">
-                                Connect Google
+                                Connect Gmail
                               </h3>
                               <p className="text-sm text-zinc-400">
-                                Sync your Google Docs
+                                Sync your Gmail inbox
                               </p>
-                              <p className="text-xs text-zinc-600 max-w-72">
-                                You might receive a warning about the app being
-                                unverified. As we are still in the review
-                                process. You can safely proceed by clicking on
-                                &quot;Advanced&quot; and then &quot;Go to Amurex
+                              {/* <p className="text-xs text-zinc-600 max-w-72">
+                                The app is still in the review process. You can safely proceed by clicking on &quot;Advanced&quot; and then &quot;Go to Amurex
                                 (unsafe)&quot;.
-                              </p>
+                              </p> */}
                             </div>
                           </div>
                           <Button
@@ -1985,6 +2005,38 @@ function SettingsContent() {
                   Upload Files
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showBroaderAccessModal && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
+          <div className="bg-zinc-900 rounded-lg p-6 max-w-md w-full border border-zinc-700">
+            <h3 className="text-xl font-medium text-white mb-4">Broader Google Access Required</h3>
+            <p className="text-zinc-300 mb-6">
+              We need broader access to your Google account to enable Google Docs integration. 
+              The app is still in the verification process from Google.
+            </p>
+            <p className="text-zinc-300 mb-6">
+              If you wish to proceed, you can continue with the authentication process.
+            </p>
+            <div className="flex justify-end gap-4">
+              <button
+                onClick={() => setShowBroaderAccessModal(false)}
+                className="px-4 py-2 rounded-lg bg-zinc-800 text-white hover:bg-zinc-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setShowBroaderAccessModal(false);
+                  window.location.href = "/api/google/auth";
+                }}
+                className="px-4 py-2 rounded-lg bg-[#9334E9] text-white hover:bg-[#7928CA] transition-colors"
+              >
+                Continue
+              </button>
             </div>
           </div>
         </div>

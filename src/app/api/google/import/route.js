@@ -56,23 +56,49 @@ export async function POST(req) {
       }
     );
 
+    // Check user's Google token version
+    const { data: userData, error: userError } = await supabase
+      .from("users")
+      .select("email, google_token_version")
+      .eq("id", userId)
+      .single();
+
+    if (userError) {
+      throw new Error("Failed to fetch user data: " + userError.message);
+    }
+
     // Get user email from Supabase if not in headers
-    if (!userEmail) {
-      const { data: userData, error: userError } = await supabase
-        .from("users")
-        .select("email")
-        .eq("id", userId)
-        .single();
-
-      if (userError || !userData?.email) {
-        throw new Error("User email not found");
-      }
-
+    if (!userEmail && userData?.email) {
       userEmail = userData.email;
     }
 
-    // Process the documents
-    const docsResults = await processGoogleDocs({ id: userId }, supabase);
+    // Only process Google Docs if token version is "full"
+    let docsResults = [];
+    if (userData?.google_token_version === "full") {
+      // Process the documents
+      docsResults = await processGoogleDocs({ id: userId }, supabase);
+
+      // Send email notification if documents were processed
+      if (docsResults.length > 0) {
+        await fetch(
+          `${process.env.NEXT_PUBLIC_APP_URL}/api/notifications/email`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              userEmail: userEmail,
+              importResults: docsResults,
+              platform: "google_docs",
+            }),
+          }
+        );
+      }
+    } else {
+      console.log("Skipping Google Docs import - token version is not 'full'");
+      docsResults = [{ status: "skipped", reason: "Insufficient permissions" }];
+    }
 
     // Process Gmail emails by calling the existing Gmail process-labels endpoint
     let gmailResults = { success: false, error: "Gmail processing not attempted" };
@@ -99,24 +125,6 @@ export async function POST(req) {
         success: false, 
         error: gmailError.message || "Failed to process Gmail" 
       };
-    }
-
-    // Send email notification
-    if (docsResults.length > 0) {
-      await fetch(
-        `${process.env.NEXT_PUBLIC_APP_URL}/api/notifications/email`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            userEmail: userEmail,
-            importResults: docsResults,
-            platform: "google_docs",
-          }),
-        }
-      );
     }
 
     return NextResponse.json({
@@ -157,8 +165,26 @@ export async function GET(req) {
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
-    // Process the documents
-    const docsResults = await processGoogleDocs({ id: userId }, adminSupabase);
+    // Check user's Google token version
+    const { data: userData, error: userError } = await adminSupabase
+      .from("users")
+      .select("google_token_version")
+      .eq("id", userId)
+      .single();
+
+    if (userError) {
+      throw new Error("Failed to fetch user data: " + userError.message);
+    }
+
+    // Only process Google Docs if token version is "full"
+    let docsResults = [];
+    if (userData?.google_token_version === "full") {
+      // Process the documents
+      docsResults = await processGoogleDocs({ id: userId }, adminSupabase);
+    } else {
+      console.log("Skipping Google Docs import - token version is not 'full'");
+      docsResults = [{ status: "skipped", reason: "Insufficient permissions" }];
+    }
 
     // Process Gmail emails by calling the existing Gmail process-labels endpoint
     let gmailResults = { success: false, error: "Gmail processing not attempted" };
