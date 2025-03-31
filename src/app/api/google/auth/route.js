@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { google } from "googleapis";
 import { createClient } from '@supabase/supabase-js';
+import { getGoogleClientCredentials } from '@/lib/googleClient';
 
 // Initialize Supabase client
 const supabase = createClient(
@@ -80,41 +81,29 @@ export async function GET(req) {
   return NextResponse.redirect(url);
 }
 
-export async function POST(req) {
+export async function POST(request) {
   try {
-    const { userId, source } = await req.json();
+    const { userId, source = 'settings' } = await request.json();
     
-    // Get the appropriate OAuth client based on user signup date
-    const oauth2Client = await getOAuth2Client(userId);
-
-    const scopes = [
-      "https://www.googleapis.com/auth/documents.readonly",
-      "https://www.googleapis.com/auth/drive.readonly",
-      // "https://www.googleapis.com/auth/drive.file",
-      "https://www.googleapis.com/auth/gmail.readonly",
-      "https://www.googleapis.com/auth/gmail.modify",
-      "https://www.googleapis.com/auth/gmail.labels",
-    ];
-
-    const url = oauth2Client.generateAuthUrl({
-      access_type: "offline",
-      scope: scopes,
-      prompt: "consent",
-      state: userId,
-    });
-
-    // Add source as a query parameter to the redirect URI
-    const urlWithSource = new URL(url);
-    if (source) {
-      urlWithSource.searchParams.append("source", source);
+    if (!userId) {
+      return NextResponse.json({ success: false, error: 'User ID is required' }, { status: 400 });
     }
-
-    return NextResponse.json({ url: urlWithSource.toString() });
+    
+    // Get the appropriate Google client credentials
+    const { clientId, clientSecret } = await getGoogleClientCredentials(userId);
+    
+    // Create the OAuth URL with the fetched credentials
+    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/callback/google`;
+    const scope = 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.labels https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/drive.readonly';
+    
+    // Include the source in the state parameter
+    const state = `${userId}:${source}`;
+    
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}&access_type=offline&prompt=consent&state=${encodeURIComponent(state)}`;
+    
+    return NextResponse.json({ success: true, url: authUrl });
   } catch (error) {
-    console.error("Error generating Google OAuth URL:", error);
-    return NextResponse.json(
-      { success: false, error: error.message },
-      { status: 500 }
-    );
+    console.error('Error creating Google auth URL:', error);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }

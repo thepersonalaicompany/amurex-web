@@ -61,12 +61,13 @@ function GoogleCallbackContent() {
             .update({ email_tagging_enabled: true })
             .eq('id', session.user.id);
           
-          // If we're in the onboarding flow, redirect immediately and trigger background processes
+          // Determine redirect path based on source
+          let redirectPath;
+          
           if (source === 'onboarding') {
-            // Redirect user immediately to onboarding
-            router.push('/onboarding?connection=success');
+            redirectPath = '/onboarding?connection=success';
             
-            // Trigger background processes
+            // Trigger background processes for onboarding
             // We don't await these calls, so they run in the background
             fetch("/api/google/import", {
               method: "POST",
@@ -114,11 +115,39 @@ function GoogleCallbackContent() {
               .catch(err => {
                 console.error('Error starting email processing:', err);
               });
+          } else if (source === 'search') {
+            // If source is search, redirect back to search page
+            redirectPath = '/search?connection=success';
+            
+            // Start the import process in the background
+            fetch("/api/google/import", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${session.access_token}`,
+              },
+              body: JSON.stringify({
+                userId: session.user.id,
+                accessToken: session.access_token,
+                runInBackground: true
+              }),
+            }).then(response => response.json())
+              .then(data => {
+                if (data.success) {
+                  console.log('Google import started in background');
+                } else {
+                  console.error('Failed to start Google import:', data.error);
+                }
+              })
+              .catch(err => {
+                console.error('Error starting Google import:', err);
+              });
           } else {
-            // For settings page, always start the import regardless of source
-            console.log('Starting Google import after successful connection');
+            // Default to settings page
+            redirectPath = '/settings?connection=success';
             
             // Start the import process immediately
+            console.log('Starting Google import after successful connection');
             fetch("/api/google/import", {
               method: "POST",
               headers: {
@@ -140,27 +169,53 @@ function GoogleCallbackContent() {
               .catch(err => {
                 console.error('Error importing Google data:', err);
               });
-            
-            // Redirect to settings with connection success parameter
-            router.push('/settings?connection=success');
           }
+          
+          // Redirect to the appropriate page
+          router.push(redirectPath);
+          
         } catch (err) {
           console.error('Error in Google callback:', err);
           toast.error(err.message || 'Failed to process Google connection');
           
-          // Redirect based on source
-          const redirectPath = source === 'onboarding' ? '/onboarding' : '/settings?connection=success';
-          router.push(`${redirectPath}?error=${encodeURIComponent(err.message || 'Failed to connect Google account')}`);
+          // Determine error redirect path based on source
+          let errorRedirectPath;
+          if (source === 'onboarding') {
+            errorRedirectPath = '/onboarding';
+          } else if (source === 'search') {
+            errorRedirectPath = '/search';
+          } else {
+            errorRedirectPath = '/settings';
+          }
+          
+          router.push(`${errorRedirectPath}?error=${encodeURIComponent(err.message || 'Failed to connect Google account')}`);
         }
       } else if (error) {
         toast.error(`Connection failed: ${error}`);
-        // Redirect based on source
-        const redirectPath = source === 'onboarding' ? '/onboarding' : '/settings?connection=success';
-        router.push(`${redirectPath}?error=${encodeURIComponent(error)}`);
+        
+        // Determine error redirect path based on source
+        let errorRedirectPath;
+        if (source === 'onboarding') {
+          errorRedirectPath = '/onboarding';
+        } else if (source === 'search') {
+          errorRedirectPath = '/search';
+        } else {
+          errorRedirectPath = '/settings';
+        }
+        
+        router.push(`${errorRedirectPath}?error=${encodeURIComponent(error)}`);
       } else {
-        // Redirect based on source
-        const redirectPath = source === 'onboarding' ? '/onboarding' : '/settings?connection=success';
-        router.push(redirectPath);
+        // Default redirect based on source
+        let defaultRedirectPath;
+        if (source === 'onboarding') {
+          defaultRedirectPath = '/onboarding';
+        } else if (source === 'search') {
+          defaultRedirectPath = '/search';
+        } else {
+          defaultRedirectPath = '/settings';
+        }
+        
+        router.push(defaultRedirectPath);
       }
     };
 
