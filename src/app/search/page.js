@@ -99,7 +99,7 @@ export default function AISearch() {
       });
     };
 
-    supabase
+    const channel = supabase
       .channel("message_history")
       .on(
         "postgres_changes",
@@ -111,8 +111,19 @@ export default function AISearch() {
         },
         handleInserts
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('Successfully subscribed to message_history');
+        } else if (status === 'CLOSED') {
+          console.log('Channel closed, attempting to resubscribe...');
+          // Attempt to resubscribe after a short delay
+          setTimeout(() => {
+            channel.subscribe();
+          }, 1000);
+        }
+      });
 
+    // Initial fetch of message history
     supabase
       .from("message_history")
       .select("*")
@@ -121,6 +132,13 @@ export default function AISearch() {
       .then(({ data: message_history, error }) =>
         error ? console.log("error", error) : setMessageHistory(message_history)
       );
+
+    // Cleanup function
+    return () => {
+      if (channel) {
+        channel.unsubscribe();
+      }
+    };
   }, [session?.user?.id]);
 
   // Replace the existing useEffect for hasSeenOnboarding

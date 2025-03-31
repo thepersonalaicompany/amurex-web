@@ -31,28 +31,22 @@ export default function SignUp() {
   }`;
 
   const createUserEntry = async (userId) => {
-    // First check if user already exists
-    const { data: existingUser, error } = await supabase
+    const { data, error } = await supabase
       .from("users")
-      .select("*")
-      .eq("id", userId)
+      .insert([{ id: userId, email: email }])
+      .select()
       .single();
 
-    console.log("This is the existing user", existingUser);
-    console.log("This is the error", error);
-
-    // Only insert if user doesn't exist
-    if (!existingUser) {
-      const { data, error } = await supabase
-        .from("users")
-        .insert([{ id: userId, email: email }]);
-
-      if (error) {
-        console.error("Error creating user entry:", error);
-        setMessage(
-          "Account created, but there was an error setting up your profile. Please contact support."
-        );
+    if (error) {
+      // If error code is 23505, it means the record already exists (unique constraint violation)
+      if (error.code === '23505') {
+        // User already exists, no need to do anything
+        return;
       }
+      console.error("Error creating user entry:", error);
+      setMessage(
+        "Account created, but there was an error setting up your profile. Please contact support."
+      );
     }
   };
 
@@ -93,6 +87,8 @@ export default function SignUp() {
       await createUserEntry(data.user.id);
       setMessage("Account created successfully!");
 
+
+      console.log("Sending email to", email);
       // Send email to external endpoint
       try {
         const response = await fetch("https://api.amurex.ai/send_user_email", {
