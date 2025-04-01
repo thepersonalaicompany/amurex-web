@@ -179,12 +179,12 @@ export default function AISearch() {
     // Check Google Docs connection
     supabase
       .from("users")
-      .select("google_docs_connected, google_token_version")
+      .select("google_token_version")
       .eq("id", session.user.id)
       .single()
       .then(({ data }) => {
-        googleConnected = !!data?.google_docs_connected;
-        console.log("google docs connected", data?.google_docs_connected);
+        // Check if google_token_version exists (not null)
+        googleConnected = !!data?.google_token_version;
         console.log("google token version", data?.google_token_version);
         
         // Set the token version
@@ -423,7 +423,8 @@ export default function AISearch() {
         },
         body: JSON.stringify({
           userId: session.user.id,
-          source: 'search'
+          source: 'search',
+          upgradeToFull: true
         }),
       });
       

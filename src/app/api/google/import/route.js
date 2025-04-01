@@ -40,26 +40,37 @@ async function generateTags(text) {
 
 export async function POST(req) {
   try {
-    const { userId, accessToken } = await req.json();
+    const requestData = await req.json();
+    const { userId, accessToken, googleAccessToken, googleRefreshToken, googleTokenExpiry } = requestData;
     let userEmail = req.headers.get("x-user-email");
 
-    // Create new Supabase client with the access token
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY,
-      {
-        global: {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
+    // Create Supabase client - either with the provided access token or with service role
+    let supabaseClient;
+    if (accessToken) {
+      // Client-side request with Supabase access token
+      supabaseClient = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_ROLE_KEY,
+        {
+          global: {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
           },
-        },
-      }
-    );
+        }
+      );
+    } else {
+      // Server-side request (from callback) without Supabase token
+      supabaseClient = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_ROLE_KEY
+      );
+    }
 
     // Check user's Google token version
-    const { data: userData, error: userError } = await supabase
+    const { data: userData, error: userError } = await supabaseClient
       .from("users")
-      .select("email, google_token_version")
+      .select("email, google_token_version, google_access_token, google_refresh_token, google_token_expiry")
       .eq("id", userId)
       .single();
 
@@ -72,11 +83,18 @@ export async function POST(req) {
       userEmail = userData.email;
     }
 
+    // Use provided Google tokens if available, otherwise use stored tokens
+    const googleTokens = {
+      access_token: googleAccessToken || userData.google_access_token,
+      refresh_token: googleRefreshToken || userData.google_refresh_token,
+      expiry_date: googleTokenExpiry || userData.google_token_expiry
+    };
+
     // Only process Google Docs if token version is "full"
     let docsResults = [];
     if (userData?.google_token_version === "full") {
-      // Process the documents
-      docsResults = await processGoogleDocs({ id: userId }, supabase);
+      // Process the documents using the appropriate tokens
+      docsResults = await processGoogleDocs({ id: userId }, supabaseClient, googleTokens);
 
       // Send email notification if documents were processed
       if (docsResults.length > 0) {
@@ -232,7 +250,7 @@ export async function GET(req) {
   }
 }
 
-async function processGoogleDocs(session, supabase) {
+async function processGoogleDocs(session, supabase, providedTokens = null) {
   try {
     // Create admin Supabase client
     const adminSupabase = createClient(
@@ -240,53 +258,47 @@ async function processGoogleDocs(session, supabase) {
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
     
-    // Get user's Google tokens
-    const { data: user, error: userError } = await adminSupabase
-      .from("users")
-      .select("google_access_token, google_refresh_token, google_token_expiry, created_at")
-      .eq("id", session.id)
-      .single();
-
-    if (userError || !user.google_access_token) {
-      console.error("Google credentials not found:", userError);
-      throw new Error("Google Docs not connected");
-    }
-
-    // Determine which OAuth credentials to use based on user signup date
-    const cutoffDate = new Date('2025-03-28T08:33:14.69671Z');
-    const userSignupDate = new Date(user.created_at);
-    
-    let clientId, clientSecret, redirectUri;
-    
-    // Use old credentials for users who signed up before the cutoff date
-    if (userSignupDate < cutoffDate) {
-      clientId = process.env.GOOGLE_CLIENT_ID_OLD;
-      clientSecret = process.env.GOOGLE_CLIENT_SECRET_OLD;
-      redirectUri = process.env.GOOGLE_REDIRECT_URI_OLD;
+    // If tokens are provided directly, use them
+    let tokens;
+    if (providedTokens && providedTokens.access_token) {
+      tokens = providedTokens;
     } else {
-      // Use new credentials for users who signed up after the cutoff date
-      clientId = process.env.GOOGLE_CLIENT_ID_NEW;
-      clientSecret = process.env.GOOGLE_CLIENT_SECRET_NEW;
-      redirectUri = process.env.GOOGLE_REDIRECT_URI_NEW;
+      // Otherwise get user's Google tokens from database
+      const { data: user, error: userError } = await adminSupabase
+        .from("users")
+        .select("google_access_token, google_refresh_token, google_token_expiry, created_at")
+        .eq("id", session.id)
+        .single();
+
+      if (userError || !user.google_access_token) {
+        console.error("Google credentials not found:", userError);
+        throw new Error("Google Docs not connected");
+      }
+      
+      tokens = {
+        access_token: user.google_access_token,
+        refresh_token: user.google_refresh_token,
+        expiry_date: new Date(user.google_token_expiry).getTime()
+      };
     }
 
     const oauth2Client = new google.auth.OAuth2(
-      clientId,
-      clientSecret,
-      redirectUri
+      process.env.GOOGLE_CLIENT_ID_NEW,
+      process.env.GOOGLE_CLIENT_SECRET_NEW,
+      process.env.GOOGLE_REDIRECT_URI_NEW
     );
 
     // Set credentials including expiry
     oauth2Client.setCredentials({
-      access_token: user.google_access_token,
-      refresh_token: user.google_refresh_token,
-      expiry_date: new Date(user.google_token_expiry).getTime(),
+      access_token: tokens.access_token,
+      refresh_token: tokens.refresh_token,
+      expiry_date: new Date(tokens.expiry_date).getTime(),
     });
 
     // Force token refresh if it's expired or about to expire
     if (
-      !user.google_token_expiry ||
-      new Date(user.google_token_expiry) <= new Date()
+      !tokens.expiry_date ||
+      new Date(tokens.expiry_date) <= new Date()
     ) {
       console.log("Token expired or missing expiry, refreshing...");
       const { credentials } = await oauth2Client.refreshAccessToken();
@@ -297,7 +309,7 @@ async function processGoogleDocs(session, supabase) {
         .update({
           google_access_token: credentials.access_token,
           google_refresh_token:
-            credentials.refresh_token || user.google_refresh_token,
+            credentials.refresh_token || tokens.refresh_token,
           google_token_expiry: new Date(credentials.expiry_date).toISOString(),
         })
         .eq("id", session.id);
