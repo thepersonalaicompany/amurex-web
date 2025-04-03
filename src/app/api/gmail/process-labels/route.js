@@ -43,7 +43,7 @@ const GMAIL_COLORS = {
 async function categorizeWithAI(fromEmail, subject, body, enabledCategories) {
   try {
     // Build the system prompt based on enabled categories
-    let systemPrompt = "You are an email classifier. Classify the email into one of these categories:\n";
+    let systemPrompt = "You are an email classifier. Classify the email into one of these categories (but don't come up with any other new categories):\n";
     let categoryMap = {};
     let index = 1;
     
