@@ -38,6 +38,22 @@ function EmailsContent() {
     custom_properties: {}
   });
 
+  // Sample emails for the preview
+  const sampleEmails = [
+    { id: 1, sender: "Product Team", subject: "Need your feedback on this proposal", category: "to_respond", time: "10:30 AM" },
+    { id: 2, sender: "Sanskar Jethi", subject: "Boring stakeholder meeting on ROI strategy for Q3", category: "fyi", time: "Yesterday" },
+    { id: 3, sender: "Arsen Kylyshbek", subject: "just launched a feature - let's f*cking go!", category: "comment", time: "Yesterday" },
+    { id: 4, sender: "GitHub", subject: "Security alert for your repository", category: "notification", time: "Sep 14" },
+    { id: 5, sender: "Zoom", subject: "Your meeting with Design Team has been scheduled", category: "meeting_update", time: "Sep 14" },
+    { id: 6, sender: "Alice Bentinck", subject: "Re: Invitation - IC", category: "awaiting_reply", time: "Sep 13" },
+    { id: 7, sender: "Marketing", subject: "Content calendar approved", category: "actioned", time: "Sep 12" }
+  ];
+
+  // Filter emails based on enabled categories
+  const filteredEmails = sampleEmails.filter(email => 
+    categories.categories[email.category]
+  );
+
   useEffect(() => {
     const fetchUserId = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -177,13 +193,23 @@ function EmailsContent() {
     }
   };
 
+  // Function to handle email click
+  const handleEmailClick = (sender) => {
+    if (sender === "Sanskar Jethi") {
+      window.open("https://www.linkedin.com/in/sanskar123/", "_blank");
+    } else if (sender === "Arsen Kylyshbek") {
+      window.open("https://www.linkedin.com/in/arsenkk/", "_blank");
+    }
+  };
+
   return (
     <div className="flex min-h-screen bg-black">
       <Navbar />
 
       {/* Main Content Area */}
-      <div className="flex-1 ml-16 p-8">
-        <div>
+      <div className="flex flex-1 ml-16 p-8 gap-8">
+        {/* Left Column - Settings */}
+        <div className="w-[60%]">
           <h2 className="text-2xl font-medium text-white">Emails</h2>
           <p className="text-sm text-zinc-400 mb-6">
             Automatically sort and filter your emails to keep your main inbox
@@ -191,8 +217,7 @@ function EmailsContent() {
           </p>
 
           {/* Email Tagging Toggle Card */}
-          {/* <div className="rounded-xl border text-card-foreground shadow bg-black border-zinc-800 p-4 mb-6"> */}
-          <div className="bg-zinc-900/70 rounded-lg border border-zinc-800 relative p-4 mb-6">
+          <div className="rounded-xl border text-card-foreground shadow bg-black border-zinc-800 p-4 mb-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <img
@@ -204,18 +229,17 @@ function EmailsContent() {
                   <h2 className="font-medium text-white text-lg">Gmail Smart Labels</h2>
                   <p className="text-xs text-zinc-600 max-w-72">Auto-categorize emails with AI</p>
                 </div>
+              </div>
+              <div className="flex items-center gap-6">
                 <Switch
                   checked={emailTaggingEnabled}
                   onCheckedChange={handleEmailTaggingToggle}
                   className={emailTaggingEnabled ? "bg-[#9334E9]" : "bg-zinc-700"}
                 />
-              </div>
-              <div className="flex items-center gap-6">
                 {emailTaggingEnabled && (
                   <Button
                     variant="outline"
-                    // className="bg-zinc-900 text-zinc-300 hover:bg-zinc-800 hover:border-[#9334E9] border border-zinc-700 min-w-[140px] px-4 py-2"
-                    className="px-2 md:px-4 py-2 inline-flex items-center justify-center gap-1 md:gap-2 rounded-[8px] font-medium border border-white/10 text-[#FAFAFA] bg-[#9334E9] hover:bg-[#3c1671] border-[#6D28D9] transition-all duration-200 whitespace-nowrap hover:border-[#6D28D9]"
+                    className="hidden bg-zinc-900 text-zinc-300 hover:bg-zinc-800 hover:border-[#9334E9] border border-zinc-700 min-w-[140px] px-4 py-2"
                     onClick={processGmailLabels}
                     disabled={isProcessingEmails}
                   >
@@ -289,8 +313,7 @@ function EmailsContent() {
 
                 {/* Categories Section */}
                 <motion.div 
-                  // className="overflow-hidden border text-card-foreground shadow rounded-xl bg-black border-zinc-800"
-                  className="bg-zinc-900/70 rounded-lg border border-zinc-800 relative"
+                  className="overflow-hidden border text-card-foreground shadow rounded-xl bg-black border-zinc-800"
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: "auto" }}
                   transition={{ duration: 0.5, ease: "easeInOut" }}
@@ -479,6 +502,71 @@ function EmailsContent() {
               <div></div>
             )}
           </AnimatePresence>
+        </div>
+
+        {/* Right Column - Gmail Preview */}
+        <div className="w-[40%] flex flex-col">
+          {/* Invisible spacer to match the header height */}
+          <div className="h-[88px]"></div>
+          
+          <div className="bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden h-fit">
+            <div className="bg-zinc-800 p-3 flex items-center">
+              <img
+                src={PROVIDER_ICONS.gmail}
+                alt="Gmail"
+                className="w-6 mr-2"
+              />
+              <h3 className="text-white font-medium">Inbox Preview</h3>
+            </div>
+            
+            <div className="divide-y divide-zinc-800">
+              {sampleEmails.map(email => {
+                return (
+                  <div 
+                    key={email.id} 
+                    className="p-3 hover:bg-zinc-800/50 cursor-pointer"
+                    onClick={() => handleEmailClick(email.sender)}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="font-medium text-white">
+                        {email.sender}
+                        {/* {(email.sender === "Sanskar Jethi" || email.sender === "Arsen Kylyshbek") && (
+                          <span className="text-xs text-zinc-500 ml-1">(click to view profile)</span>
+                        )} */}
+                      </div>
+                      <div className="text-xs text-zinc-500">{email.time}</div>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <div className="text-sm text-zinc-400">{email.subject}</div>
+                      
+                      {/* Labels next to subject */}
+                      {email.category === "to_respond" && categories.categories.to_respond && (
+                        <span className="bg-[#F87171] text-black text-xs px-2 py-0.5 rounded">To respond</span>
+                      )}
+                      {email.category === "fyi" && categories.categories.fyi && (
+                        <span className="bg-[#F59E0B] text-black text-xs px-2 py-0.5 rounded">FYI</span>
+                      )}
+                      {email.category === "comment" && categories.categories.comment && (
+                        <span className="bg-[#F59E0B] text-black text-xs px-2 py-0.5 rounded">Comment</span>
+                      )}
+                      {email.category === "notification" && categories.categories.notification && (
+                        <span className="bg-[#34D399] text-black text-xs px-2 py-0.5 rounded">Notification</span>
+                      )}
+                      {email.category === "meeting_update" && categories.categories.meeting_update && (
+                        <span className="bg-[#60A5FA] text-black text-xs px-2 py-0.5 rounded">Meeting update</span>
+                      )}
+                      {email.category === "awaiting_reply" && categories.categories.awaiting_reply && (
+                        <span className="bg-[#8B5CF6] text-white text-xs px-2 py-0.5 rounded">Awaiting reply</span>
+                      )}
+                      {email.category === "actioned" && categories.categories.actioned && (
+                        <span className="bg-[#8B5CF6] text-white text-xs px-2 py-0.5 rounded">Actioned</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </div>
     </div>
