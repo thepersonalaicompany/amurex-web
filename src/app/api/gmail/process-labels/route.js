@@ -40,14 +40,35 @@ const GMAIL_COLORS = {
 // };
 
 // Helper function to categorize emails using Groq
-async function categorizeWithAI(fromEmail, subject, body) {
+async function categorizeWithAI(fromEmail, subject, body, enabledCategories) {
   try {
+    // Build the system prompt based on enabled categories
+    let systemPrompt = "You are an email classifier. Classify the email into one of these categories:\n";
+    let categoryMap = {};
+    let index = 1;
+    
+    // Add enabled categories to the prompt and mapping
+    for (const [category, enabled] of Object.entries(enabledCategories)) {
+      if (enabled) {
+        const formattedCategory = category.replace(/_/g, ' '); // Convert to_respond to "to respond"
+        systemPrompt += `${index} = ${formattedCategory}\n`;
+        categoryMap[index] = formattedCategory;
+        index++;
+      }
+    }
+    
+    // Always include "none" as the last option
+    systemPrompt += `${index} = none\n`;
+    categoryMap[index] = "none";
+    
+    systemPrompt += `\nRespond ONLY with the number (1-${index}). Use category ${index} (none) if the email doesn't fit into any of the other categories. Do not include any other text, just the single digit number.`;
+
     const response = await groq.chat.completions.create({
       model: "llama-3.3-70b-versatile",
       messages: [
         {
           role: "system",
-          content: "You are an email classifier. Classify the email into one of these categories:\n1 = to respond\n2 = FYI\n3 = comment\n4 = notification\n5 = meeting update\n6 = awaiting reply\n7 = actioned\n8 = promotions\n9 = none\n\nRespond ONLY with the number (1-9). Use category 9 (none) if the email doesn't fit into any of the other categories. Do not include any other text, just the single digit number."
+          content: systemPrompt
         },
         {
           role: "user",
@@ -63,23 +84,10 @@ async function categorizeWithAI(fromEmail, subject, body) {
     console.log(`Raw Groq category response:`, rawResponse);
     
     // Extract just the first digit from the response
-    const numberMatch = rawResponse.match(/\d/);
+    const numberMatch = rawResponse.match(/\d+/);
     const categoryNumber = numberMatch ? parseInt(numberMatch[0]) : null;
     
     console.log("Extracted category number:", categoryNumber);
-    
-    // Map from number to category name
-    const categoryMap = {
-      1: "to respond",
-      2: "FYI",
-      3: "comment",
-      4: "notification", 
-      5: "meeting update",
-      6: "awaiting reply",
-      7: "actioned",
-      8: "promotions",
-      9: "none"
-    };
     
     // Look up the category by number
     if (categoryNumber && categoryMap[categoryNumber]) {
@@ -169,12 +177,14 @@ export async function POST(req) {
       }
     );
 
-    // Fetch user's Google credentials using admin Supabase client
+    // Fetch user's Google credentials and email tagging settings using admin Supabase client
     const { data: userData, error: userError } = await adminSupabase
       .from("users")
-      .select("google_refresh_token, email_tagging_enabled")
+      .select("google_refresh_token, email_tagging_enabled, email_categories")
       .eq("id", userId)
       .single();
+
+    console.log("User data:", userData);
 
     if (userError || !userData || !userData.google_refresh_token) {
       return NextResponse.json({ 
@@ -189,6 +199,35 @@ export async function POST(req) {
         error: "Email tagging is not enabled for this user" 
       }, { status: 400 });
     }
+
+    // Parse the email_categories JSON or use default values
+    let enabledCategories = {
+      to_respond: true,
+      fyi: true,
+      comment: true,
+      notification: true,
+      meeting_update: true,
+      awaiting_reply: true,
+      actioned: true,
+      promotions: true
+    };
+
+    try {
+      if (userData.email_categories) {
+        const parsedCategories = typeof userData.email_categories === 'object' 
+          ? userData.email_categories 
+          : JSON.parse(userData.email_categories);
+          
+        if (parsedCategories.categories) {
+          enabledCategories = parsedCategories.categories;
+        }
+      }
+    } catch (parseError) {
+      console.error("Error parsing email_categories:", parseError);
+      // Continue with default categories
+    }
+
+    console.log("User's enabled categories:", enabledCategories);
 
     // Get the appropriate OAuth client based on user signup date
     const oauth2Client = await getOAuth2Client(userId);
@@ -208,10 +247,19 @@ export async function POST(req) {
         existingLabels[label.name] = label.id;
       });
 
-      // Create Amurex labels if they don't exist
+      // Create Amurex labels if they don't exist, but only for enabled categories
       const amurexLabels = {};
       
       for (const [labelName, colors] of Object.entries(GMAIL_COLORS)) {
+        // Convert label name to the format used in enabledCategories (e.g., "to respond" -> "to_respond")
+        const categoryKey = labelName.replace(/\s+/g, '_');
+        
+        // Skip this label if it's not enabled (except for "none" which we always include)
+        if (labelName !== "none" && enabledCategories[categoryKey] === false) {
+          console.log(`Skipping disabled category: ${labelName}`);
+          continue;
+        }
+        
         const fullLabelName = `Amurex/${labelName}`;
         
         if (existingLabels[fullLabelName]) {
@@ -470,9 +518,9 @@ export async function POST(req) {
         // Only use Groq to categorize selected emails
         if (shouldCategorize) {
           const truncatedBody = body.length > 1500 ? body.substring(0, 1500) + "..." : body;
-          category = await categorizeWithAI(fromEmail, subject, truncatedBody);
+          category = await categorizeWithAI(fromEmail, subject, truncatedBody, enabledCategories);
           
-          // Apply the label only if the category is not "none"
+          // Apply the label only if the category is not "none" and the label exists
           if (category !== "none" && amurexLabels[category]) {
             await gmail.users.messages.modify({
               userId: 'me',

@@ -75,7 +75,7 @@ export function Navbar() {
             Search
           </span>
         </div>
-        <div className="relative group hidden">
+        <div className="relative group">
           <Button
             variant={isActive("/emails") ? "active-navbar" : "navbar"}
             size="icon"
