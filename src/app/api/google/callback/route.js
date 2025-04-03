@@ -1,176 +1,159 @@
-import { NextResponse } from 'next/server';
-import { google } from 'googleapis';
+import { NextResponse } from "next/server";
+import { google } from "googleapis";
 import { createClient } from '@supabase/supabase-js';
 
-// Create Supabase client with service role key for admin access
+// Initialize Supabase client
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-// Function to get OAuth2 client based on user signup date
-async function getOAuth2Client(userId) {
+export async function GET(request) {
+  const url = new URL(request.url);
+  const code = url.searchParams.get('code');
+  const state = url.searchParams.get('state');
+  const error = url.searchParams.get('error');
+
+  // Handle error from Google
+  if (error) {
+    console.error('Google auth error:', error);
+    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/settings?error=google_auth_failed`);
+  }
+
+  if (!code) {
+    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/settings?error=no_code`);
+  }
+
   try {
-    // Query Supabase for user's created_at timestamp
-    const { data, error } = await supabase
-      .from('users')
-      .select('created_at')
-      .eq('id', userId)
+    // Parse state parameter to get userId, source, clientId, and clientType
+    // Format: userId:source:clientId:clientType
+    const [userId, source, clientId, clientType] = state.split(':');
+
+    console.log('Callback received:', { userId, source, clientId, clientType, code: code.substring(0, 10) + '...' });
+
+    if (!userId || !clientId) {
+      console.error('Invalid state parameter:', state);
+      throw new Error('Invalid state parameter');
+    }
+
+    // Get the client credentials from the database
+    const { data: clientData, error: clientError } = await supabase
+      .from('google_clients')
+      .select('client_id, client_secret')
+      .eq('id', clientId)
       .single();
 
-    if (error) throw error;
-
-    const cutoffDate = new Date('2025-03-28T08:33:14.69671Z');
-    const userSignupDate = new Date(data.created_at);
-
-    // Use old credentials for users who signed up before the cutoff date
-    if (userSignupDate < cutoffDate) {
-      return new google.auth.OAuth2(
-        process.env.GOOGLE_CLIENT_ID_OLD,
-        process.env.GOOGLE_CLIENT_SECRET_OLD,
-        process.env.GOOGLE_REDIRECT_URI_OLD
-      );
-    } else {
-      // Use new credentials for users who signed up after the cutoff date
-      return new google.auth.OAuth2(
-        process.env.GOOGLE_CLIENT_ID_NEW,
-        process.env.GOOGLE_CLIENT_SECRET_NEW,
-        process.env.GOOGLE_REDIRECT_URI_NEW
-      );
+    if (clientError) {
+      console.error('Error fetching client data:', clientError);
+      throw clientError;
     }
-  } catch (error) {
-    console.error("Error checking user signup date:", error);
-    // Fallback to old credentials if there's an error
-    return new google.auth.OAuth2(
-      process.env.GOOGLE_CLIENT_ID_OLD,
-      process.env.GOOGLE_CLIENT_SECRET_OLD,
-      process.env.GOOGLE_REDIRECT_URI_OLD
+
+    console.log('Client data retrieved:', { clientId: clientData.client_id.substring(0, 10) + '...' });
+
+    // Create OAuth2 client with the correct credentials
+    const oauth2Client = new google.auth.OAuth2(
+      clientData.client_id,
+      clientData.client_secret,
+      process.env.GOOGLE_REDIRECT_URI_NEW
     );
-  }
-}
 
-export async function GET(req) {
-  console.log('Callback route hit');
-  try {
-    const searchParams = req.nextUrl.searchParams;
-    const code = searchParams.get('code');
-    const stateParam = searchParams.get('state');
-    
-    // Parse state parameter which includes userId:source format
-    const [userId, source = 'settings'] = stateParam ? stateParam.split(':') : [stateParam, 'settings'];
-    
-    console.log('Code:', code);
-    console.log('User ID:', userId);
-    console.log('Source:', source);
+    console.log('OAuth client created with redirect URI:', process.env.GOOGLE_REDIRECT_URI_NEW);
 
-    if (!code) {
-      throw new Error('No code provided');
-    }
-
-    // Get the appropriate OAuth client based on user signup date
-    const oauth2Client = await getOAuth2Client(userId);
-
-    // Get tokens from Google
+    // Exchange code for tokens
+    console.log('Exchanging code for tokens...');
     const { tokens } = await oauth2Client.getToken(code);
-    console.log('Got tokens from Google');
+    console.log('Tokens received:', { access_token: tokens.access_token ? 'present' : 'missing', refresh_token: tokens.refresh_token ? 'present' : 'missing' });
 
-    // Update the user's tokens in Supabase
-    const { error: updateError } = await supabase
+    console.log('tokens', tokens);
+
+    // Store tokens in database by updating the existing user
+    const { error: tokenError } = await supabase
       .from('users')
       .update({
-        google_docs_connected: true,
         google_access_token: tokens.access_token,
         google_refresh_token: tokens.refresh_token,
         google_token_expiry: new Date(tokens.expiry_date).toISOString(),
+        google_token_version: clientType,
+        google_cohort: clientId
       })
       .eq('id', userId);
 
-    if (updateError) {
-      console.error('Supabase update error:', updateError);
-      throw updateError;
+    if (tokenError) {
+      console.error('Error storing tokens:', tokenError);
+      throw tokenError;
     }
 
-    // Redirect based on source
-    const redirectUrl = source === 'onboarding' 
-      ? `${process.env.NEXT_PUBLIC_APP_URL}/onboarding?connection=success`
-      : `${process.env.NEXT_PUBLIC_APP_URL}/settings?connection=success`;
-    
-    console.log('Redirecting to:', redirectUrl);
-    return NextResponse.redirect(redirectUrl);
+    // Remove the second update since we're doing it all in one operation
+    console.log('Google connection successful for user:', userId);
 
-  } catch (error) {
-    console.error('Callback error:', error);
-    
-    // Get source from state parameter
-    const stateParam = req.nextUrl.searchParams.get('state');
-    const [, source = 'settings'] = stateParam ? stateParam.split(':') : [null, 'settings'];
-    
-    const redirectUrl = source === 'onboarding'
-      ? `${process.env.NEXT_PUBLIC_APP_URL}/onboarding?error=${encodeURIComponent(error.message)}`
-      : `${process.env.NEXT_PUBLIC_APP_URL}/settings?error=${encodeURIComponent(error.message)}`;
-    
-    return NextResponse.redirect(redirectUrl);
-  }
-}
-
-export async function POST(req) {
-  try {
-    const body = await req.json();
-    const { code, state, userId, source = 'settings' } = body;
-    
-    console.log('POST callback received:', { code: !!code, state, userId, source });
-
-    if (!code) {
-      return NextResponse.json({ 
-        success: false, 
-        error: 'No code provided',
-        source
-      }, { status: 400 });
+    // Determine redirect URL based on source
+    let redirectUrl;
+    if (source === 'onboarding') {
+      redirectUrl = `${process.env.NEXT_PUBLIC_APP_URL}/onboarding/complete`;
+    } else if (source === 'search') {
+      redirectUrl = `${process.env.NEXT_PUBLIC_APP_URL}/search?connection=success&source=google`;
+    } else {
+      redirectUrl = `${process.env.NEXT_PUBLIC_APP_URL}/settings?connection=success&source=google`;
     }
 
-    // Get the appropriate OAuth client based on user signup date
-    const oauth2Client = await getOAuth2Client(userId);
-
-    try {
-      // Exchange code for tokens
-      const { tokens } = await oauth2Client.getToken(code);
-      console.log('Tokens received from Google');
-
-      // Store tokens in database
-      const { error: updateError } = await supabase
-        .from('users')
-        .update({
-          google_docs_connected: true,
-          google_access_token: tokens.access_token,
-          google_refresh_token: tokens.refresh_token,
-          google_token_expiry: new Date(tokens.expiry_date).toISOString()
-        })
-        .eq('id', userId);
-
-      if (updateError) {
-        console.error('Error storing tokens:', updateError);
-        return NextResponse.json({ 
-          success: false, 
-          error: 'Failed to store Google credentials',
-          source
-        }, { status: 500 });
+    // Start background processes - no need to wait for these to complete
+    // Process Gmail labels for all token versions
+    (async () => {
+      try {
+        console.log('Starting Gmail label processing for user:', userId);
+        
+        // Call the existing Gmail process-labels API endpoint
+        const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/gmail/process-labels`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId: userId,
+            useStandardColors: false,
+          }),
+        });
+        
+        const result = await response.json();
+        console.log('Gmail label processing result:', result);
+      } catch (error) {
+        console.error('Error in Gmail label processing:', error);
       }
+    })();
 
-      return NextResponse.json({ success: true, source });
-    } catch (tokenError) {
-      console.error('Error exchanging code for tokens:', tokenError);
-      return NextResponse.json({ 
-        success: false, 
-        error: 'Failed to exchange code for tokens: ' + tokenError.message,
-        source
-      }, { status: 500 });
+    // Import Google Docs only if token version is "full"
+    if (clientType === 'full') {
+      (async () => {
+        try {
+          console.log('Starting Google Docs import for user:', userId);
+          
+          // Call the existing Google import API endpoint with POST method
+          // Pass the Google tokens directly in the request body
+          const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/google/import`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              userId: userId,
+              googleAccessToken: tokens.access_token,
+              googleRefreshToken: tokens.refresh_token,
+              googleTokenExpiry: tokens.expiry_date
+            }),
+          });
+          
+          const result = await response.json();
+          console.log('Google Docs import result:', result);
+        } catch (error) {
+          console.error('Error in Google Docs import:', error);
+        }
+      })();
     }
+
+    // Redirect the user immediately, while background processes continue
+    return NextResponse.redirect(redirectUrl);
   } catch (error) {
     console.error('Error in Google callback:', error);
-    return NextResponse.json({ 
-      success: false, 
-      error: 'Server error: ' + error.message,
-      source: 'settings'
-    }, { status: 500 });
+    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/settings?error=token_exchange_failed`);
   }
 }
