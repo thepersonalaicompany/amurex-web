@@ -214,7 +214,8 @@ function EmailsContent() {
                 {emailTaggingEnabled && (
                   <Button
                     variant="outline"
-                    className="bg-zinc-900 text-zinc-300 hover:bg-zinc-800 hover:border-[#9334E9] border border-zinc-700 min-w-[140px] px-4 py-2"
+                    // className="bg-zinc-900 text-zinc-300 hover:bg-zinc-800 hover:border-[#9334E9] border border-zinc-700 min-w-[140px] px-4 py-2"
+                    className="px-2 md:px-4 py-2 inline-flex items-center justify-center gap-1 md:gap-2 rounded-[8px] font-medium border border-white/10 text-[#FAFAFA] bg-[#9334E9] hover:bg-[#3c1671] border-[#6D28D9] transition-all duration-200 whitespace-nowrap hover:border-[#6D28D9]"
                     onClick={processGmailLabels}
                     disabled={isProcessingEmails}
                   >
@@ -230,7 +231,7 @@ function EmailsContent() {
                           alt="Gmail"
                           className="w-4 mr-2"
                         />
-                        Process Emails
+                        Process new emails
                       </div>
                     )}
                   </Button>

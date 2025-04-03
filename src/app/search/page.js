@@ -447,9 +447,7 @@ export default function AISearch() {
             </div>
           )}
 
-          <h1 className="text-xl md:text-2xl font-medium text-white mb-4">
-            Knowledge Search
-          </h1>
+          <h2 className="text-2xl font-medium text-white mb-4">Knowledge Search</h2>
           <div className="bg-zinc-900/70 rounded-lg border border-zinc-800 relative">
             <div className="p-4 md:p-6 border-b border-zinc-800">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">

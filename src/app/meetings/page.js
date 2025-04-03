@@ -185,7 +185,7 @@ export default function TranscriptList() {
       <Navbar />
       <div className="min-h-screen bg-black">
         <div className="p-6 max-w-7xl mx-auto">
-          <h1 className="text-3xl font-semibold mb-6 text-white">Meetings</h1>
+        <h2 className="text-2xl font-medium text-white mb-4">Meetings</h2>
 
           <div className="flex items-center gap-2 mb-6 flex-wrap bg-[#1C1C1E] p-1 rounded-lg w-fit hidden">
             <label
