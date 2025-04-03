@@ -7,8 +7,8 @@ import { Plus } from "lucide-react";
 import { createClient } from '@supabase/supabase-js';
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
-// import { Card, CardContent } from "@/components/ui/card";
-// import { Video } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Video } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
 const supabase = createClient(
@@ -25,6 +25,7 @@ function EmailsContent() {
   const [userId, setUserId] = useState(null);
   const [isProcessingEmails, setIsProcessingEmails] = useState(false);
   const [emailTaggingEnabled, setEmailTaggingEnabled] = useState(false);
+  const [hasEmailRecord, setHasEmailRecord] = useState(false);
   const [categories, setCategories] = useState({
     categories: {
       to_respond: true,
@@ -61,6 +62,7 @@ function EmailsContent() {
         setUserId(session.user.id);
         fetchCategories(session.user.id);
         fetchEmailTaggingStatus(session.user.id);
+        checkEmailRecord(session.user.id);
       }
     };
 
@@ -93,6 +95,22 @@ function EmailsContent() {
     } catch (error) {
       console.error("Error fetching email tagging status:", error);
       toast.error("Failed to load email tagging status");
+    }
+  };
+
+  const checkEmailRecord = async (uid) => {
+    try {
+      const { data, error } = await supabase
+        .from("emails")
+        .select("id")
+        .eq("user_id", uid)
+        .limit(1);
+
+      if (error) throw error;
+      setHasEmailRecord(data && data.length > 0);
+    } catch (error) {
+      console.error("Error checking email records:", error);
+      setHasEmailRecord(false);
     }
   };
 
@@ -265,7 +283,7 @@ function EmailsContent() {
           </div>
 
           <AnimatePresence>
-            {emailTaggingEnabled ? (
+            {emailTaggingEnabled && hasEmailRecord ? (
               <motion.div
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -499,7 +517,45 @@ function EmailsContent() {
                 </motion.div>
               </motion.div>
             ) : (
-              <div></div>
+              <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3, ease: "easeInOut" }}
+              >
+                <div className="mt-8">
+                  <div className="relative">
+                    <div className="absolute -inset-0.5 bg-gradient-to-r from-[#9334E9] to-[#9334E9] rounded-lg blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-gradient-x"></div>
+                    <Card className="bg-black border-zinc-500 relative overflow-hidden w-full">
+                      <div className="absolute inset-0 bg-[#9334E9]/20 animate-pulse"></div>
+                      <div className="absolute inset-0 bg-gradient-to-r from-[#9334E9]/30 via-[#9334E9]/20 to-[#9334E9]/30"></div>
+                      <CardContent className="p-4 relative text-center">
+                        <div className="flex items-center gap-4 justify-center">
+                          <Video className="w-6 h-6 text-[#9334E9] hidden" />
+                          <div>
+                            <h3 className="font-medium text-white text-lg">
+                              Try Amurex for Smart Email Categorization
+                            </h3>
+                            <p className="text-sm text-zinc-400">
+                              Get automated categorization for your emails
+                            </p>
+                          </div>
+                        </div>
+                        <div className="mt-4">
+                          <a
+                            href="/settings"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center px-4 py-2 rounded-md text-sm font-medium border border-white/10 bg-[#9334E9] text-[#FAFAFA] hover:bg-[#3c1671] hover:border-[#6D28D9] transition-colors duration-200"
+                          >
+                            Connect Goolge account
+                          </a>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </div>
+              </motion.div>
             )}
           </AnimatePresence>
         </div>
