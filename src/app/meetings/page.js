@@ -278,42 +278,136 @@ export default function TranscriptList() {
           </div>
 
           {filteredTranscripts.length === 0 && (
-            <div className="text-center mt-8">
-              <div className="relative inline-block">
-                <div className="absolute -inset-0.5 bg-gradient-to-r from-[#9334E9] to-[#9334E9] rounded-lg blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-gradient-x"></div>
-                <Card className="bg-black border-zinc-500 relative overflow-hidden">
-                  <div className="absolute inset-0 bg-[#9334E9]/20 animate-pulse"></div>
-                  <div className="absolute inset-0 bg-gradient-to-r from-[#9334E9]/30 via-[#9334E9]/20 to-[#9334E9]/30"></div>
-                  <CardContent className="p-4 relative">
-                    <div className="flex items-center gap-4">
-                      <Video className="w-6 h-6 text-[#9334E9]" />
-                      <div>
-                        <h3 className="font-medium text-white text-lg">
-                          Try Amurex for Online Meetings
-                        </h3>
-                        <p className="text-sm text-zinc-400">
-                          Get AI-powered summaries for your meetings
-                        </p>
+            <>
+              {/* Email categorization card */}
+              <div className="mt-8 mx-auto max-w-4xl">
+                <div className="relative">
+                  <div className="absolute -inset-0.5 bg-gradient-to-r from-[#9334E9] to-[#9334E9] rounded-lg blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-gradient-x"></div>
+                  <Card className="bg-black border-zinc-500 relative overflow-hidden w-full">
+                    <div className="absolute inset-0 bg-[#9334E9]/20 animate-pulse"></div>
+                    <div className="absolute inset-0 bg-gradient-to-r from-[#9334E9]/30 via-[#9334E9]/20 to-[#9334E9]/30"></div>
+                    <CardContent className="p-4 relative text-center">
+                      <div className="flex items-center gap-4 justify-center">
+                        <Video className="w-6 h-6 text-[#9334E9] hidden" />
+                        <div>
+                          <h3 className="font-medium text-white text-lg">
+                            Try Amurex for Online Meetings
+                          </h3>
+                          <p className="text-sm text-zinc-400">
+                            Get AI-powered summaries for your meetings
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                    <div className="mt-4">
-                      <a
-                        href="https://chromewebstore.google.com/detail/amurex-early-preview/dckidmhhpnfhachdpobgfbjnhfnmddmc"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center px-4 py-2 rounded-md text-sm font-medium border border-white/10 bg-[#9334E9] text-[#FAFAFA] hover:bg-[#3c1671] hover:border-[#6D28D9] transition-colors duration-200"
-                      >
-                        Get Chrome Extension
-                      </a>
-                    </div>
-                  </CardContent>
-                </Card>
+                      <div className="mt-4">
+                        <a
+                          href="https://chromewebstore.google.com/detail/amurex-early-preview/dckidmhhpnfhachdpobgfbjnhfnmddmc"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center px-4 py-2 rounded-md text-sm font-medium border border-white/10 bg-[#9334E9] text-[#FAFAFA] hover:bg-[#3c1671] hover:border-[#6D28D9] transition-colors duration-200"
+                        >
+                          Get Chrome Extension
+                        </a>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
               </div>
-            </div>
+
+              {/* Google Meet preview */}
+              <div className="mt-8 mx-auto max-w-4xl">
+                <MeetPreview />
+              </div>
+            </>
           )}
         </div>
       </div>
     </>
   );
 }
+
+const MeetPreview = () => {
+  return (
+    <div className="relative mt-8 mx-auto max-w-4xl rounded-xl overflow-hidden border border-zinc-800">
+      {/* Main meeting area - darker background with increased height */}
+      <div className="bg-[#0f0f10] h-[450px] relative">
+        <div className="flex items-center justify-start pl-4 pt-4">
+          <img
+            src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Google_Meet_icon_%282020%29.svg/1024px-Google_Meet_icon_%282020%29.svg.png?20221213135236"
+            alt="Google Meet"
+            className="w-8"
+          />
+          <span className="pl-2 text-white text-base">Google Meet</span>
+        </div>
+        {/* Meeting controls - positioned at bottom center */}
+        <div className="absolute bottom-8 left-1/3 transform -translate-x-1/2 flex items-center gap-6">
+          <div className="w-14 h-14 rounded-full bg-[#ea4335] flex items-center justify-center">
+            <span className="text-white text-2xl">×</span>
+          </div>
+          <div className="w-14 h-14 rounded-full bg-[#3c4043] flex items-center justify-center">
+            <span className="text-white text-xl">🎤</span>
+          </div>
+          <div className="w-14 h-14 rounded-full bg-[#3c4043] flex items-center justify-center">
+            <span className="text-white text-xl">📹</span>
+          </div>
+        </div>
+      </div>
+      
+      {/* Amurex sidepanel */}
+      <div className="absolute top-0 right-0 h-full w-[380px] bg-[#0a0a0a] border-l border-zinc-800">
+        {/* Amurex header */}
+        <div className="flex items-center justify-between py-2 px-4 border-b border-zinc-800">
+          <div className="flex items-center">
+            <span className="text-white text-xl font-medium">Amurex</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-zinc-400 text-lg">⚙️</span>
+            <span className="text-zinc-400 text-lg">➡️</span>
+          </div>
+        </div>
+        
+        {/* Sidepanel content - smaller text */}
+        <div className="p-4">
+          <div className="mb-6">
+            <h3 className="text-white text-lg font-medium mb-2">Action items</h3>
+            <div className="text-zinc-300 text-sm">
+              <p className="mb-2 font-bold">You</p>
+              <ul className="list-disc pl-5 mb-2">
+                <li>Start using Amurex for your meetings</li>
+              </ul>
+            </div>
+          </div>
+          
+          <div>
+            <h3 className="text-white text-lg font-medium mb-2">Summary</h3>
+            <div className="text-zinc-300 text-sm">
+              <p className="mb-2"><span className="font-medium">Date:</span> September 14, 2024</p>
+              <p className="mb-1"><span className="font-medium">Participants:</span></p>
+              <ul className="list-disc pl-5 mb-2">
+                <li>You</li>
+              </ul>
+              <p className="mb-1"><span className="font-medium">Summary:</span></p>
+              <ul className="list-disc pl-5 mb-2">
+                <li>Onboarding process to get started with Amurex.</li>
+              </ul>
+              <p className="mb-1"><span className="font-medium">Key Points:</span></p>
+              <ul className="list-disc pl-5">
+                <li>Amurex will help you organize your work and life.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        
+        {/* Bottom tabs */}
+        <div className="absolute bottom-0 w-full flex border-t border-zinc-800">
+          <div className="flex-1 py-4 text-center text-purple-500 border-t-2 border-purple-500 font-medium text-base">
+            Summary
+          </div>
+          <div className="flex-1 py-4 text-center text-zinc-400 font-medium text-base">
+            Live Suggestions
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
