@@ -106,7 +106,7 @@ async function categorizeWithAI(fromEmail, subject, body, enabledCategories) {
   }
 }
 
-// Set up OAuth2 credentials based on user signup date
+// Set up OAuth2 credentials from user data
 async function getOAuth2Client(userId) {
   // Create admin Supabase client
   const adminSupabase = createClient(
@@ -115,42 +115,152 @@ async function getOAuth2Client(userId) {
   );
 
   try {
-    // Query Supabase for user's created_at timestamp
-    const { data, error } = await adminSupabase
+    console.log("Getting OAuth credentials for user:", userId);
+    // First, get the user's google_cohort
+    const { data: userData, error: userError } = await adminSupabase
       .from('users')
-      .select('created_at')
+      .select('google_cohort')
       .eq('id', userId)
       .single();
 
-    if (error) throw error;
+    if (userError) throw userError;
 
-    const cutoffDate = new Date('2025-03-28T08:33:14.69671Z');
-    const userSignupDate = new Date(data.created_at);
+    console.log("User cohort:", userData.google_cohort);
 
-    // Use old credentials for users who signed up before the cutoff date
-    if (userSignupDate < cutoffDate) {
-      return new google.auth.OAuth2(
-        process.env.GOOGLE_CLIENT_ID_OLD,
-        process.env.GOOGLE_CLIENT_SECRET_OLD,
-        process.env.GOOGLE_REDIRECT_URI_OLD
-      );
-    } else {
-      // Use new credentials for users who signed up after the cutoff date
-      return new google.auth.OAuth2(
-        process.env.GOOGLE_CLIENT_ID_NEW,
-        process.env.GOOGLE_CLIENT_SECRET_NEW,
-        process.env.GOOGLE_REDIRECT_URI_NEW
-      );
-    }
-  } catch (error) {
-    console.error("Error checking user signup date:", error);
-    // Fallback to old credentials if there's an error
+    // Then, fetch the client credentials from google_clients table
+    const { data: clientData, error: clientError } = await adminSupabase
+      .from('google_clients')
+      .select('client_id, client_secret')
+      .eq('id', userData.google_cohort)
+      .single();
+
+    if (clientError) throw clientError;
+
+    // Use the fetched OAuth credentials with redirect URI from env
     return new google.auth.OAuth2(
-      process.env.GOOGLE_CLIENT_ID_OLD,
-      process.env.GOOGLE_CLIENT_SECRET_OLD,
-      process.env.GOOGLE_REDIRECT_URI_OLD
+      clientData.client_id,
+      clientData.client_secret,
+      process.env.GOOGLE_REDIRECT_URI
+    );
+  } catch (error) {
+    console.error("Error getting OAuth credentials:", error);
+    // Fallback to default credentials if there's an error
+    return new google.auth.OAuth2(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+      process.env.GOOGLE_REDIRECT_URI
     );
   }
+}
+
+// Update the processEmails function to skip already processed emails
+async function processEmails(emails, userId, labelId, labelName, labelColor) {
+  const results = [];
+  
+  // First, get all existing message IDs for this user to avoid duplicates
+  const { data: existingEmails, error: fetchError } = await supabase
+    .from('emails')
+    .select('message_id')
+    .eq('user_id', userId);
+    
+  if (fetchError) {
+    console.error('Error fetching existing emails:', fetchError);
+    return [];
+  }
+  
+  // Create a Set of existing message IDs for faster lookup
+  const existingMessageIds = new Set();
+  if (existingEmails && existingEmails.length > 0) {
+    existingEmails.forEach(email => existingMessageIds.add(email.message_id));
+  }
+  
+  console.log(`Found ${existingMessageIds.size} existing emails for user ${userId}`);
+  
+  for (const email of emails) {
+    try {
+      // Skip if email already exists in database
+      if (existingMessageIds.has(email.id)) {
+        console.log(`Skipping email ${email.id} - already in database`);
+        results.push({ id: email.id, status: 'skipped', reason: 'already_exists' });
+        continue;
+      }
+      
+      // Check if email already has an Amurex label
+      const hasAmurexLabel = email.labelIds && email.labelIds.some(labelId => 
+        labelId.startsWith('Label_') && labelId.includes('Amurex')
+      );
+      
+      if (hasAmurexLabel) {
+        console.log(`Skipping email ${email.id} - already has Amurex label`);
+        results.push({ id: email.id, status: 'skipped', reason: 'already_labeled' });
+        continue;
+      }
+      
+      // Extract email content
+      let content = '';
+      
+      // Check for plain text content
+      if (email.payload.body && email.payload.body.data) {
+        content = Buffer.from(email.payload.body.data, 'base64').toString('utf-8');
+      } 
+      // Check for multipart content
+      else if (email.payload.parts) {
+        // Try to find HTML or plain text parts
+        for (const part of email.payload.parts) {
+          if (part.mimeType === 'text/plain' || part.mimeType === 'text/html') {
+            if (part.body && part.body.data) {
+              const partContent = Buffer.from(part.body.data, 'base64').toString('utf-8');
+              content += partContent;
+            }
+          }
+        }
+      }
+      
+      // Get email headers
+      const headers = email.payload.headers || [];
+      const subject = headers.find(h => h.name === 'Subject')?.value || 'No Subject';
+      const from = headers.find(h => h.name === 'From')?.value || '';
+      const to = headers.find(h => h.name === 'To')?.value || '';
+      const date = headers.find(h => h.name === 'Date')?.value || '';
+      
+      console.log(`Processing email: ${subject} (Content length: ${content.length})`);
+      
+      // Store email in database
+      const emailData = {
+        message_id: email.id,
+        thread_id: email.threadId,
+        user_id: userId,
+        label_id: labelId,
+        label_name: labelName,
+        label_color: labelColor,
+        subject: subject,
+        from: from,
+        to: to,
+        date: date,
+        content: content,
+        content_length: content.length,
+        processed_at: new Date().toISOString()
+      };
+      
+      // Insert into database
+      const { data, error } = await supabase
+        .from('emails')
+        .insert(emailData)
+        .select();
+        
+      if (error) {
+        console.error('Error storing email:', error);
+        results.push({ id: email.id, status: 'error', error: error.message });
+      } else {
+        results.push({ id: email.id, status: 'success' });
+      }
+    } catch (error) {
+      console.error(`Error processing email ${email.id}:`, error);
+      results.push({ id: email.id, status: 'error', error: error.message });
+    }
+  }
+  
+  return results;
 }
 
 export async function POST(req) {
