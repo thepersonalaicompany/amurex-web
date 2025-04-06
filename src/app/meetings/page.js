@@ -328,9 +328,16 @@ export default function TranscriptList() {
 const MeetPreview = () => {
   return (
     <div className="relative mt-8 mx-auto max-w-4xl rounded-xl overflow-hidden border border-zinc-800">
-      {/* Main meeting area - darker background with increased height */}
-      <div className="bg-[#0f0f10] h-[450px] relative">
-        <div className="flex items-center justify-start pl-4 pt-4">
+      {/* Main meeting area - using gmeet.png as background */}
+      <div className="bg-[#0f0f10] h-[450px] relative" style={{ 
+        backgroundImage: "url('/gmeet.jpg')", 
+        backgroundSize: "cover",
+        backgroundPosition: "right center"
+      }}>
+        {/* Dimming overlay */}
+        <div className="absolute inset-0 bg-black bg-opacity-50"></div>
+        
+        <div className="flex items-center justify-start pl-4 pt-4 relative z-10">
           <img
             src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Google_Meet_icon_%282020%29.svg/1024px-Google_Meet_icon_%282020%29.svg.png?20221213135236"
             alt="Google Meet"
@@ -339,7 +346,7 @@ const MeetPreview = () => {
           <span className="pl-2 text-white text-base">Google Meet</span>
         </div>
         {/* Meeting controls - positioned at bottom center */}
-        <div className="absolute bottom-8 left-1/3 transform -translate-x-1/2 flex items-center gap-6">
+        <div className="absolute bottom-8 left-1/3 transform -translate-x-1/2 flex items-center gap-6 z-10">
           <div className="w-14 h-14 rounded-full bg-[#ea4335] flex items-center justify-center">
             <span className="text-white text-2xl">×</span>
           </div>
