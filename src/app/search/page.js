@@ -462,7 +462,7 @@ export default function AISearch() {
         )}
         <div className="p-4 md:p-6 max-w-7xl mx-auto w-full">
           {!showOnboarding && !hasGoogleDocs && !hasNotion && (
-            <div className="bg-[#1E1E24] rounded-lg border border-zinc-800 p-4 mb-4 flex flex-col md:flex-row items-center justify-between">
+            <div className="hidden bg-[#1E1E24] rounded-lg border border-zinc-800 p-4 mb-4 flex flex-col md:flex-row items-center justify-between">
               <div className="flex items-center gap-3 mb-3 md:mb-0">
                 <div className="bg-[#9334E9] rounded-full p-2">
                   <svg
@@ -516,7 +516,7 @@ export default function AISearch() {
                     {googleTokenVersion === "full" ? (
                       <button
                         onClick={() => setGoogleDocsEnabled(!googleDocsEnabled)}
-                        className={`px-4 py-3 rounded-lg flex items-center justify-center gap-2 text-sm font-medium border border-white/10 ${
+                        className={`px-2 md:px-3 py-2 rounded-lg flex items-center justify-center gap-1 text-xs font-medium border border-white/10 ${
                           googleDocsEnabled
                             ? "bg-[#3c1671] text-white border-[#6D28D9]"
                             : "bg-zinc-900 text-white"
@@ -525,7 +525,7 @@ export default function AISearch() {
                         <img
                           src="https://upload.wikimedia.org/wikipedia/commons/0/01/Google_Docs_logo_%282014-2020%29.svg"
                           alt="Google Docs"
-                          className="w-5 h-5"
+                          className="w-4 h-4"
                         />
                         <span>Google Docs</span>
                       </button>
@@ -540,12 +540,12 @@ export default function AISearch() {
                             window.location.href = "/settings?tab=personalization";
                           }
                         }}
-                        className="px-4 py-3 rounded-lg flex items-center justify-center gap-2 text-sm font-medium border border-white/10 bg-zinc-900 text-white hover:bg-[#3c1671] transition-all duration-200 relative group"
+                        className="px-2 md:px-3 py-2 rounded-lg flex items-center justify-center gap-1 text-xs font-medium border border-white/10 bg-zinc-900 text-white hover:bg-[#3c1671] transition-all duration-200 relative group"
                       >
                         <img
                           src="https://upload.wikimedia.org/wikipedia/commons/0/01/Google_Docs_logo_%282014-2020%29.svg"
                           alt="Google Docs"
-                          className="w-5 h-5"
+                          className="w-4 h-4"
                         />
                         <span>Google Docs</span>
                         <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-white text-black px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
@@ -557,20 +557,20 @@ export default function AISearch() {
                     {/* Meetings button */}
                     <button
                       onClick={() => setMemorySearchEnabled(!memorySearchEnabled)}
-                      className={`px-4 py-3 rounded-lg flex items-center justify-center gap-2 text-sm font-medium border border-white/10 ${
+                      className={`px-2 md:px-3 py-2 rounded-lg flex items-center justify-center gap-1 text-xs font-medium border border-white/10 ${
                         memorySearchEnabled
                           ? "bg-[#3c1671] text-white border-[#6D28D9]"
                           : "bg-zinc-900 text-white"
                       } transition-all duration-200 hover:border-[#6D28D9]`}
                     >
-                      <ChatCenteredDots className="w-5 h-5" />
+                      <ChatCenteredDots className="w-4 h-4" />
                       <span>Meetings</span>
                     </button>
 
                     {/* Notion button */}
                     <button
                       onClick={() => setNotionEnabled(!notionEnabled)}
-                      className={`px-4 py-3 rounded-lg flex items-center justify-center gap-2 text-sm font-medium border border-white/10 ${
+                      className={`px-2 md:px-3 py-2 rounded-lg flex items-center justify-center gap-1 text-xs font-medium border border-white/10 ${
                         notionEnabled
                           ? "bg-[#3c1671] text-white border-[#6D28D9]"
                           : "bg-zinc-900 text-white"
@@ -579,7 +579,7 @@ export default function AISearch() {
                       <img
                         src="https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png"
                         alt="Notion"
-                        className="w-5 h-5"
+                        className="w-4 h-4"
                       />
                       <span>Notion</span>
                     </button>
@@ -587,7 +587,7 @@ export default function AISearch() {
                     {/* Obsidian button */}
                     <button
                       onClick={() => setObsidianEnabled(!obsidianEnabled)}
-                      className={`px-4 py-3 rounded-lg flex items-center justify-center gap-2 text-sm font-medium border border-white/10 ${
+                      className={`px-2 md:px-3 py-2 rounded-lg flex items-center justify-center gap-1 text-xs font-medium border border-white/10 ${
                         obsidianEnabled
                           ? "bg-[#3c1671] text-white border-[#6D28D9]"
                           : "bg-zinc-900 text-white"
@@ -596,7 +596,7 @@ export default function AISearch() {
                       <img
                         src="https://obsidian.md/images/obsidian-logo-gradient.svg"
                         alt="Obsidian"
-                        className="w-5 h-5"
+                        className="w-4 h-4"
                       />
                       <span>Obsidian</span>
                     </button>
@@ -605,7 +605,7 @@ export default function AISearch() {
                     {googleTokenVersion === "full" || googleTokenVersion === "gmail_only" ? (
                       <button
                         onClick={() => setGmailEnabled(!gmailEnabled)}
-                        className={`px-4 py-3 rounded-lg flex items-center justify-center gap-2 text-sm font-medium border border-white/10 ${
+                        className={`px-2 md:px-3 py-2 rounded-lg flex items-center justify-center gap-1 text-xs font-medium border border-white/10 ${
                           gmailEnabled
                             ? "bg-[#3c1671] text-white border-[#6D28D9]"
                             : "bg-zinc-900 text-white"
@@ -614,7 +614,7 @@ export default function AISearch() {
                         <img
                           src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/2560px-Gmail_icon_%282020%29.svg.png"
                           alt="Gmail"
-                          className="w-5 h-5"
+                          className="w-4 h-4"
                         />
                         <span>Gmail</span>
                       </button>
@@ -627,12 +627,12 @@ export default function AISearch() {
                             window.location.href = "/settings?tab=personalization";
                           }
                         }}
-                        className="px-4 py-3 rounded-lg flex items-center justify-center gap-2 text-sm font-medium border border-white/10 bg-zinc-900 text-white hover:bg-[#3c1671] transition-all duration-200 relative group"
+                        className="px-2 md:px-3 py-2 rounded-lg flex items-center justify-center gap-1 text-xs font-medium border border-white/10 bg-zinc-900 text-white hover:bg-[#3c1671] transition-all duration-200 relative group"
                       >
                         <img
                           src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/2560px-Gmail_icon_%282020%29.svg.png"
                           alt="Gmail"
-                          className="w-5 h-5"
+                          className="w-4 h-4"
                         />
                         <span>Gmail</span>
                         <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-white text-black px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
