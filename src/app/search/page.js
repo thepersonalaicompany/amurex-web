@@ -210,7 +210,11 @@ export default function AISearch() {
       .select("id")
       .contains("user_ids", [session.user.id])
       .limit(1)
-      .then(({ data }) => setHasMeetings(!!data?.length));
+      .then(({ data }) => {
+        const hasMeetingsData = !!data?.length;
+        setHasMeetings(hasMeetingsData);
+        console.log("User has meetings:", hasMeetingsData);
+      });
 
     // Check Notion connection
     supabase
@@ -221,6 +225,7 @@ export default function AISearch() {
       .then(({ data }) => {
         notionConnected = !!data?.notion_connected;
         setHasNotion(notionConnected);
+        console.log("User has Notion connected:", notionConnected);
         connectionsChecked++;
         if (connectionsChecked === 2) {
           checkOnboarding(googleConnected, notionConnected);
@@ -234,7 +239,11 @@ export default function AISearch() {
       .eq("user_id", session.user.id)
       .eq("type", "obsidian")
       .limit(1)
-      .then(({ data }) => setHasObsidian(!!data?.length));
+      .then(({ data }) => {
+        const hasObsidianData = !!data?.length;
+        setHasObsidian(hasObsidianData);
+        console.log("User has Obsidian documents:", hasObsidianData);
+      });
 
     // Helper function to check if onboarding should be shown
     const checkOnboarding = (google, notion) => {
@@ -461,7 +470,7 @@ export default function AISearch() {
           />
         )}
         <div className="p-4 md:p-6 max-w-7xl mx-auto w-full">
-          {!showOnboarding && !hasGoogleDocs && !hasNotion && (
+          {!showOnboarding && !hasGoogleDocs && !hasNotion && !hasObsidian && (
             <div className="hidden bg-[#1E1E24] rounded-lg border border-zinc-800 p-4 mb-4 flex flex-col md:flex-row items-center justify-between">
               <div className="flex items-center gap-3 mb-3 md:mb-0">
                 <div className="bg-[#9334E9] rounded-full p-2">
@@ -483,8 +492,7 @@ export default function AISearch() {
                   </svg>
                 </div>
                 <p className="text-zinc-300">
-                  Connect your Google Docs or Notion to get the most out of
-                  Amurex
+                  Connect your Google Docs, Notion, or upload Obsidian files to get the most out of Amurex
                 </p>
               </div>
               <a
@@ -556,48 +564,90 @@ export default function AISearch() {
                     <button
                       onClick={() => setMemorySearchEnabled(!memorySearchEnabled)}
                       className={`px-2 md:px-3 py-2 rounded-lg flex items-center justify-center gap-1 text-xs font-medium border border-white/10 ${
-                        memorySearchEnabled
+                        memorySearchEnabled && hasMeetings
                           ? "bg-[#3c1671] text-white border-[#6D28D9]"
                           : "bg-zinc-900 text-white"
-                      } transition-all duration-200 hover:border-[#6D28D9]`}
+                      } transition-all duration-200 hover:border-[#6D28D9] ${
+                        !hasMeetings ? "opacity-50 cursor-not-allowed" : ""
+                      }`}
+                      disabled={!hasMeetings}
                     >
                       <ChatCenteredDots className="w-4 h-4" />
                       <span>Meetings</span>
+                      {!hasMeetings && (
+                        <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-white text-black px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
+                          No meetings found
+                        </span>
+                      )}
                     </button>
 
                     {/* Notion button */}
-                    <button
-                      onClick={() => setNotionEnabled(!notionEnabled)}
-                      className={`px-2 md:px-3 py-2 rounded-lg flex items-center justify-center gap-1 text-xs font-medium border border-white/10 ${
-                        notionEnabled
-                          ? "bg-[#3c1671] text-white border-[#6D28D9]"
-                          : "bg-zinc-900 text-white"
-                      } transition-all duration-200 hover:border-[#6D28D9]`}
-                    >
-                      <img
-                        src="https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png"
-                        alt="Notion"
-                        className="w-4 h-4"
-                      />
-                      <span>Notion</span>
-                    </button>
+                    {hasNotion ? (
+                      <button
+                        onClick={() => setNotionEnabled(!notionEnabled)}
+                        className={`px-2 md:px-3 py-2 rounded-lg flex items-center justify-center gap-1 text-xs font-medium border border-white/10 ${
+                          notionEnabled
+                            ? "bg-[#3c1671] text-white border-[#6D28D9]"
+                            : "bg-zinc-900 text-white"
+                        } transition-all duration-200 hover:border-[#6D28D9]`}
+                      >
+                        <img
+                          src="https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png"
+                          alt="Notion"
+                          className="w-4 h-4"
+                        />
+                        <span>Notion</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => window.location.href = "/settings?tab=personalization"}
+                        className="px-2 md:px-3 py-2 rounded-lg flex items-center justify-center gap-1 text-xs font-medium border border-white/10 bg-zinc-900 text-white hover:bg-[#3c1671] transition-all duration-200 relative group"
+                      >
+                        <img
+                          src="https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png"
+                          alt="Notion"
+                          className="w-4 h-4"
+                        />
+                        <span>Notion</span>
+                        <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-white text-black px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
+                          Connect Notion
+                        </span>
+                      </button>
+                    )}
 
                     {/* Obsidian button */}
-                    <button
-                      onClick={() => setObsidianEnabled(!obsidianEnabled)}
-                      className={`px-2 md:px-3 py-2 rounded-lg flex items-center justify-center gap-1 text-xs font-medium border border-white/10 ${
-                        obsidianEnabled
-                          ? "bg-[#3c1671] text-white border-[#6D28D9]"
-                          : "bg-zinc-900 text-white"
-                      } transition-all duration-200 hover:border-[#6D28D9]`}
-                    >
-                      <img
-                        src="https://obsidian.md/images/obsidian-logo-gradient.svg"
-                        alt="Obsidian"
-                        className="w-4 h-4"
-                      />
-                      <span>Obsidian</span>
-                    </button>
+                    {hasObsidian ? (
+                      <button
+                        onClick={() => setObsidianEnabled(!obsidianEnabled)}
+                        className={`px-2 md:px-3 py-2 rounded-lg flex items-center justify-center gap-1 text-xs font-medium border border-white/10 ${
+                          obsidianEnabled
+                            ? "bg-[#3c1671] text-white border-[#6D28D9]"
+                            : "bg-zinc-900 text-white"
+                        } transition-all duration-200 hover:border-[#6D28D9]`}
+                      >
+                        <img
+                          src="https://obsidian.md/images/obsidian-logo-gradient.svg"
+                          alt="Obsidian"
+                          className="w-4 h-4"
+                        />
+                        <span>Obsidian</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => window.location.href = "/settings?tab=personalization"}
+                        className="px-2 md:px-3 py-2 rounded-lg flex items-center justify-center gap-1 text-xs font-medium border border-white/10 bg-zinc-900 text-white hover:bg-[#3c1671] transition-all duration-200 relative group"
+                      >
+                        <img
+                          src="https://obsidian.md/images/obsidian-logo-gradient.svg"
+                          alt="Obsidian"
+                          className="w-4 h-4"
+                        />
+                        <span>Obsidian</span>
+                        <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-white text-black px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
+                          Upload Obsidian Files
+                        </span>
+                      </button>
+                    )}
 
                     {/* Gmail button */}
                     {googleTokenVersion === "full" || googleTokenVersion === "gmail_only" ? (
@@ -612,7 +662,7 @@ export default function AISearch() {
                         <img
                           src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/2560px-Gmail_icon_%282020%29.svg.png"
                           alt="Gmail"
-                          className="w-4 h-4"
+                          className="w-4"
                         />
                         <span>Gmail</span>
                       </button>
@@ -630,7 +680,7 @@ export default function AISearch() {
                         <img
                           src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/2560px-Gmail_icon_%282020%29.svg.png"
                           alt="Gmail"
-                          className="w-4 h-4"
+                          className="w-4"
                         />
                         <span>Gmail</span>
                         <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-white text-black px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">

@@ -341,25 +341,32 @@ function SettingsContent() {
           console.log("Gmail connection detected, processing emails");
           toast.success("Gmail connected successfully!");
           processGmailLabels();
+          // Redirect to search page after Gmail connection
+          router.push("/search");
         } else if (source === "notion") {
           console.log("Notion connection detected, importing documents");
           toast.success("Notion connected successfully!");
           importNotionDocuments();
+          // Redirect to search page after Notion connection
+          router.push("/search");
         } else {
           // Only import Google Docs if we have full access
           if (googleTokenVersion === "full") {
             console.log("Google Docs connection detected, importing documents");
             toast.success("Google Docs connected successfully!");
             importGoogleDocs();
+            // Redirect to search page after Google Docs connection
+            router.push("/search");
           } else {
             console.log("Google connection detected, but no full access for Docs");
             toast.success("Google account connected successfully!");
-            // Don't attempt to import Google Docs
+            // Redirect to search page even without full access
+            router.push("/search");
           }
         }
       });
     }
-  }, [searchParams, googleTokenVersion, importGoogleDocs, importNotionDocuments, processGmailLabels]);
+  }, [searchParams, googleTokenVersion, importGoogleDocs, importNotionDocuments, processGmailLabels, router]);
 
   useEffect(() => {
     const connection = searchParams.get("connection");

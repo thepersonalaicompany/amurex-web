@@ -330,7 +330,7 @@ const MeetPreview = () => {
     <div className="relative mt-8 mx-auto max-w-4xl rounded-xl overflow-hidden border border-zinc-800">
       {/* Main meeting area - using gmeet.png as background */}
       <div className="bg-[#0f0f10] h-[450px] relative" style={{ 
-        backgroundImage: "url('/gmeet.jpg')", 
+        backgroundImage: "url('/gmeet_new.png')", 
         backgroundSize: "cover",
         backgroundPosition: "right center"
       }}>
