@@ -13,6 +13,7 @@ import remarkGfm from "remark-gfm";
 import { supabase } from "@/lib/supabaseClient";
 import { Navbar } from "@/components/Navbar";
 import StarButton from "@/components/star-button";
+import ProductHunt from "@/components/product-hunt";
 import { useRouter } from "next/navigation";
 
 const BASE_URL_BACKEND = "https://api.amurex.ai";
@@ -460,8 +461,11 @@ export default function AISearch() {
           isSearchInitiated ? "pt-6" : "flex items-center justify-center"
         }`}
       >
-        <div className="fixed top-4 right-4 z-50 hidden">
-          <StarButton />
+        <div className="fixed top-4 right-4 z-50">
+          {/* <StarButton /> */}
+          <ProductHunt 
+            width={250}
+          />
         </div>
         {showOnboarding && (
           <OnboardingFlow
@@ -643,7 +647,7 @@ export default function AISearch() {
                           className="w-4 h-4"
                         />
                         <span>Obsidian</span>
-                        <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-white text-black px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
+                        <span className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 bg-white text-black px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-10">
                           Upload Obsidian Files
                         </span>
                       </button>
@@ -688,6 +692,20 @@ export default function AISearch() {
                         </span>
                       </button>
                     )}
+
+                    {/* Product Hunt button */}
+                    {/* <a 
+                      href="https://www.producthunt.com/posts/amurex?utm_source=badge-featured&utm_medium=badge" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                    >
+                      <img 
+                        src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=946652&theme=light" 
+                        alt="Amurex - AI companion to organize, retrieve and act on your workflows" 
+                        width="150"
+                        className="hover:opacity-90 transition-opacity"
+                      />
+                    </a> */}
                   </div>
                 </div>
               </div>

@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Video } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import ProductHunt from "@/components/product-hunt";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -228,6 +229,11 @@ function EmailsContent() {
       <div className="flex flex-1 ml-16 p-8 gap-8">
         {/* Left Column - Settings */}
         <div className="w-[60%]">
+          <div className="mb-4">
+            <ProductHunt 
+              width={250}
+            />
+          </div>
           <h2 className="text-2xl font-medium text-white">Emails</h2>
           <p className="text-sm text-zinc-400 mb-6">
             Automatically sort and filter your emails to keep your main inbox

@@ -26,6 +26,7 @@ import {
 import Cookies from "js-cookie";
 import { Navbar } from "@/components/Navbar";
 import { toast } from "react-hot-toast";
+import ProductHunt from "@/components/product-hunt";
 
 const PROVIDER_ICONS = {
   google:
@@ -1085,6 +1086,11 @@ function SettingsContent() {
 
         {/* Main Content */}
         <div className="flex-1 p-8 bg-black overflow-y-auto">
+          <div className="mb-4">
+            <ProductHunt 
+              width={250}
+            />
+          </div>
           <div className="space-y-4 mb-4">
             <div className="relative">
               <div className="absolute -inset-0.5 bg-gradient-to-r from-[#9334E9] to-[#9334E9] rounded-lg blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-gradient-x"></div>

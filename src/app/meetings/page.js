@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/Navbar";
 import { Card } from "@/components/ui/card";
 import { CardContent } from "@/components/ui/card";
+import ProductHunt from "@/components/product-hunt";
 
 export default function TranscriptList() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -185,6 +186,11 @@ export default function TranscriptList() {
       <Navbar />
       <div className="min-h-screen bg-black">
         <div className="p-6 max-w-7xl mx-auto">
+          <div className="mb-4">
+            <ProductHunt 
+              width={250}
+            />
+          </div>
         <h2 className="text-2xl font-medium text-white mb-4">Meetings</h2>
 
           <div className="flex items-center gap-2 mb-6 flex-wrap bg-[#1C1C1E] p-1 rounded-lg w-fit hidden">
@@ -280,7 +286,7 @@ export default function TranscriptList() {
           {filteredTranscripts.length === 0 && (
             <>
               {/* Email categorization card */}
-              <div className="mt-8 mx-auto max-w-4xl">
+              <div className="mt-2 mx-auto max-w-4xl">
                 <div className="relative">
                   <div className="absolute -inset-0.5 bg-gradient-to-r from-[#9334E9] to-[#9334E9] rounded-lg blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-gradient-x"></div>
                   <Card className="bg-black border-zinc-500 relative overflow-hidden w-full">
