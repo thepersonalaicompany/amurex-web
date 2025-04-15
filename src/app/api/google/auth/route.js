@@ -63,11 +63,26 @@ async function getOAuth2Client(userId, { upgradeToFull = false } = {}) {
       const result = await supabase
         .from('google_clients')
         .select('id, client_id, client_secret, type')
-        .eq('id', 2)  // Hardcoded ID for old client
+        .eq('type', 'gmail_only')
+        .lt('users_count', 100)  // Find clients with fewer than 100 users
+        .order('users_count', { ascending: true })  // Get the one with fewest users
+        .limit(1)
         .single();
       
       clientData = result.data;
       clientError = result.error;
+
+      // Increment the users_count for this client
+      if (clientData && !clientError) {
+        const { error: countError } = await supabase.rpc('increment_google_client_user_count', {
+          client_id_param: clientData.id
+        });
+        
+        if (countError) {
+          console.error('Error incrementing client user count:', countError);
+          // Continue anyway since this is not critical
+        }
+      }
     } 
     // If user's token version is 'gmail_only' and they're trying to upgrade to 'full'
     else if (userData.google_token_version === 'gmail_only' && upgradeToFull) {
@@ -111,11 +126,25 @@ async function getOAuth2Client(userId, { upgradeToFull = false } = {}) {
         .from('google_clients')
         .select('id, client_id, client_secret, type')
         .eq('type', 'gmail_only')
+        .lt('users_count', 100)  // Find clients with fewer than 100 users
+        .order('users_count', { ascending: true })  // Get the one with fewest users
         .limit(1)
         .single();
       
       clientData = result.data;
       clientError = result.error;
+      
+      // Increment the users_count for this client
+      if (clientData && !clientError) {
+        const { error: countError } = await supabase.rpc('increment_google_client_user_count', {
+          client_id_param: clientData.id
+        });
+        
+        if (countError) {
+          console.error('Error incrementing client user count:', countError);
+          // Continue anyway since this is not critical
+        }
+      }
     }
 
     if (clientError) throw clientError;
