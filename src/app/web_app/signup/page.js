@@ -235,7 +235,7 @@ export default function SignUp() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-white text-[#0E0F0F] p-2.5 md:p-3 text-sm md:text-base font-semibold rounded-lg hover:bg-[#0E0F0F] hover:text-white hover:border-white border border-[#0E0F0F] transition-all duration-200"
+              className="w-full !bg-white text-[#0E0F0F] p-2.5 md:p-3 text-sm md:text-base font-semibold rounded-lg hover:!bg-[#0E0F0F] hover:text-white hover:border-white border border-[#0E0F0F] transition-all duration-200"
             >
               {loading ? "Creating Account..." : "Sign Up"}
             </button>
