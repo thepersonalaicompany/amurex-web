@@ -73,25 +73,22 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${notoSerif.variable} antialiased ${inter.className}`}
+        className={`${geistSans.variable} ${geistMono.variable} ${notoSerif.variable} antialiased ${inter.className} bg-black`}
       >
         <AuthProvider>
-          <IntercomProvider>
+          {/* <IntercomProvider> */}
             <span
-              className="flex h-screen overflow-hidden"
-              // style={{ backgroundColor: "var(--surface-color-2)" }}
+              className="flex h-screen overflow-hidden bg-black"
             >
               <main
-                className={`flex-1 overflow-y-auto`}
-
-                // style={{ backgroundColor: "var(--surface-color-2)" }}
+                className="flex-1 overflow-y-auto bg-black"
               >
                 {children}
               </main>
             </span>
             <SpeedInsights />
             <Analytics />
-          </IntercomProvider>
+          {/* </IntercomProvider> */}
         </AuthProvider>
       </body>
     </html>
