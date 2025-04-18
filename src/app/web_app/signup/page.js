@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/Input";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
+import { errorKeywords } from "@/lib/utils";
 
 export default function SignUp() {
   const [email, setEmail] = useState("");
@@ -168,7 +169,7 @@ export default function SignUp() {
           <form onSubmit={handleSignUp} className="space-y-4 md:space-y-6">
             <div className="flex gap-4">
               <div className="flex-1">
-                <label className="block text-sm font-medium font-semibold text-white mb-1">
+                <label className="block text-sm font-semibold text-white mb-1">
                   First Name
                 </label>
                 <Input
@@ -180,7 +181,7 @@ export default function SignUp() {
                 />
               </div>
               <div className="flex-1">
-                <label className="block text-sm font-medium font-semibold text-white mb-1">
+                <label className="block text-sm font-semibold text-white mb-1">
                   Last Name
                 </label>
                 <Input
@@ -194,7 +195,7 @@ export default function SignUp() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium font-semibold text-white mb-1">
+              <label className="block text-sm font-semibold text-white mb-1">
                 Email
               </label>
               <Input
@@ -207,7 +208,7 @@ export default function SignUp() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium font-semibold text-white mb-1">
+              <label className="block text-sm font-semibold text-white mb-1">
                 Password
               </label>
               <Input
@@ -225,7 +226,7 @@ export default function SignUp() {
             {message && (
               <p
                 className={`text-xs md:text-sm ${
-                  message.includes("error") ? "text-red-500" : "text-green-500"
+                  errorKeywords.some(keyword => message.toLowerCase().includes(keyword)) ? "text-red-500" : "text-green-500"
                 }`}
               >
                 {message}

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { Input } from "@/components/ui/Input";
 import Link from "next/link";
+import { errorKeywords } from "@/lib/utils";
 
 export default function ResetPassword() {
   const [email, setEmail] = useState("");
@@ -67,7 +68,7 @@ export default function ResetPassword() {
 
           <form onSubmit={handleSendResetEmail} className="space-y-4 md:space-y-6">
             <div>
-              <label className="block text-sm font-medium font-semibold text-white mb-1">
+              <label className="block text-sm font-semibold text-white mb-1">
                 Email
               </label>
               <Input
@@ -82,7 +83,7 @@ export default function ResetPassword() {
             {message && (
               <p
                 className={`text-xs md:text-sm ${
-                  message.includes("error") ? "text-red-500" : "text-green-500"
+                  errorKeywords.some(keyword => message.toLowerCase().includes(keyword)) ? "text-red-500" : "text-green-500"
                 }`}
               >
                 {message}
