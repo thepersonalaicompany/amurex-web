@@ -30,257 +30,10 @@ async function sendPayload(content, user_id) {
     ])
     .select("id");
 }
-// 4. Rephrase input using GPT
-async function rephraseInput(inputString) {
-  console.log("inputString", inputString);
-  const gptAnswer = await groq.chat.completions.create({
-    model: "llama-3.3-70b-versatile",
-    messages: [
-      {
-        role: "system",
-        content:
-          "You are a rephraser and always respond with a rephrased version of the input that is given to a search engine API. Always be succint and use the same words as the input.",
-      },
-      { role: "user", content: inputString },
-    ],
-  });
-  return gptAnswer.choices[0].message.content;
-}
 
-async function searchMemory(queryEmbedding, user_id) {
-    const { data: chunks, error } = await adminSupabase.rpc(
-      "fafsearch_main",
-      {
-        query_embedding: queryEmbedding,
-        input_user_id: user_id,
-      }
-    );
-
-    console.log("chunks", chunks);
-
-    if (error) throw error;
-    return chunks;
-}
-
-async function searchDocuments(queryEmbedding, user_id, enabledSources) {
-  const { data: documents, error } = await adminSupabase.rpc(
-    "fafsearch_two",
-    {
-      query_embedding: queryEmbedding,
-      input_user_id: user_id,
-      input_types: enabledSources
-    }
-  );
-
-  if (error) throw error;
-  return documents || []; // Ensure we return an empty array if no documents found
-}
-
-// 5. Search engine for sources
-async function searchEngineForSources(message, internetSearchEnabled, user_id) {
-  let combinedResults = [];
-
-  // Perform Supabase document search
-  const supabaseResults = await searchMemory(message, user_id);
-  const supabaseData = supabaseResults.map((doc) => ({
-    title: doc.title,
-    link: doc.url,
-    text: doc.text,
-    relevantSections: doc.relevantSections,
-  }));
-  combinedResults = [...combinedResults, ...supabaseData];
-
-  if (internetSearchEnabled) {
-    const loader = new BraveSearch({
-      apiKey: process.env.BRAVE_SEARCH_API_KEY,
-    });
-    const repahrasedMessage = await rephraseInput(message);
-    const docs = await loader.call(repahrasedMessage);
-    function normalizeData(docs) {
-      return JSON.parse(docs)
-        .filter(
-          (doc) => doc.title && doc.link && !doc.link.includes("brave.com")
-        )
-        .slice(0, 6)
-        .map(({ title, link }) => ({ title, link }));
-    }
-    const normalizedData = normalizeData(docs);
-    combinedResults = [...combinedResults, ...normalizedData];
-  }
-
-  let vectorCount = 0;
-  const fetchAndProcess = async (item) => {
-    try {
-      let htmlContent;
-      if (item.text) {
-        htmlContent = item.text;
-      } else {
-        const timer = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Timeout")), 1500)
-        );
-        const fetchPromise = fetchPageContent(item.link);
-        htmlContent = await Promise.race([timer, fetchPromise]);
-      }
-
-      if (htmlContent.length < 250) return null;
-
-      const splitText = await new RecursiveCharacterTextSplitter({
-        chunkSize: 200,
-        chunkOverlap: 0,
-      }).splitText(htmlContent);
-
-      // Get embeddings for each chunk of text
-      const response = await fetch('https://api.mistral.ai/v1/embeddings', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.MISTRAL_API_KEY}`
-        },
-        body: JSON.stringify({
-          input: splitText,
-          model: "mistral-embed",
-          encoding_format: "float"
-        })
-      });
-
-      const embedData = await response.json();
-      const vectors = embedData.data.map(d => d.embedding);
-
-      const vectorStore = await MemoryVectorStore.fromVectors(
-        vectors,
-        splitText,
-        { annotationPosition: item.link }
-      );
-      vectorCount++;
-      return await vectorStore.similaritySearch(message, 1);
-    } catch (error) {
-      console.log(`Failed to process content for ${item.link}, skipping!`);
-      vectorCount++;
-      return null;
-    }
-  };
-
-  const results = await Promise.all(combinedResults.map(fetchAndProcess));
-  const successfulResults = results.filter((result) => result !== null);
-  const topResult = successfulResults.length > 4 ? successfulResults.slice(0, 4) : successfulResults;
-  console.log("topResult", topResult);
-
-  // After getting search results, generate response
-  const modelName = process.env.MODEL_NAME;
-  const messages = [
-    {
-      role: "system",
-      content: "You are a helpful assistant. Use the provided search results to answer the user's query. If the search results don't contain relevant information, provide a general response based on your knowledge.",
-    },
-    {
-      role: "user",
-      content: `Query: ${message}\n\nSearch Results: ${JSON.stringify(topResult)}`,
-    },
-  ];
-
-  const gptResponse = await generateCompletion(messages, modelName);
-
-  return {
-    sources: combinedResults,
-    vectorResults: topResult,
-    answer: gptResponse.choices[0].message.content
-  };
-}
-// 25. Define fetchPageContent function
-async function fetchPageContent(link) {
-  const response = await fetch(link);
-  return extractMainContent(await response.text());
-}
-// 26. Define extractMainContent function
-function extractMainContent(html) {
-  const $ = cheerio.load(html);
-  $("script, style, head, nav, footer, iframe, img").remove();
-  return $("body").text().replace(/\s+/g, " ").trim();
-}
-// 27. Define triggerLLMAndFollowup function
-async function triggerLLMAndFollowup(inputString, user_id) {
-  // Pass user_id to getGPTResults
-  await getGPTResults(inputString, user_id);
-  // Generate follow-up with generateFollowup
-  const followUpResult = await generateFollowup(inputString);
-  // Send follow-up payload with user_id
-  await sendPayload({ type: "FollowUp", content: followUpResult }, user_id);
-  return Response.json({ message: "Processing request" });
-}
-// 32. Define getGPTResults function
-const getGPTResults = async (inputString, user_id) => {
-  let accumulatedContent = "";
-  // 34. Open a streaming connection with Groq
-  const stream = await groq.chat.completions.create({
-    model: "llama-3.3-70b-versatile",
-    messages: [
-      {
-        role: "system",
-        content:
-          "You are a answer generator, you will receive top results of similarity search, they are optional to use depending how well they help answer the query.",
-      },
-      { role: "user", content: inputString },
-    ],
-    stream: true,
-  });
-
-  // Create initial row with user_id
-  // TODO: Why?
-  let rowId = await createRowForGPTResponse(user_id);
-  // Send initial payload with user_id
-  await sendPayload({ type: "Heading", content: "Answer" }, user_id);
-
-  for await (const part of stream) {
-    // 38. Check if delta content exists
-    if (part.choices[0]?.delta?.content) {
-      // 39. Accumulate the content
-      accumulatedContent += part.choices[0]?.delta?.content;
-      // Update row with user_id
-      rowId = await updateRowWithGPTResponse(
-        rowId,
-        accumulatedContent,
-        user_id
-      );
-    }
-  }
-};
-
-// 41. Define createRowForGPTResponse function
-const createRowForGPTResponse = async (user_id) => {
-  const streamId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  const payload = { type: "GPT", content: "" };
-  const { data, error } = await adminSupabase
-    .from("message_history")
-    .insert([{ payload, user_id }])
-    .select("id");
-  return { id: data ? data[0].id : null, streamId };
-};
-
-// 46. Define updateRowWithGPTResponse function
-const updateRowWithGPTResponse = async (prevRowId, content, user_id) => {
-  const payload = { type: "GPT", content };
-  await adminSupabase.from("message_history").delete().eq("id", prevRowId);
-  const { data } = await adminSupabase
-    .from("message_history")
-    .insert([{ payload, user_id }])
-    .select("id");
-  return data ? data[0].id : null;
-};
-
-// 51. Define generateFollowup function
-async function generateFollowup(message) {
-  const modelName = process.env.MODEL_NAME;
-  const messages = [
-    {
-      role: "system",
-      content: `You are a follow up answer generator and always respond with 4 follow up questions based on this input "${message}" in JSON format. i.e. { "follow_up": ["QUESTION_GOES_HERE", "QUESTION_GOES_HERE", "QUESTION_GOES_HERE"] }`,
-    },
-    {
-      role: "user",
-      content: `Generate a 4 follow up questions based on this input ""${message}"" `,
-    },
-  ];
-
+// Function to check which model to use and make the appropriate API call
+async function generateCompletion(messages, modelName) {
+  // Check if we should use Ollama
   if (modelName === 'llama3.3') {
     // Use Ollama API
     const response = await fetch('http://localhost:11434/api/chat', {
@@ -296,14 +49,21 @@ async function generateFollowup(message) {
     });
     
     const data = await response.json();
-    return data.message.content;
+    return {
+      choices: [
+        {
+          message: {
+            content: data.message.content
+          }
+        }
+      ]
+    };
   } else {
     // Use Groq
-    const chatCompletion = await groq.chat.completions.create({
+    return await groq.chat.completions.create({
       model: "llama-3.3-70b-versatile",
       messages: messages,
     });
-    return chatCompletion.choices[0].message.content;
   }
 }
 
@@ -348,148 +108,6 @@ async function generatePrompts(documents) {
   }
 }
 
-// Function to check which model to use and make the appropriate API call
-async function generateCompletion(messages, modelName) {
-  // Check if we should use Ollama
-  if (modelName === 'llama3.3') {
-    // Use Ollama API
-    const response = await fetch('http://localhost:11434/api/chat', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'llama3.3-70b',
-        messages: messages,
-        stream: false
-      }),
-    });
-    
-    const data = await response.json();
-    return {
-      choices: [
-        {
-          message: {
-            content: data.message.content
-          }
-        }
-      ]
-    };
-  } else {
-    // Use Groq
-    return await groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
-      messages: messages,
-    });
-  }
-}
-
-// Replace the searchBrain function with a unified search function that handles both hosted and self-hosted options
-async function searchBrain(query, user_id, enabledSources) {
-  // Check if we're using self-hosted mode
-  const isSelfHosted = process.env.DEPLOYMENT_MODE === 'self_hosted';
-  
-  if (isSelfHosted) {
-    try {
-      // For self-hosted, we need to get embeddings first
-      const response = await fetch('https://api.mistral.ai/v1/embeddings', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.MISTRAL_API_KEY}`
-        },
-        body: JSON.stringify({
-          input: [query],
-          model: "mistral-embed",
-          encoding_format: "float"
-        })
-      });
-      
-      const embedData = await response.json();
-      const queryEmbedding = embedData.data[0].embedding;
-
-      console.log("enabledSources", enabledSources);
-      
-      // Use Supabase RPC for document search in self-hosted mode
-      const { data: documents, error } = await adminSupabase.rpc(
-        "fafsearch_documents",
-        {
-          input_user_id: user_id,
-          query_embedding: queryEmbedding,
-          input_types: enabledSources
-        }
-      );
-
-      console.log("documents", documents);
-      
-      if (error) throw error;
-      
-      // Transform the results to match the format returned by the Brain API
-      return (documents || []).map(doc => {
-        // Handle email type specifically
-        if (doc.type === 'email') {
-          return {
-            id: doc.id,
-            user_id: doc.user_id,
-            url: `/emails/${doc.id}`,
-            title: doc.subject || "Email",
-            text: doc.snippet || doc.content || "",
-            sender: doc.sender,
-            received_at: doc.received_at,
-            type: "email"
-          };
-        }
-        
-        // Handle other document types
-        return {
-          id: doc.id,
-          user_id: doc.user_id,
-          url: doc.url,
-          title: doc.title || "Document",
-          text: doc.selected_chunks?.[0] || doc.text,
-          type: doc.type || "document",
-          selected_chunks: doc.selected_chunks || []
-        };
-      });
-    } catch (error) {
-      console.error('Error in self-hosted document search:', error);
-      throw error;
-    }
-  } else {
-    // Use the Brain API for hosted mode
-    try {
-      const response = await fetch('https://brain.amurex.ai/search', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.BRAIN_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          user_id: user_id,
-          query: query,
-          search_type: "hybrid",
-          ai_enabled: false,
-          limit: 3,
-          offset: 0,
-          sources: enabledSources
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Brain search failed with status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      console.log("data", data);
-      return data.results || [];
-    } catch (error) {
-      console.error('Error searching brain:', error);
-      throw error;
-    }
-  }
-}
-
-// Modify the POST function to remove search time tracking
 export async function POST(req) {
   const startTime = performance.now();
   console.log("POST request started at:", new Date().toISOString());
@@ -511,146 +129,57 @@ export async function POST(req) {
   }
   
   // Original chat functionality continues here...
-  const { message, user_id, googleDocsEnabled, notionEnabled, memorySearchEnabled, obsidianEnabled, gmailEnabled } = body;
+  const { message, user_id } = body;
   
   if (!user_id) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
-    const sourcesStartTime = performance.now();
-    // Create unified list of enabled sources for document search
-    const enabledSources = [
-      ...(googleDocsEnabled ? ['google_docs'] : []),
-      ...(notionEnabled ? ['notion'] : []),
-      ...(obsidianEnabled ? ['obsidian'] : []),
-      ...(gmailEnabled ? ['email'] : [])
-    ];
-    console.log("enabledSources", enabledSources);
-    console.log(`[${performance.now() - sourcesStartTime}ms] Sources configured`);
-
-    if (enabledSources.length === 0 && !memorySearchEnabled) {
-      return Response.json({ 
-        success: false, 
-        error: "No sources enabled for search" 
-      }, { status: 400 });
-    }
-    
-    // Run searches in parallel if both are enabled
+    // Make the API request to search_new
     const searchStartTime = performance.now();
-    const searchPromises = [];
-    let brainResults = [];
-    let meetingsResults = [];
-    let queryEmbedding;
+    console.log("Starting search at:", new Date().toISOString());
     
-    // Add brain search promise if document sources are enabled
-    if (enabledSources.length > 0) {
-      const brainSearchPromise = searchBrain(message, user_id, enabledSources)
-        .then(results => {
-          console.log(`[${performance.now() - searchStartTime}ms] Brain search completed`);
-          brainResults = results;
-        });
-      searchPromises.push(brainSearchPromise);
-    }
-    
-    // Add memory search promise if memory search is enabled
-    if (memorySearchEnabled) {
-      // First get embeddings (this needs to be done before the actual search)
-      const embedPromise = fetch('https://api.mistral.ai/v1/embeddings', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.MISTRAL_API_KEY}`
-        },
-        body: JSON.stringify({
-          input: [message],
-          model: "mistral-embed",
-          encoding_format: "float"
-        })
-      })
-      .then(response => response.json())
-      .then(embedData => {
-        console.log(`[${performance.now() - searchStartTime}ms] Embeddings generated`);
-        queryEmbedding = embedData.data[0].embedding;
-        
-        // Now do the actual memory search with the embedding
-        return searchMemory(queryEmbedding, user_id);
-      })
-      .then(results => {
-        console.log(`[${performance.now() - searchStartTime}ms] Memory search completed`);
-        meetingsResults = results;
-      });
-      
-      searchPromises.push(embedPromise);
-    }
-    
-    // Wait for all search operations to complete
-    await Promise.all(searchPromises);
-    console.log(`[${performance.now() - searchStartTime}ms] All searches completed`);
-    
-    // Process all results
-    let allResults = [...brainResults];
-    
-    // Format meeting results to match brain results structure
-    if (memorySearchEnabled && meetingsResults.length > 0) {
-      const formattedMeetingResults = meetingsResults.map(meeting => ({
-        id: meeting.late_meeting_id,
+    // Call search_new endpoint directly
+    const response = await fetch('http://localhost:8080/search_new', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.BRAIN_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
         user_id: user_id,
-        url: `/meetings/${meeting.late_meeting_id}`,
-        title: meeting.title || "Meeting Transcript",
-        text: meeting.content,
-        type: "meeting",
-        platform_id: meeting.platform_id
-      }));
-
-      console.log("formattedMeetingResults", formattedMeetingResults);
-
-      allResults = [...allResults, ...formattedMeetingResults];
-    }
-    
-    // Prepare unified sources list
-    const sourcesProcessStartTime = performance.now();
-    const sources = allResults.map(result => {
-      if (result.type === "email") {
-        return {
-          id: result.id,
-          text: result.snippet || result.text,
-          title: result.subject || "Email",
-          url: result.url || `/emails/${result.id}`,
-          type: "email",
-          sender: result.sender,
-          received_at: result.received_at,
-          message_id: result.message_id,
-          thread_id: result.thread_id
-        };
-      }
-      
-      return {
-        id: result.id,
-        text: result.text,
-        title: result.title,
-        url: result.url,
-        type: result.type || 'document',
-        platform_id: result.platform_id || null
-      };
+        query: message,
+        ai_enabled: false,
+        limit: 3
+      })
     });
-    console.log(`[${performance.now() - sourcesProcessStartTime}ms] Sources processed`);
+
+    if (!response.ok) {
+      throw new Error(`Search failed with status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log(`[${performance.now() - searchStartTime}ms] Search completed`);
+    console.log("Search results:", data);
+    
+    // Get the results directly from the API response
+    const sources = data.results || [];
+    console.log("Sources:", sources);
     
     // Create streaming response
     const streamSetupStartTime = performance.now();
     const stream = new TransformStream();
     const writer = stream.writable.getWriter();
     const encoder = new TextEncoder();
-
-    const modelName = process.env.MODEL_NAME;
     console.log(`[${performance.now() - streamSetupStartTime}ms] Stream setup completed`);
 
-    // Process the stream using Groq via OpenAI client
+    // Process the stream
     (async () => {
       try {
         let fullResponse = ''; // Track complete response
 
-        // Send sources first - removed search time information
+        // Send sources first
         const sourcesWriteStartTime = performance.now();
         const sourcesPayload = JSON.stringify({
           success: true,
@@ -660,48 +189,37 @@ export async function POST(req) {
         await writer.write(encoder.encode(sourcesPayload + '\n'));
         console.log(`[${performance.now() - sourcesWriteStartTime}ms] Sources written to stream`);
 
-        // Use Groq for streaming (via OpenAI client)
-        const groqStartTime = performance.now();
-        console.log("Starting Groq stream at:", new Date().toISOString());
+        // Check if we have an AI response from the API
+        const aiResponse = data.ai_response;
         
-        // Prepare document content for the model, handling different source types
-        const formattedDocuments = allResults.map(result => {
-          if (result.type === "email") {
-            return {
-              title: result.subject || "Email",
-              text: result.snippet || result.text,
-              sender: result.sender,
-              type: "email",
-              date: result.received_at ? new Date(result.received_at).toLocaleDateString() : "Unknown date"
-            };
-          } else if (result.type === "meeting") {
-            return {
-              title: result.title || "Meeting Transcript",
-              text: result.text,
-              type: "meeting"
-            };
-          } else {
-            return {
-              title: result.title,
-              text: result.text,
-              type: result.type || "document"
-            };
-          }
-        });
-        
-        const groqStream = await groq.chat.completions.create({
-          messages: [
-            {
-              role: "system",
-              // content: "You are a helpful assistant. Use the provided document chunks to answer the user's query. If the chunks don't contain relevant information, let the user know you couldn't find specific information about their query. Be confident in your answer. Don't say 'I'm not sure' or 'I don't know'. ",
-              content: `You are Amurex, a helpful AI productivity assistant. Use the provided document chunks to answer the user's query. If the chunks don't contain relevant information, generate a confident and plausible answer anyway — do not say "I'm not sure" or "I don't know." Be helpful, contextual, and confident.
+        if (aiResponse && typeof aiResponse === 'string' && aiResponse.trim().length > 0) {
+          // Use the AI response from the API
+          console.log("Using AI response from API");
+          fullResponse = aiResponse;
+          
+          // Stream the AI response to the client
+          const payload = JSON.stringify({
+            success: true,
+            chunk: aiResponse,
+          });
+          await writer.write(encoder.encode(payload + '\n'));
+        } else {
+          // Use Groq for streaming if no AI response
+          console.log("No AI response from API, using Groq");
+          
+          const groqStartTime = performance.now();
+          const groqStream = await groq.chat.completions.create({
+            messages: [
+              {
+                role: "system",
+                content: `You are Amurex, a helpful AI productivity assistant. Use the provided document chunks to answer the user's query. If the chunks don't contain relevant information, generate a confident and plausible answer anyway — do not say "I'm not sure" or "I don't know." Be helpful, contextual, and confident.
 
 Behavior Guidelines:
 
                     1. When No Documents Are Found:
                     - Confidently make up a helpful (but very short!) answer if needed.
                     - You can mention you're improvising if appropriate, but do so smoothly.
-                    - Example: “I couldnt find anything directly, but heres what I think might help…”
+                    - Example: "I couldnt find anything directly, but heres what I think might help…"
 
                     2. When Asked "Who are you?" or "What can you do?":
                     - Don't say that you were not able to find anything in the documents. Just introduce yourself as Amurex and describe your core features:
@@ -712,45 +230,44 @@ Behavior Guidelines:
                     - Tone: friendly, smart, maybe a little witty — like a dependable teammate whos always on.
 
                     Always aim to be helpful, aware, and resourceful — even if you have to fake it a bit.`,
-            },
-            {
-              role: "user",
-              content: `Query: ${message}
-              
-              Retrieved documents: ${JSON.stringify(formattedDocuments)}`,
-            },
-          ],
-          model: "llama-3.3-70b-versatile",
-          temperature: 0.5,
-          max_tokens: 1024,
-          top_p: 1,
-          stream: true,
-        });
-        console.log(`[${performance.now() - groqStartTime}ms] Groq stream created`);
+              },
+              {
+                role: "user",
+                content: `Query: ${message}
+                
+                Retrieved documents: ${JSON.stringify(sources)}`,
+              },
+            ],
+            model: "llama-3.3-70b-versatile",
+            temperature: 0.5,
+            max_tokens: 1024,
+            top_p: 1,
+            stream: true,
+          });
+          console.log(`[${performance.now() - groqStartTime}ms] Groq stream created`);
 
-        const streamProcessStartTime = performance.now();
-        let chunkCount = 0;
-        for await (const chunk of groqStream) {
-          chunkCount++;
-          const content = chunk.choices[0]?.delta?.content || '';
-          if (content) {
-            fullResponse += content; // Accumulate the response
-            const payload = JSON.stringify({
-              success: true,
-              chunk: content,
-            });
-            await writer.write(encoder.encode(payload + '\n'));
+          const streamProcessStartTime = performance.now();
+          let chunkCount = 0;
+          for await (const chunk of groqStream) {
+            chunkCount++;
+            const content = chunk.choices[0]?.delta?.content || '';
+            if (content) {
+              fullResponse += content; // Accumulate the response
+              const payload = JSON.stringify({
+                success: true,
+                chunk: content,
+              });
+              await writer.write(encoder.encode(payload + '\n'));
+            }
           }
+          console.log(`[${performance.now() - streamProcessStartTime}ms] Stream processed (${chunkCount} chunks)`);
         }
-        console.log(`[${performance.now() - streamProcessStartTime}ms] Stream processed (${chunkCount} chunks)`);
-        console.log("Groq stream completed at:", new Date().toISOString());
 
-        // fetch the user's table and find if "memory_enabled" is true
+        // Save session to database if memory is enabled
         const dbStartTime = performance.now();
         const { data: user, error } = await adminSupabase.from('users').select('memory_enabled').eq('id', user_id).single();
         
-        if (user.memory_enabled) {
-          // fetch the user's memory table and find if "memory_enabled" is true
+        if (user?.memory_enabled) {
           const sessionInsertStartTime = performance.now();
           await adminSupabase.from('sessions').insert({
             user_id: user_id,
@@ -760,7 +277,7 @@ Behavior Guidelines:
           });
           console.log(`[${performance.now() - sessionInsertStartTime}ms] Session inserted into database`);
         } else {
-          console.log("Memory is not enabled for this user", error);
+          console.log("Memory is not enabled for this user");
         }
         console.log(`[${performance.now() - dbStartTime}ms] Database operations completed`);
 
@@ -773,7 +290,7 @@ Behavior Guidelines:
         await writer.write(encoder.encode(finalPayload + '\n'));
         console.log(`[${performance.now() - finalWriteStartTime}ms] Final message written to stream`);
       } catch (error) {
-        console.error('Error in Groq stream processing:', error);
+        console.error('Error in processing stream:', error);
         const errorPayload = JSON.stringify({
           success: false,
           error: error.message,

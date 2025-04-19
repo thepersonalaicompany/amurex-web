@@ -24,17 +24,9 @@ export default function AISearch() {
   const messagesEndRef = useRef(null);
   const [inputValue, setInputValue] = useState("");
   const [messageHistory, setMessageHistory] = useState([]);
-  const [googleDocsEnabled, setGoogleDocsEnabled] = useState(true);
   const [session, setSession] = useState(null);
   const [searchResults, setSearchResults] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
-  const [memorySearchEnabled, setMemorySearchEnabled] = useState(true);
-  const [hasGoogleDocs, setHasGoogleDocs] = useState(false);
-  const [hasMeetings, setHasMeetings] = useState(false);
-  const [notionEnabled, setNotionEnabled] = useState(true);
-  const [hasNotion, setHasNotion] = useState(false);
-  const [obsidianEnabled, setObsidianEnabled] = useState(true);
-  const [hasObsidian, setHasObsidian] = useState(false);
   const [isSearchInitiated, setIsSearchInitiated] = useState(false);
   const [suggestedPrompts, setSuggestedPrompts] = useState([]);
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -42,13 +34,6 @@ export default function AISearch() {
   const [searchStartTime, setSearchStartTime] = useState(null);
   const [sourcesTime, setSourcesTime] = useState(null);
   const [completionTime, setCompletionTime] = useState(null);
-  const [hasGmail, setHasGmail] = useState(false);
-  const [gmailEnabled, setGmailEnabled] = useState(true);
-  const [googleTokenVersion, setGoogleTokenVersion] = useState(null);
-  const [showGoogleDocsModal, setShowGoogleDocsModal] = useState(false);
-  const [showGmailModal, setShowGmailModal] = useState(false);
-  const [showBroaderAccessModal, setShowBroaderAccessModal] = useState(false);
-  const [isGoogleAuthInProgress, setIsGoogleAuthInProgress] = useState(false);
 
   // Add useRouter
   const router = useRouter();
@@ -147,112 +132,28 @@ export default function AISearch() {
     };
   }, [session?.user?.id]);
 
-  // Replace the existing useEffect for hasSeenOnboarding
-  useEffect(() => {
-    const checkOnboardingStatus = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (session) {
-        const { data, error } = await supabase
-          .from("users")
-          .select("hasSeenChatOnboarding")
-          .eq("id", session.user.id)
-          .single();
-
-        if (data) {
-          setHasSeenOnboarding(!!data.hasSeenChatOnboarding);
-        }
-      }
-    };
-
-    checkOnboardingStatus();
-  }, []);
-
   // Update the useEffect for checking connections
   useEffect(() => {
     if (!session?.user?.id) return;
 
-    let googleConnected = false;
-    let notionConnected = false;
-    let connectionsChecked = 0;
-
-    // Check Google Docs connection
-    supabase
-      .from("users")
-      .select("google_token_version")
-      .eq("id", session.user.id)
-      .single()
-      .then(({ data }) => {
-        // Check if google_token_version exists (not null)
-        googleConnected = !!data?.google_token_version;
-        console.log("google token version", data?.google_token_version);
-        
-        // Set the token version
-        setGoogleTokenVersion(data?.google_token_version);
-        
-        // Set availability based on token version
-        // Google Docs is only available with "full" access
-        setHasGoogleDocs(googleConnected && data?.google_token_version === "full");
-        
-        // Gmail is available with either "full" or "gmail_only" access
-        setHasGmail(googleConnected && 
-          (data?.google_token_version === "full" || data?.google_token_version === "gmail_only"));
-        
-        connectionsChecked++;
-        if (connectionsChecked === 2) {
-          checkOnboarding(googleConnected, notionConnected);
-        }
-      });
-
-    // Check if user has any meetings
-    supabase
-      .from("late_meeting")
-      .select("id")
-      .contains("user_ids", [session.user.id])
-      .limit(1)
-      .then(({ data }) => {
-        const hasMeetingsData = !!data?.length;
-        setHasMeetings(hasMeetingsData);
-        console.log("User has meetings:", hasMeetingsData);
-      });
-
-    // Check Notion connection
-    supabase
-      .from("users")
-      .select("notion_connected")
-      .eq("id", session.user.id)
-      .single()
-      .then(({ data }) => {
-        notionConnected = !!data?.notion_connected;
-        setHasNotion(notionConnected);
-        console.log("User has Notion connected:", notionConnected);
-        connectionsChecked++;
-        if (connectionsChecked === 2) {
-          checkOnboarding(googleConnected, notionConnected);
-        }
-      });
-
-    // Check if user has any Obsidian documents
-    supabase
-      .from("documents")
-      .select("id")
-      .eq("user_id", session.user.id)
-      .eq("type", "obsidian")
-      .limit(1)
-      .then(({ data }) => {
-        const hasObsidianData = !!data?.length;
-        setHasObsidian(hasObsidianData);
-        console.log("User has Obsidian documents:", hasObsidianData);
-      });
-
     // Helper function to check if onboarding should be shown
-    const checkOnboarding = (google, notion) => {
-      if (!google && !notion && !hasSeenOnboarding) {
-        setShowOnboarding(true);
+    const checkOnboarding = async () => {
+      const { data } = await supabase
+        .from("users")
+        .select("hasSeenChatOnboarding")
+        .eq("id", session.user.id)
+        .single();
+
+      if (data) {
+        setHasSeenOnboarding(!!data.hasSeenChatOnboarding);
+        if (!data.hasSeenChatOnboarding) {
+          setShowOnboarding(true);
+        }
       }
     };
-  }, [session?.user?.id, hasSeenOnboarding]);
+
+    checkOnboarding();
+  }, [session?.user?.id]);
 
   // Add new useEffect to fetch documents and generate prompts
   useEffect(() => {
@@ -294,7 +195,7 @@ export default function AISearch() {
       });
   }, [session?.user?.id]);
 
-  // Update sendMessage to include Gmail
+  // Update sendMessage to use search_new directly
   const sendMessage = (messageToSend) => {
     if (!session?.user?.id) return;
 
@@ -320,11 +221,6 @@ export default function AISearch() {
       method: "POST",
       body: JSON.stringify({
         message,
-        googleDocsEnabled,
-        notionEnabled,
-        memorySearchEnabled,
-        obsidianEnabled,
-        gmailEnabled,
         user_id: session.user.id,
       }),
       headers: {
@@ -381,6 +277,11 @@ export default function AISearch() {
                       // Track when first text chunk arrives
                       if (data.chunk && !firstChunkReceived) {
                         firstChunkReceived = true;
+                        // If we get a large chunk at once (from Brain API), record completion time
+                        if (data.chunk.length > 200) {
+                          const currentTime = performance.now();
+                          setCompletionTime(((currentTime - startTime) / 1000).toFixed(1));
+                        }
                       }
 
                       setSearchResults((prev) => ({
@@ -420,38 +321,6 @@ export default function AISearch() {
       });
   };
 
-  // Add function to initiate Google auth
-  const initiateGoogleAuth = async () => {
-    try {
-      setIsGoogleAuthInProgress(true);
-      
-      // Call the Google auth API directly
-      const response = await fetch('/api/google/auth', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId: session.user.id,
-          source: 'search',
-          upgradeToFull: true
-        }),
-      });
-      
-      const data = await response.json();
-      
-      if (data.url) {
-        // Redirect to Google auth URL
-        window.location.href = data.url;
-      } else {
-        throw new Error('Failed to get Google auth URL');
-      }
-    } catch (error) {
-      console.error('Error initiating Google auth:', error);
-      setIsGoogleAuthInProgress(false);
-    }
-  };
-
   // 12. Render home component
   return (
     <>
@@ -472,7 +341,7 @@ export default function AISearch() {
           />
         )}
         <div className="p-4 md:p-6 max-w-7xl mx-auto w-full">
-          {!showOnboarding && !hasGoogleDocs && !hasNotion && !hasObsidian && (
+          {!showOnboarding && (
             <div className="hidden bg-[#1E1E24] rounded-lg border border-zinc-800 p-4 mb-4 flex flex-col md:flex-row items-center justify-between">
               <div className="flex items-center gap-3 mb-3 md:mb-0">
                 <div className="bg-[#9334E9] rounded-full p-2">
@@ -517,180 +386,6 @@ export default function AISearch() {
                   <h1 className="text-xl md:text-2xl font-medium text-white">
                     Hi! I&apos;m Amurex - your AI assistant for work and life
                   </h1>
-                </div>
-                <div className="flex flex-col gap-2 w-full md:w-auto">
-                  <div className="grid grid-cols-2 md:grid-cols-3 items-center gap-2">
-                    {/* Google Docs button */}
-                    {googleTokenVersion === "full" ? (
-                      <button
-                        onClick={() => setGoogleDocsEnabled(!googleDocsEnabled)}
-                        className={`px-2 md:px-3 py-2 rounded-lg flex items-center justify-center gap-1 text-xs font-medium border border-white/10 ${
-                          googleDocsEnabled
-                            ? "bg-[#3c1671] text-white border-[#6D28D9]"
-                            : "bg-zinc-900 text-white"
-                        } transition-all duration-200 hover:border-[#6D28D9]`}
-                      >
-                        <img
-                          src="https://upload.wikimedia.org/wikipedia/commons/0/01/Google_Docs_logo_%282014-2020%29.svg"
-                          alt="Google Docs"
-                          className="w-4 h-4"
-                        />
-                        <span>Google Docs</span>
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => {
-                          if (googleTokenVersion === "old" || googleTokenVersion === null) {
-                            setShowGoogleDocsModal(true);
-                          } else if (googleTokenVersion === "gmail_only") {
-                            setShowBroaderAccessModal(true);
-                          } else {
-                            window.location.href = "/settings?tab=personalization";
-                          }
-                        }}
-                        className="px-2 md:px-3 py-2 rounded-lg flex items-center justify-center gap-1 text-xs font-medium border border-white/10 bg-zinc-900 text-white hover:bg-[#3c1671] transition-all duration-200 relative group"
-                      >
-                        <img
-                          src="https://upload.wikimedia.org/wikipedia/commons/0/01/Google_Docs_logo_%282014-2020%29.svg"
-                          alt="Google Docs"
-                          className="w-4 h-4"
-                        />
-                        <span>Google Docs</span>
-                        <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-white text-black px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
-                          Connect Google Docs
-                        </span>
-                      </button>
-                    )}
-
-                    {/* Meetings button */}
-                    <button
-                      onClick={() => setMemorySearchEnabled(!memorySearchEnabled)}
-                      className={`px-2 md:px-3 py-2 rounded-lg flex items-center justify-center gap-1 text-xs font-medium border border-white/10 ${
-                        memorySearchEnabled && hasMeetings
-                          ? "bg-[#3c1671] text-white border-[#6D28D9]"
-                          : "bg-zinc-900 text-white"
-                      } transition-all duration-200 hover:border-[#6D28D9] ${
-                        !hasMeetings ? "opacity-50 cursor-not-allowed" : ""
-                      }`}
-                      disabled={!hasMeetings}
-                    >
-                      <ChatCenteredDots className="w-4 h-4" />
-                      <span>Meetings</span>
-                      {!hasMeetings && (
-                        <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-white text-black px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
-                          No meetings found
-                        </span>
-                      )}
-                    </button>
-
-                    {/* Notion button */}
-                    {hasNotion ? (
-                      <button
-                        onClick={() => setNotionEnabled(!notionEnabled)}
-                        className={`px-2 md:px-3 py-2 rounded-lg flex items-center justify-center gap-1 text-xs font-medium border border-white/10 ${
-                          notionEnabled
-                            ? "bg-[#3c1671] text-white border-[#6D28D9]"
-                            : "bg-zinc-900 text-white"
-                        } transition-all duration-200 hover:border-[#6D28D9]`}
-                      >
-                        <img
-                          src="https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png"
-                          alt="Notion"
-                          className="w-4 h-4"
-                        />
-                        <span>Notion</span>
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => window.location.href = "/settings?tab=personalization"}
-                        className="px-2 md:px-3 py-2 rounded-lg flex items-center justify-center gap-1 text-xs font-medium border border-white/10 bg-zinc-900 text-white hover:bg-[#3c1671] transition-all duration-200 relative group"
-                      >
-                        <img
-                          src="https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png"
-                          alt="Notion"
-                          className="w-4 h-4"
-                        />
-                        <span>Notion</span>
-                        <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-white text-black px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
-                          Connect Notion
-                        </span>
-                      </button>
-                    )}
-
-                    {/* Obsidian button */}
-                    {hasObsidian ? (
-                      <button
-                        onClick={() => setObsidianEnabled(!obsidianEnabled)}
-                        className={`px-2 md:px-3 py-2 rounded-lg flex items-center justify-center gap-1 text-xs font-medium border border-white/10 ${
-                          obsidianEnabled
-                            ? "bg-[#3c1671] text-white border-[#6D28D9]"
-                            : "bg-zinc-900 text-white"
-                        } transition-all duration-200 hover:border-[#6D28D9]`}
-                      >
-                        <img
-                          src="https://obsidian.md/images/obsidian-logo-gradient.svg"
-                          alt="Obsidian"
-                          className="w-4 h-4"
-                        />
-                        <span>Obsidian</span>
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => window.location.href = "/settings?tab=personalization"}
-                        className="px-2 md:px-3 py-2 rounded-lg flex items-center justify-center gap-1 text-xs font-medium border border-white/10 bg-zinc-900 text-white hover:bg-[#3c1671] transition-all duration-200 relative group"
-                      >
-                        <img
-                          src="https://obsidian.md/images/obsidian-logo-gradient.svg"
-                          alt="Obsidian"
-                          className="w-4 h-4"
-                        />
-                        <span>Obsidian</span>
-                        <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-white text-black px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
-                          Upload Obsidian Files
-                        </span>
-                      </button>
-                    )}
-
-                    {/* Gmail button */}
-                    {googleTokenVersion === "full" || googleTokenVersion === "gmail_only" ? (
-                      <button
-                        onClick={() => setGmailEnabled(!gmailEnabled)}
-                        className={`px-2 md:px-3 py-2 rounded-lg flex items-center justify-center gap-1 text-xs font-medium border border-white/10 ${
-                          gmailEnabled
-                            ? "bg-[#3c1671] text-white border-[#6D28D9]"
-                            : "bg-zinc-900 text-white"
-                        } transition-all duration-200 hover:border-[#6D28D9]`}
-                      >
-                        <img
-                          src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/2560px-Gmail_icon_%282020%29.svg.png"
-                          alt="Gmail"
-                          className="w-4"
-                        />
-                        <span>Gmail</span>
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => {
-                          if (googleTokenVersion === "old" || googleTokenVersion === null) {
-                            setShowGmailModal(true);
-                          } else {
-                            window.location.href = "/settings?tab=personalization";
-                          }
-                        }}
-                        className="px-2 md:px-3 py-2 rounded-lg flex items-center justify-center gap-1 text-xs font-medium border border-white/10 bg-zinc-900 text-white hover:bg-[#3c1671] transition-all duration-200 relative group"
-                      >
-                        <img
-                          src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/2560px-Gmail_icon_%282020%29.svg.png"
-                          alt="Gmail"
-                          className="w-4"
-                        />
-                        <span>Gmail</span>
-                        <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-white text-black px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
-                          Connect Gmail
-                        </span>
-                      </button>
-                    )}
-                  </div>
                 </div>
               </div>
             </div>
@@ -849,98 +544,6 @@ export default function AISearch() {
           )}
         </div>
       </div>
-
-      {/* Add modals for Google Docs and Gmail */}
-      {showGoogleDocsModal && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
-          <div className="bg-zinc-900 rounded-lg p-6 max-w-md w-full border border-zinc-700">
-            <h3 className="text-xl font-medium text-white mb-4">Google Access Required</h3>
-            <p className="text-zinc-300 mb-6">
-              {googleTokenVersion === "old" 
-                ? "Your Google access token is old and you'll have to reconnect Google to continue using it."
-                : "You need to connect your Google account to access Google Docs. Please visit the settings page to connect."}
-            </p>
-            <div className="flex justify-end gap-4">
-              <button
-                onClick={() => setShowGoogleDocsModal(false)}
-                className="px-4 py-2 rounded-lg bg-zinc-800 text-white hover:bg-zinc-700 transition-colors"
-              >
-                Cancel
-              </button>
-              <a
-                href="/settings?tab=personalization"
-                className="px-4 py-2 rounded-lg bg-[#9334E9] text-white hover:bg-[#7928CA] transition-colors"
-              >
-                Go to Settings
-              </a>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showBroaderAccessModal && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
-          <div className="bg-zinc-900 rounded-lg p-6 max-w-md w-full border border-zinc-700">
-            <h3 className="text-xl font-medium text-white mb-4">Broader Google Access Required</h3>
-            <p className="text-zinc-300 mb-6">
-              We need broader access to your Google account to enable Google Docs search. Our app is still in the verification process with Google. If you wish to proceed with full access, please click the button below.
-            </p>
-            <div className="flex justify-end gap-4">
-              <button
-                onClick={() => setShowBroaderAccessModal(false)}
-                className="px-4 py-2 rounded-lg bg-zinc-800 text-white hover:bg-zinc-700 transition-colors"
-                disabled={isGoogleAuthInProgress}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={initiateGoogleAuth}
-                className="px-4 py-2 rounded-lg bg-[#9334E9] text-white hover:bg-[#7928CA] transition-colors flex items-center justify-center"
-                disabled={isGoogleAuthInProgress}
-              >
-                {isGoogleAuthInProgress ? (
-                  <>
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Connecting...
-                  </>
-                ) : (
-                  "Connect Google"
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showGmailModal && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
-          <div className="bg-zinc-900 rounded-lg p-6 max-w-md w-full border border-zinc-700">
-            <h3 className="text-xl font-medium text-white mb-4">Google Access Required</h3>
-            <p className="text-zinc-300 mb-6">
-              {googleTokenVersion === "old" 
-                ? "Your Google access token is old and you'll have to reconnect Google to continue using it."
-                : "You need to connect your Google account to access Gmail. Please visit the settings page to connect."}
-            </p>
-            <div className="flex justify-end gap-4">
-              <button
-                onClick={() => setShowGmailModal(false)}
-                className="px-4 py-2 rounded-lg bg-zinc-800 text-white hover:bg-zinc-700 transition-colors"
-              >
-                Cancel
-              </button>
-              <a
-                href="/settings?tab=personalization"
-                className="px-4 py-2 rounded-lg bg-[#9334E9] text-white hover:bg-[#7928CA] transition-colors"
-              >
-                Go to Settings
-              </a>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }
@@ -1012,16 +615,94 @@ export const Sources = ({ content = [] }) => {
     console.log("Sources content:", content);
   }, [content]);
 
-  // Helper function to create Gmail URL from message or thread ID
-  const createGmailUrl = (source) => {
-    // Check if we have a message_id or thread_id
-    if (source.message_id) {
-      return `https://mail.google.com/mail/u/0/#inbox/${source.message_id}`;
-    } else if (source.thread_id) {
-      return `https://mail.google.com/mail/u/0/#inbox/${source.thread_id}`;
+  // Helper function to determine source icon based on 'type' directly
+  const getSourceIcon = (type) => {
+    switch(type) {
+      case "gmail":
+        return (
+          <img
+            src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/2560px-Gmail_icon_%282020%29.svg.png"
+            alt="Gmail"
+            className="w-6 flex-shrink-0"
+          />
+        );
+        
+      case "msteams":
+        return (
+          <img
+            src="https://www.svgrepo.com/show/303180/microsoft-teams-logo.svg"
+            alt="Microsoft Teams"
+            className="w-8"
+          />
+        );
+        
+      case "google-meet":
+        return (
+          <img
+            src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Google_Meet_icon_%282020%29.svg/1024px-Google_Meet_icon_%282020%29.svg.png?20221213135236"
+            alt="Google Meet"
+            className="w-8"
+          />
+        );
+        
+      case "google_docs":
+        return (
+          <img
+            src="https://upload.wikimedia.org/wikipedia/commons/0/01/Google_Docs_logo_%282014-2020%29.svg"
+            alt="Google Docs"
+            className="w-6 h-6"
+          />
+        );
+        
+      case "notion":
+        return (
+          <img
+            src="https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png"
+            alt="Notion"
+            className="w-6 h-6"
+          />
+        );
+        
+      case "obsidian":
+        return (
+          <img
+            src="https://obsidian.md/images/obsidian-logo-gradient.svg"
+            alt="Obsidian"
+            className="w-6 h-6"
+          />
+        );
+      
+      case "email":
+        return (
+          <img
+            src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/2560px-Gmail_icon_%282020%29.svg.png"
+            alt="Gmail"
+            className="w-6 flex-shrink-0"
+          />
+        );
+      
+      default:
+        return (
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="w-6 h-6 text-zinc-400"
+          >
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+            <polyline points="10 9 9 9 8 9"></polyline>
+          </svg>
+        );
     }
-    // Fallback to the provided URL or a default
-    return source.url || `/emails/${source.id}`;
   };
 
   if (!content || content.length === 0) {
@@ -1055,151 +736,38 @@ export const Sources = ({ content = [] }) => {
       <div className="grid grid-cols-1 gap-2">
         {Array.isArray(content) &&
           content.map((source, index) => {
-            // For debugging
-            console.log(`Source ${index}:`, source);
-
-            if (source.type === "meeting") {
-              // Check if platform_id exists and is a string before using includes
-              let platform = "teams"; // Default to teams
-
-              try {
-                if (
-                  source.platform_id &&
-                  typeof source.platform_id === "string"
-                ) {
-                  platform = source.platform_id.includes("-")
-                    ? "google"
-                    : "teams";
-                }
-              } catch (error) {
-                console.error("Error determining platform:", error);
-              }
-
-              return (
-                <a
-                  key={index}
-                  href={source.url}
-                  className="block"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <div className="bg-black rounded-lg p-4 border border-zinc-800 hover:border-[#6D28D9] transition-colors h-[160px] relative">
-                    <Link className="absolute top-4 right-4 w-4 h-4 text-zinc-500" />
-                    <div className="text-zinc-300 text-sm font-medium mb-2 flex items-center gap-2">
-                      {platform === "google" ? (
-                        <img
-                          src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Google_Meet_icon_%282020%29.svg/1024px-Google_Meet_icon_%282020%29.svg.png?20221213135236"
-                          alt="Google Meet"
-                          className="w-8"
-                        />
-                      ) : (
-                        <img
-                          src="https://www.svgrepo.com/show/303180/microsoft-teams-logo.svg"
-                          alt="Microsoft Teams"
-                          className="w-8"
-                        />
-                      )}
-                      {source.title}
-                    </div>
-                    <div className="text-zinc-500 text-xs overflow-hidden line-clamp-4">
-                      <ReactMarkdown>{source.text}</ReactMarkdown>
-                    </div>
-                  </div>
-                </a>
-              );
-            } else if (source.type === "email") {
-              // Create Gmail URL from message_id or thread_id
-              const gmailUrl = createGmailUrl(source);
-
-              return (
-                <a
-                  key={index}
-                  href={gmailUrl}
-                  className="block"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <div className="bg-black rounded-lg p-4 border border-zinc-800 hover:border-[#6D28D9] transition-colors h-[160px] relative">
-                    <Link className="absolute top-4 right-4 w-4 h-4 text-zinc-500" />
-                    <div className="text-zinc-300 text-sm font-medium mb-2 flex items-center gap-2">
-                      <img
-                        src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/2560px-Gmail_icon_%282020%29.svg.png"
-                        alt="Gmail"
-                        className="w-6 flex-shrink-0"
-                      />
-                      <div className="flex flex-col overflow-hidden">
-                        <span className="truncate font-medium max-w-full">
-                          {source.title}
-                        </span>
+            // Debug logging
+            return (
+              <a
+                key={index}
+                href={source.url || "#"}
+                className="block"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <div className="bg-black rounded-lg p-4 border border-zinc-800 hover:border-[#6D28D9] transition-colors h-[160px] relative">
+                  <Link className="absolute top-4 right-4 w-4 h-4 text-zinc-500" />
+                  <div className="text-zinc-300 text-sm font-medium mb-2 flex items-center gap-2">
+                    {getSourceIcon(source.type)}
+                    <div className="flex flex-col overflow-hidden">
+                      <span className="truncate font-medium max-w-full">
+                        {source.title || "Document"}
+                      </span>
+                      
+                      {/* Show sender if available (for email types) */}
+                      {source.sender && (
                         <span className="text-xs text-zinc-400 truncate max-w-full">
                           {source.sender}
                         </span>
-                        {source.received_at && (
-                          <span className="text-xs text-zinc-500">
-                            {new Date(source.received_at).toLocaleDateString()}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="text-zinc-500 text-xs overflow-hidden line-clamp-4">
-                      {source.text}
+                      )}
                     </div>
                   </div>
-                </a>
-              );
-            } else {
-              // Handle document types with appropriate icons
-              let icon = null;
-
-              if (source.type === "google_docs") {
-                icon = (
-                  <img
-                    src="https://upload.wikimedia.org/wikipedia/commons/0/01/Google_Docs_logo_%282014-2020%29.svg"
-                    alt="Google Docs"
-                    className="w-6 h-6"
-                  />
-                );
-              } else if (source.type === "notion") {
-                icon = (
-                  <img
-                    src="https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png"
-                    alt="Notion"
-                    className="w-6 h-6"
-                  />
-                );
-              } else if (source.type === "obsidian") {
-                icon = (
-                  <img
-                    src="https://obsidian.md/images/obsidian-logo-gradient.svg"
-                    alt="Obsidian"
-                    className="w-6 h-6"
-                  />
-                );
-              }
-
-              return (
-                <a
-                  key={index}
-                  href={source.url}
-                  className="block"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <div className="bg-black rounded-lg p-4 border border-zinc-800 hover:border-[#6D28D9] transition-colors h-[160px] relative">
-                    <Link className="absolute top-4 right-4 w-4 h-4 text-zinc-500" />
-                    <div className="text-zinc-300 text-sm font-medium mb-2 flex items-center gap-2">
-                      {icon}
-                      <span className="truncate">
-                        {source.title || "Document"}
-                      </span>
-                    </div>
-                    <div className="text-zinc-500 text-xs overflow-hidden line-clamp-4">
-                      <ReactMarkdown>{source.text}</ReactMarkdown>
-                    </div>
+                  <div className="text-zinc-500 text-xs overflow-hidden line-clamp-4">
+                    <ReactMarkdown>{source.content || ""}</ReactMarkdown>
                   </div>
-                </a>
-              );
-            }
+                </div>
+              </a>
+            );
           })}
       </div>
     </div>
