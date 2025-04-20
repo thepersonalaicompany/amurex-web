@@ -161,11 +161,9 @@ export async function POST(req) {
 
     const data = await response.json();
     console.log(`[${performance.now() - searchStartTime}ms] Search completed`);
-    console.log("Search results:", data);
     
     // Get the results directly from the API response
     const sources = data.results || [];
-    console.log("Sources:", sources);
     
     // Create streaming response
     const streamSetupStartTime = performance.now();
@@ -189,6 +187,20 @@ export async function POST(req) {
         await writer.write(encoder.encode(sourcesPayload + '\n'));
         console.log(`[${performance.now() - sourcesWriteStartTime}ms] Sources written to stream`);
 
+        // Clean up sources to remove excessive newlines
+        const cleanedSources = sources.map(source => {
+          if (source.content) {
+            return {
+              ...source,
+              content: source.content
+                .replace(/[\r\n\x0B\x0C\u2028\u2029]+/g, ' ') // Replace all types of newlines with a space
+                .replace(/\s+/g, ' ')                          // Replace multiple spaces with a single space
+                .trim()                                         // Remove leading/trailing whitespace
+            };
+          }
+          return source;
+        });
+
         // Check if we have an AI response from the API
         const aiResponse = data.ai_response;
         
@@ -206,22 +218,29 @@ export async function POST(req) {
         } else {
           // Use Groq for streaming if no AI response
           console.log("No AI response from API, using Groq");
+
+          console.log("suka message", message);
+          console.log("suka sources", cleanedSources);
           
           const groqStartTime = performance.now();
           const groqStream = await groq.chat.completions.create({
             messages: [
               {
                 role: "system",
-                content: `You are Amurex, a helpful AI productivity assistant. Use the provided document chunks to answer the user's query. If the chunks don't contain relevant information, generate a confident and plausible answer anyway — do not say "I'm not sure" or "I don't know." Be helpful, contextual, and confident.
+                content: `You are Amurex, a helpful AI productivity assistant. Use the provided document chunks to answer the user's query. If the chunks don't contain relevant information, generate a confident and plausible answer anyway — do not say "I'm not sure" or "I couldnt find anything" Be helpful, contextual, and confident.
 
-Behavior Guidelines:
+                    Behavior Guidelines:
 
-                    1. When No Documents Are Found:
+                    1. When Documents Are Found:
+                    - Use the documents to answer the user's query.
+                    - Start answering the user's query with the documents straight away.
+                    - Example: "When is my next meeting with Mike?" - "Your next meeting with Mike is on Tuesday at 10am."
+
+                    2. When No Documents Are Found:
                     - Confidently make up a helpful (but very short!) answer if needed.
                     - You can mention you're improvising if appropriate, but do so smoothly.
-                    - Example: "I couldnt find anything directly, but heres what I think might help…"
 
-                    2. When Asked "Who are you?" or "What can you do?":
+                    3. When Asked "Who are you?" or "What can you do?":
                     - Don't say that you were not able to find anything in the documents. Just introduce yourself as Amurex and describe your core features:
                       - AI meeting assistant (live insights, summaries, transcripts)
                       - Smart search across tools like Notion, Google Drive, and more
@@ -235,7 +254,7 @@ Behavior Guidelines:
                 role: "user",
                 content: `Query: ${message}
                 
-                Retrieved documents: ${JSON.stringify(sources)}`,
+                Retrieved documents: ${JSON.stringify(cleanedSources)}`,
               },
             ],
             model: "llama-3.3-70b-versatile",
@@ -273,7 +292,7 @@ Behavior Guidelines:
             user_id: user_id,
             query: message,
             response: fullResponse,
-            sources: sources,
+            sources: cleanedSources || sources, // Use cleaned sources if available
           });
           console.log(`[${performance.now() - sessionInsertStartTime}ms] Session inserted into database`);
         } else {
