@@ -1,6 +1,6 @@
 "use client";
 // 1. Import required dependencies
-import React, { useEffect, useRef, useState, memo } from "react";
+import React, { useEffect, useRef, useState, memo, useMemo } from "react";
 import {
   ArrowCircleRight,
   ChatCenteredDots,
@@ -34,6 +34,27 @@ export default function AISearch() {
   const [searchStartTime, setSearchStartTime] = useState(null);
   const [sourcesTime, setSourcesTime] = useState(null);
   const [completionTime, setCompletionTime] = useState(null);
+  
+  // Add source filter states - these are only for frontend filtering
+  const [showGoogleDocs, setShowGoogleDocs] = useState(true);
+  const [showNotion, setShowNotion] = useState(true);
+  const [showMeetings, setShowMeetings] = useState(true);
+  const [showObsidian, setShowObsidian] = useState(true);
+  const [showGmail, setShowGmail] = useState(true);
+  
+  // Connection status states
+  const [hasGoogleDocs, setHasGoogleDocs] = useState(false);
+  const [hasMeetings, setHasMeetings] = useState(false);
+  const [hasNotion, setHasNotion] = useState(false);
+  const [hasObsidian, setHasObsidian] = useState(false);
+  const [hasGmail, setHasGmail] = useState(false);
+  const [googleTokenVersion, setGoogleTokenVersion] = useState(null);
+  
+  // Modal states
+  const [showGoogleDocsModal, setShowGoogleDocsModal] = useState(false);
+  const [showGmailModal, setShowGmailModal] = useState(false);
+  const [showBroaderAccessModal, setShowBroaderAccessModal] = useState(false);
+  const [isGoogleAuthInProgress, setIsGoogleAuthInProgress] = useState(false);
 
   // Add useRouter
   const router = useRouter();
@@ -132,28 +153,90 @@ export default function AISearch() {
     };
   }, [session?.user?.id]);
 
-  // Update the useEffect for checking connections
+  // Update the useEffect for checking all connections
   useEffect(() => {
     if (!session?.user?.id) return;
 
-    // Helper function to check if onboarding should be shown
-    const checkOnboarding = async () => {
-      const { data } = await supabase
-        .from("users")
-        .select("hasSeenChatOnboarding")
-        .eq("id", session.user.id)
-        .single();
+    let googleConnected = false;
+    let notionConnected = false;
+    let connectionsChecked = 0;
 
-      if (data) {
-        setHasSeenOnboarding(!!data.hasSeenChatOnboarding);
-        if (!data.hasSeenChatOnboarding) {
-          setShowOnboarding(true);
+    // Check Google Docs connection
+    supabase
+      .from("users")
+      .select("google_token_version")
+      .eq("id", session.user.id)
+      .single()
+      .then(({ data }) => {
+        // Check if google_token_version exists (not null)
+        googleConnected = !!data?.google_token_version;
+        console.log("google token version", data?.google_token_version);
+        
+        // Set the token version
+        setGoogleTokenVersion(data?.google_token_version);
+        
+        // Set availability based on token version
+        // Google Docs is only available with "full" access
+        setHasGoogleDocs(googleConnected && data?.google_token_version === "full");
+        
+        // Gmail is available with either "full" or "gmail_only" access
+        setHasGmail(googleConnected && 
+          (data?.google_token_version === "full" || data?.google_token_version === "gmail_only"));
+        
+        connectionsChecked++;
+        if (connectionsChecked === 2) {
+          checkOnboarding(googleConnected, notionConnected);
         }
+      });
+
+    // Check if user has any meetings
+    supabase
+      .from("late_meeting")
+      .select("id")
+      .contains("user_ids", [session.user.id])
+      .limit(1)
+      .then(({ data }) => {
+        const hasMeetingsData = !!data?.length;
+        setHasMeetings(hasMeetingsData);
+        console.log("User has meetings:", hasMeetingsData);
+      });
+
+    // Check Notion connection
+    supabase
+      .from("users")
+      .select("notion_connected")
+      .eq("id", session.user.id)
+      .single()
+      .then(({ data }) => {
+        notionConnected = !!data?.notion_connected;
+        setHasNotion(notionConnected);
+        console.log("User has Notion connected:", notionConnected);
+        connectionsChecked++;
+        if (connectionsChecked === 2) {
+          checkOnboarding(googleConnected, notionConnected);
+        }
+      });
+
+    // Check if user has any Obsidian documents
+    supabase
+      .from("documents")
+      .select("id")
+      .eq("user_id", session.user.id)
+      .eq("type", "obsidian")
+      .limit(1)
+      .then(({ data }) => {
+        const hasObsidianData = !!data?.length;
+        setHasObsidian(hasObsidianData);
+        console.log("User has Obsidian documents:", hasObsidianData);
+      });
+
+    // Helper function to check if onboarding should be shown
+    const checkOnboarding = (google, notion) => {
+      if (!google && !notion && !hasSeenOnboarding) {
+        setShowOnboarding(true);
       }
     };
-
-    checkOnboarding();
-  }, [session?.user?.id]);
+  }, [session?.user?.id, hasSeenOnboarding]);
 
   // Add new useEffect to fetch documents and generate prompts
   useEffect(() => {
@@ -321,6 +404,98 @@ export default function AISearch() {
       });
   };
 
+  // Add function to initiate Google auth
+  const initiateGoogleAuth = async () => {
+    try {
+      setIsGoogleAuthInProgress(true);
+      
+      // Call the Google auth API directly
+      const response = await fetch('/api/google/auth', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: session.user.id,
+          source: 'search',
+          upgradeToFull: true
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (data.url) {
+        // Redirect to Google auth URL
+        window.location.href = data.url;
+      } else {
+        throw new Error('Failed to get Google auth URL');
+      }
+    } catch (error) {
+      console.error('Error initiating Google auth:', error);
+      setIsGoogleAuthInProgress(false);
+    }
+  };
+  
+  // Function to handle Google Docs button click
+  const handleGoogleDocsClick = () => {
+    // Toggle visibility regardless of connection status
+    setShowGoogleDocs(!showGoogleDocs);
+    
+    // If not connected, show the appropriate modal
+    if (!hasGoogleDocs) {
+      if (googleTokenVersion === "old" || googleTokenVersion === null) {
+        setShowGoogleDocsModal(true);
+      } else if (googleTokenVersion === "gmail_only") {
+        setShowBroaderAccessModal(true);
+      } else {
+        window.location.href = "/settings?tab=personalization";
+      }
+    }
+  };
+  
+  // Function to handle Gmail button click
+  const handleGmailClick = () => {
+    // Toggle visibility regardless of connection status
+    setShowGmail(!showGmail);
+    
+    // If not connected, show the appropriate modal
+    if (!hasGmail) {
+      if (googleTokenVersion === "old" || googleTokenVersion === null) {
+        setShowGmailModal(true);
+      } else {
+        window.location.href = "/settings?tab=personalization";
+      }
+    }
+  };
+  
+  // Function to handle Notion button click
+  const handleNotionClick = () => {
+    // Toggle visibility regardless of connection status
+    setShowNotion(!showNotion);
+    
+    // If not connected, redirect to settings
+    if (!hasNotion) {
+      window.location.href = "/settings?tab=personalization";
+    }
+  };
+  
+  // Function to handle Obsidian button click
+  const handleObsidianClick = () => {
+    // Toggle visibility regardless of connection status
+    setShowObsidian(!showObsidian);
+    
+    // If not connected, redirect to settings
+    if (!hasObsidian) {
+      window.location.href = "/settings?tab=personalization";
+    }
+  };
+  
+  // Function to handle Meetings button click
+  const handleMeetingsClick = () => {
+    // Toggle visibility (no connection needed)
+    setShowMeetings(!showMeetings);
+  };
+
   // 12. Render home component
   return (
     <>
@@ -387,6 +562,166 @@ export default function AISearch() {
                     Hi! I&apos;m Amurex - your AI assistant for work and life
                   </h1>
                 </div>
+                <div className="flex flex-col gap-2 w-full md:w-auto">
+                  <div className="grid grid-cols-2 md:grid-cols-3 items-center gap-2">
+                    {/* Google Docs button */}
+                    {hasGoogleDocs ? (
+                      <button
+                        onClick={handleGoogleDocsClick}
+                        className={`px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-medium border border-white/10 ${
+                          showGoogleDocs
+                            ? "bg-[#3c1671] text-white border-[#6D28D9]"
+                            : "bg-zinc-900 text-white"
+                        } transition-all duration-200 hover:border-[#6D28D9]`}
+                      >
+                        <img
+                          src="https://upload.wikimedia.org/wikipedia/commons/0/01/Google_Docs_logo_%282014-2020%29.svg"
+                          alt="Google Docs"
+                          className="w-4 h-4"
+                        />
+                        <span>Google Docs</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleGoogleDocsClick}
+                        className="px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-medium border border-white/10 bg-zinc-900 text-white hover:bg-[#3c1671] transition-all duration-200 relative group"
+                      >
+                        <img
+                          src="https://upload.wikimedia.org/wikipedia/commons/0/01/Google_Docs_logo_%282014-2020%29.svg"
+                          alt="Google Docs"
+                          className="w-4 h-4"
+                        />
+                        <span>Google Docs</span>
+                        <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-white text-black px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
+                          Connect Google Docs
+                        </span>
+                      </button>
+                    )}
+
+                    {/* Notion button */}
+                    {hasNotion ? (
+                      <button
+                        onClick={handleNotionClick}
+                        className={`px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-medium border border-white/10 ${
+                          showNotion
+                            ? "bg-[#3c1671] text-white border-[#6D28D9]"
+                            : "bg-zinc-900 text-white"
+                        } transition-all duration-200 hover:border-[#6D28D9]`}
+                      >
+                        <img
+                          src="https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png"
+                          alt="Notion"
+                          className="w-4"
+                        />
+                        <span>Notion</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleNotionClick}
+                        className="px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-medium border border-white/10 bg-zinc-900 text-white hover:bg-[#3c1671] transition-all duration-200 relative group"
+                      >
+                        <img
+                          src="https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png"
+                          alt="Notion"
+                          className="w-4"
+                        />
+                        <span>Notion</span>
+                        <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-white text-black px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
+                          Connect Notion
+                        </span>
+                      </button>
+                    )}
+
+                    {/* Obsidian button */}
+                    {hasObsidian ? (
+                      <button
+                        onClick={handleObsidianClick}
+                        className={`px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-medium border border-white/10 ${
+                          showObsidian
+                            ? "bg-[#3c1671] text-white border-[#6D28D9]"
+                            : "bg-zinc-900 text-white"
+                        } transition-all duration-200 hover:border-[#6D28D9]`}
+                      >
+                        <img
+                          src="https://obsidian.md/images/obsidian-logo-gradient.svg"
+                          alt="Obsidian"
+                          className="w-4"
+                        />
+                        <span>Obsidian</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleObsidianClick}
+                        className="px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-medium border border-white/10 bg-zinc-900 text-white hover:bg-[#3c1671] transition-all duration-200 relative group"
+                      >
+                        <img
+                          src="https://obsidian.md/images/obsidian-logo-gradient.svg"
+                          alt="Obsidian"
+                          className="w-4"
+                        />
+                        <span>Obsidian</span>
+                        <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-white text-black px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
+                          Upload Obsidian Files
+                        </span>
+                      </button>
+                    )}
+                  
+                    {/* Meetings button */}
+                    <button
+                      onClick={handleMeetingsClick}
+                      className={`px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-medium border border-white/10 ${
+                        showMeetings && hasMeetings
+                          ? "bg-[#3c1671] text-white border-[#6D28D9]"
+                          : "bg-zinc-900 text-white"
+                      } transition-all duration-200 hover:border-[#6D28D9] ${
+                        !hasMeetings ? "opacity-50 cursor-not-allowed" : ""
+                      }`}
+                      disabled={!hasMeetings}
+                    >
+                      <ChatCenteredDots className="w-4 h-4" />
+                      <span>Meetings</span>
+                      {!hasMeetings && (
+                        <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-white text-black px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
+                          No meetings found
+                        </span>
+                      )}
+                    </button>
+
+                    {/* Gmail button */}
+                    {hasGmail ? (
+                      <button
+                        onClick={handleGmailClick}
+                        className={`px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-medium border border-white/10 ${
+                          showGmail
+                            ? "bg-[#3c1671] text-white border-[#6D28D9]"
+                            : "bg-zinc-900 text-white"
+                        } transition-all duration-200 hover:border-[#6D28D9]`}
+                      >
+                        <img
+                          src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/2560px-Gmail_icon_%282020%29.svg.png"
+                          alt="Gmail"
+                          className="w-4"
+                        />
+                        <span>Gmail</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleGmailClick}
+                        className="px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-medium border border-white/10 bg-zinc-900 text-white hover:bg-[#3c1671] transition-all duration-200 relative"
+                      >
+                        <img
+                          src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/2560px-Gmail_icon_%282020%29.svg.png"
+                          alt="Gmail"
+                          className="w-4"
+                        />
+                        <span>Gmail</span>
+                        <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-white text-black px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
+                          Connect Gmail
+                        </span>
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -446,7 +781,7 @@ export default function AISearch() {
 
                     {searchResults?.sources?.length > 0 && (
                       <div>
-                        <Sources content={searchResults.sources} />
+                        <Sources content={searchResults.sources} filters={{ showGoogleDocs, showNotion, showMeetings, showObsidian, showGmail }} />
                       </div>
                     )}
                   </div>
@@ -544,6 +879,100 @@ export default function AISearch() {
           )}
         </div>
       </div>
+      
+      {/* Google Docs Modal */}
+      {showGoogleDocsModal && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
+          <div className="bg-zinc-900 rounded-lg p-6 max-w-md w-full border border-zinc-700">
+            <h3 className="text-xl font-medium text-white mb-4">Google Access Required</h3>
+            <p className="text-zinc-300 mb-6">
+              {googleTokenVersion === "old" 
+                ? "Your Google access token is old and you'll have to reconnect Google to continue using it."
+                : "You need to connect your Google account to access Google Docs. Please visit the settings page to connect."}
+            </p>
+            <div className="flex justify-end gap-4">
+              <button
+                onClick={() => setShowGoogleDocsModal(false)}
+                className="px-4 py-2 rounded-lg bg-zinc-800 text-white hover:bg-zinc-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <a
+                href="/settings?tab=personalization"
+                className="px-4 py-2 rounded-lg bg-[#9334E9] text-white hover:bg-[#7928CA] transition-colors"
+              >
+                Go to Settings
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Broader Access Modal */}
+      {showBroaderAccessModal && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
+          <div className="bg-zinc-900 rounded-lg p-6 max-w-md w-full border border-zinc-700">
+            <h3 className="text-xl font-medium text-white mb-4">Broader Google Access Required</h3>
+            <p className="text-zinc-300 mb-6">
+              We need broader access to your Google account to enable Google Docs search. Our app is still in the verification process with Google. If you wish to proceed with full access, please click the button below.
+            </p>
+            <div className="flex justify-end gap-4">
+              <button
+                onClick={() => setShowBroaderAccessModal(false)}
+                className="px-4 py-2 rounded-lg bg-zinc-800 text-white hover:bg-zinc-700 transition-colors"
+                disabled={isGoogleAuthInProgress}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={initiateGoogleAuth}
+                className="px-4 py-2 rounded-lg bg-[#9334E9] text-white hover:bg-[#7928CA] transition-colors flex items-center justify-center"
+                disabled={isGoogleAuthInProgress}
+              >
+                {isGoogleAuthInProgress ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Connecting...
+                  </>
+                ) : (
+                  "Connect Google"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Gmail Modal */}
+      {showGmailModal && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
+          <div className="bg-zinc-900 rounded-lg p-6 max-w-md w-full border border-zinc-700">
+            <h3 className="text-xl font-medium text-white mb-4">Google Access Required</h3>
+            <p className="text-zinc-300 mb-6">
+              {googleTokenVersion === "old" 
+                ? "Your Google access token is old and you'll have to reconnect Google to continue using it."
+                : "You need to connect your Google account to access Gmail. Please visit the settings page to connect."}
+            </p>
+            <div className="flex justify-end gap-4">
+              <button
+                onClick={() => setShowGmailModal(false)}
+                className="px-4 py-2 rounded-lg bg-zinc-800 text-white hover:bg-zinc-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <a
+                href="/settings?tab=personalization"
+                className="px-4 py-2 rounded-lg bg-[#9334E9] text-white hover:bg-[#7928CA] transition-colors"
+              >
+                Go to Settings
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
@@ -609,11 +1038,30 @@ export const Query = ({ content = "", sourcesTime, completionTime }) => {
   );
 };
 /* 22. Sources component for displaying list of sources */
-export const Sources = ({ content = [] }) => {
+export const Sources = ({ content = [], filters = {} }) => {
   // Debug the content structure
   useEffect(() => {
     console.log("Sources content:", content);
   }, [content]);
+
+  // Filter sources based on filter settings
+  const filteredSources = useMemo(() => {
+    if (!content || !Array.isArray(content)) return [];
+    
+    return content.filter(source => {
+      const sourceType = source.type;
+      
+      // Apply filters based on source type
+      if (sourceType === 'google_docs' && !filters.showGoogleDocs) return false;
+      if (sourceType === 'notion' && !filters.showNotion) return false;
+      if ((sourceType === 'meeting' || sourceType === 'msteams' || sourceType === 'google-meet') && !filters.showMeetings) return false;
+      if (sourceType === 'obsidian' && !filters.showObsidian) return false;
+      if ((sourceType === 'gmail' || sourceType === 'email') && !filters.showGmail) return false;
+      
+      // Include sources with unknown types
+      return true;
+    });
+  }, [content, filters]);
 
   // Helper function to determine source icon based on 'type' directly
   const getSourceIcon = (type) => {
@@ -727,6 +1175,21 @@ export const Sources = ({ content = [] }) => {
     );
   }
 
+  // Show message when all sources are filtered out
+  if (filteredSources.length === 0 && content.length > 0) {
+    return (
+      <div>
+        <div className="text-[#9334E9] font-medium mb-3 text-md md:text-xl flex items-center gap-2">
+          <GitBranch size={20} className="md:w-6 md:h-6" />
+          <span>Sources</span>
+        </div>
+        <div className="bg-black rounded-lg p-4 border border-zinc-800 text-zinc-400 text-center">
+          <p>All sources are filtered out. Enable source types to see results.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <div className="text-[#9334E9] font-medium mb-3 text-md md:text-xl flex items-center gap-2">
@@ -734,9 +1197,8 @@ export const Sources = ({ content = [] }) => {
         <span>Sources</span>
       </div>
       <div className="grid grid-cols-1 gap-2">
-        {Array.isArray(content) &&
-          content.map((source, index) => {
-            // Debug logging
+        {Array.isArray(filteredSources) &&
+          filteredSources.map((source, index) => {
             return (
               <a
                 key={index}
