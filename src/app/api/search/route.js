@@ -141,8 +141,8 @@ export async function POST(req) {
     console.log("Starting search at:", new Date().toISOString());
     
     // Call search_new endpoint directly
-    const response = await fetch('https://brain.amurex.ai/search_new', {
-    // const response = await fetch('http://localhost:8080/search_new', {
+    // const response = await fetch('https://brain.amurex.ai/search_new', {
+    const response = await fetch('http://localhost:8080/search_new', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${process.env.BRAIN_API_KEY}`,
@@ -165,6 +165,7 @@ export async function POST(req) {
     
     // Get the results directly from the API response
     const sources = data.results || [];
+    console.log("sources", sources);
     
     // Create streaming response
     const streamSetupStartTime = performance.now();

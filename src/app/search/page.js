@@ -170,7 +170,6 @@ export default function AISearch() {
       .then(({ data }) => {
         // Check if google_token_version exists (not null)
         googleConnected = !!data?.google_token_version;
-        console.log("google token version", data?.google_token_version);
         
         // Set the token version
         setGoogleTokenVersion(data?.google_token_version);
@@ -198,7 +197,6 @@ export default function AISearch() {
       .then(({ data }) => {
         const hasMeetingsData = !!data?.length;
         setHasMeetings(hasMeetingsData);
-        console.log("User has meetings:", hasMeetingsData);
       });
 
     // Check Notion connection
@@ -210,7 +208,6 @@ export default function AISearch() {
       .then(({ data }) => {
         notionConnected = !!data?.notion_connected;
         setHasNotion(notionConnected);
-        console.log("User has Notion connected:", notionConnected);
         connectionsChecked++;
         if (connectionsChecked === 2) {
           checkOnboarding(googleConnected, notionConnected);
@@ -227,7 +224,6 @@ export default function AISearch() {
       .then(({ data }) => {
         const hasObsidianData = !!data?.length;
         setHasObsidian(hasObsidianData);
-        console.log("User has Obsidian documents:", hasObsidianData);
       });
 
     // Helper function to check if onboarding should be shown
@@ -273,7 +269,6 @@ export default function AISearch() {
         }
 
         const { prompts } = await response.json();
-        console.log("prompts:", prompts);
         setSuggestedPrompts(prompts.prompts); // Access the nested prompts array
       });
   }, [session?.user?.id]);
@@ -1039,22 +1034,17 @@ export const Query = ({ content = "", sourcesTime, completionTime }) => {
 };
 /* 22. Sources component for displaying list of sources */
 export const Sources = ({ content = [], filters = {} }) => {
-  // Debug the content structure
-  useEffect(() => {
-    console.log("Sources content:", content);
-  }, [content]);
-
   // Filter sources based on filter settings
   const filteredSources = useMemo(() => {
     if (!content || !Array.isArray(content)) return [];
     
     return content.filter(source => {
       const sourceType = source.type;
-      
+
       // Apply filters based on source type
       if (sourceType === 'google_docs' && !filters.showGoogleDocs) return false;
       if (sourceType === 'notion' && !filters.showNotion) return false;
-      if ((sourceType === 'meeting' || sourceType === 'msteams' || sourceType === 'google-meet') && !filters.showMeetings) return false;
+      if ((sourceType === 'msteams' || sourceType === 'google_meet') && !filters.showMeetings) return false;
       if (sourceType === 'obsidian' && !filters.showObsidian) return false;
       if ((sourceType === 'gmail' || sourceType === 'email') && !filters.showGmail) return false;
       
@@ -1084,7 +1074,7 @@ export const Sources = ({ content = [], filters = {} }) => {
           />
         );
         
-      case "google-meet":
+      case "google_meet":
         return (
           <img
             src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Google_Meet_icon_%282020%29.svg/1024px-Google_Meet_icon_%282020%29.svg.png?20221213135236"
@@ -1287,8 +1277,6 @@ const logUserAction = async (userId, eventType) => {
       console.error("Error fetching user data:", userError);
       return;
     }
-
-    console.log("userData", userData);
 
     // Only track if memory_enabled is true
     if (userData?.memory_enabled) {
