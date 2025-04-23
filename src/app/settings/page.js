@@ -1094,7 +1094,7 @@ function SettingsContent() {
           <div className="bg-zinc-900 rounded-lg p-6 max-w-md w-full border border-zinc-700">
             <h3 className="text-xl font-medium text-white mb-4">Your data is safe</h3>
             <p className="text-zinc-300 mb-6">
-                Since the app is still in Google's review process, you will be warned that the app is unsafe.
+                Since the app is still in Google&apos;s review process, you will be warned that the app is unsafe.
                 <br /><br />
                 You can safely proceed by clicking on &quot;Advanced&quot; and then &quot;Go to Amurex
                 (unsafe)&quot;.
