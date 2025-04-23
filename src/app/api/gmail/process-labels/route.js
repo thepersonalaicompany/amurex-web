@@ -87,7 +87,7 @@ async function categorizeWithAI(fromEmail, subject, body, enabledCategories) {
           content: `Email from: ${fromEmail}\nSubject: ${subject}\n\nBody: ${body}`
         }
       ],
-      max_tokens: 20,
+      max_tokens: 100,
       temperature: 0.3
     });
 
@@ -401,6 +401,7 @@ export async function POST(req) {
     const userId = requestData.userId;
     const useStandardColors = requestData.useStandardColors === true;
     const accessToken = requestData.accessToken;
+    const numEmailsToProcess = requestData.numEmailsToProcess || 20;
 
     if (!userId) {
       return NextResponse.json({ success: false, error: "User ID is required" }, { status: 400 });
@@ -567,8 +568,8 @@ export async function POST(req) {
       // Fetch recent unread emails - fetch more for storage
       const messages = await gmail.users.messages.list({
         userId: 'me',
-        q: 'is:unread',  // Simplified query without processed label filter
-        maxResults: 10  // Fetch up to 100 emails
+        q: 'is:unread',
+        maxResults: numEmailsToProcess
       });
       
       if (!messages.data.messages || messages.data.messages.length === 0) {

@@ -333,41 +333,27 @@ function SettingsContent() {
     console.log("Detected URL params:", { connection, source });
 
     if (connection === "success") {
-      console.log("Connection successful, triggering appropriate action");
+      console.log("Connection successful detected");
 
-      // Force a check of integrations first to ensure we have the latest status
+      // Force a check of integrations to ensure we have the latest status
       checkIntegrations().then(() => {
         // Handle based on the source parameter
         if (source === "gmail") {
-          console.log("Gmail connection detected, processing emails");
           toast.success("Gmail connected successfully!");
-          processGmailLabels();
-          // Redirect to search page after Gmail connection
-          router.push("/search");
+          // No need to process emails here, it's done by the callback route
         } else if (source === "notion") {
-          console.log("Notion connection detected, importing documents");
           toast.success("Notion connected successfully!");
-          importNotionDocuments();
-          // Redirect to search page after Notion connection
-          router.push("/search");
-        } else {
-          // Only import Google Docs if we have full access
-          if (googleTokenVersion === "full") {
-            console.log("Google Docs connection detected, importing documents");
-            toast.success("Google Docs connected successfully!");
-            importGoogleDocs();
-            // Redirect to search page after Google Docs connection
-            router.push("/search");
-          } else {
-            console.log("Google connection detected, but no full access for Docs");
-            toast.success("Google account connected successfully!");
-            // Redirect to search page even without full access
-            router.push("/search");
-          }
+          // No need to import documents here, it's done by the callback route
+        } else if (source === "google") {
+          toast.success("Google account connected successfully!");
+          // No need to import Google Docs here, it's done by the callback route
         }
+        
+        // Redirect to search page after connecting
+        router.push("/search");
       });
     }
-  }, [searchParams, googleTokenVersion, importGoogleDocs, importNotionDocuments, processGmailLabels, router]);
+  }, [searchParams, checkIntegrations, router]);
 
   useEffect(() => {
     const connection = searchParams.get("connection");
@@ -512,63 +498,66 @@ function SettingsContent() {
     }
   };
 
+  // Update handleGoogleCallback to handle the response from callback route
   const handleGoogleCallback = useCallback(async () => {
-    console.log("Handling Google callback");
-    const code = searchParams.get("code");
-    const error = searchParams.get("error");
-    const state = searchParams.get("state");
-
-    if (code) {
-      try {
-        // Get current session
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-
-        // Exchange code for tokens
-        const response = await fetch("/api/google/callback", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            code,
-            state,
-            userId: session?.user?.id,
-          }),
-        });
-
-        const data = await response.json();
-
-        if (data.success) {
-          await checkIntegrations(); // Refresh integration status
-          toast.success("Google Docs connected successfully!");
-
-          // Trigger import if there's a pending import flag
-          const pendingImport = localStorage.getItem("pendingGoogleDocsImport");
-          if (pendingImport === "true") {
-            console.log("Starting import after successful connection...");
-            localStorage.removeItem("pendingGoogleDocsImport");
-            await importGoogleDocs();
-          }
-        } else {
-          console.error("Connection failed:", data.error);
-          toast.error("Failed to connect Google Docs");
-        }
-      } catch (err) {
-        console.error("Error in Google callback:", err);
-        toast.error("Failed to connect Google Docs");
+    try {
+      // Get the code and state from URL
+      const code = searchParams.get("code");
+      const state = searchParams.get("state");
+      const error = searchParams.get("error");
+      
+      if (error) {
+        console.error("Google authorization error:", error);
+        toast.error(`Authorization failed: ${error}`);
+        return;
       }
-    }
+      
+      if (!code) {
+        console.error("No authorization code found");
+        return;
+      }
+      
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-    if (error) {
-      toast.error(`Connection failed: ${error}`);
-    }
-  }, [searchParams, importGoogleDocs, checkIntegrations]);
+      // Exchange code for tokens
+      const response = await fetch("/api/google/callback", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          code,
+          state,
+          userId: session?.user?.id,
+        }),
+      });
 
-  // Update the useEffect to run handleGoogleCallback when code is present
+      const data = await response.json();
+
+      if (data.success) {
+        await checkIntegrations(); // Refresh integration status
+        toast.success("Google account connected successfully!");
+        
+        // Note: No need to trigger import here, the callback route handles it
+        // Redirect to search page
+        router.push("/search");
+      } else {
+        console.error("Connection failed:", data.error);
+        toast.error("Failed to connect Google account");
+      }
+    } catch (err) {
+      console.error("Error in Google callback:", err);
+      toast.error("Failed to connect Google account");
+    }
+  }, [searchParams, checkIntegrations, router]);
+
+  // Update this useEffect to run handleGoogleCallback when code is present
   useEffect(() => {
-    if (searchParams.get("code")) {
+    const code = searchParams.get("code");
+    if (code) {
+      console.log("Google authorization code detected");
       handleGoogleCallback();
     }
   }, [searchParams, handleGoogleCallback]);
@@ -1007,15 +996,14 @@ function SettingsContent() {
         },
         body: JSON.stringify({
           userId: userId,
-          clientId: 2  // Always use client ID 2
+          source: "settings" // Add source to indicate where the request is coming from
         }),
       });
 
       const data = await response.json();
       
       if (data.url) {
-        // Store a flag to indicate we want to import after connection
-        localStorage.setItem("pendingGoogleDocsImport", "true");
+        // No need for local storage flag anymore
         window.location.href = data.url;
       } else {
         throw new Error("Failed to get Google auth URL");

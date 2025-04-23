@@ -41,8 +41,10 @@ async function generateTags(text) {
 export async function POST(req) {
   try {
     const requestData = await req.json();
-    const { userId, accessToken, googleAccessToken, googleRefreshToken, googleTokenExpiry } = requestData;
+    const { userId, accessToken, googleAccessToken, googleRefreshToken, googleTokenExpiry, clientType } = requestData;
     let userEmail = req.headers.get("x-user-email");
+
+    console.log('Google import initiated for user:', userId);
 
     // Create Supabase client - either with the provided access token or with service role
     let supabaseClient;
@@ -67,7 +69,7 @@ export async function POST(req) {
       );
     }
 
-    // Check user's Google token version
+    // Check user's Google token version if not provided
     const { data: userData, error: userError } = await supabaseClient
       .from("users")
       .select("email, google_token_version, google_access_token, google_refresh_token, google_token_expiry")
@@ -90,9 +92,44 @@ export async function POST(req) {
       expiry_date: googleTokenExpiry || userData.google_token_expiry
     };
 
+    // Use provided clientType or get it from userData
+    const effectiveClientType = clientType || userData?.google_token_version;
+    
+    console.log('Processing with client type:', effectiveClientType);
+
+    // Process Gmail labels for all token versions - this should always run
+    console.log('Starting Gmail label processing for user:', userId);
+    let gmailResults = { success: false, error: "Gmail processing not attempted" };
+    try {
+      const gmailResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_APP_URL}/api/gmail/process-labels`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            userId: userId,
+            useStandardColors: false,
+            numEmailsToProcess: 10
+          }),
+        }
+      );
+      
+      gmailResults = await gmailResponse.json();
+      console.log("Gmail processing results:", gmailResults);
+    } catch (gmailError) {
+      console.error("Error processing Gmail:", gmailError);
+      gmailResults = { 
+        success: false, 
+        error: gmailError.message || "Failed to process Gmail" 
+      };
+    }
+
     // Only process Google Docs if token version is "full"
     let docsResults = [];
-    if (userData?.google_token_version === "full") {
+    if (effectiveClientType === "full") {
+      console.log('Starting Google Docs processing for user:', userId);
       // Process the documents using the appropriate tokens
       docsResults = await processGoogleDocs({ id: userId }, supabaseClient, googleTokens);
 
@@ -116,33 +153,6 @@ export async function POST(req) {
     } else {
       console.log("Skipping Google Docs import - token version is not 'full'");
       docsResults = [{ status: "skipped", reason: "Insufficient permissions" }];
-    }
-
-    // Process Gmail emails by calling the existing Gmail process-labels endpoint
-    let gmailResults = { success: false, error: "Gmail processing not attempted" };
-    try {
-      const gmailResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_APP_URL}/api/gmail/process-labels`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            userId: userId,
-            useStandardColors: false,
-          }),
-        }
-      );
-      
-      gmailResults = await gmailResponse.json();
-      console.log("Gmail processing results:", gmailResults);
-    } catch (gmailError) {
-      console.error("Error processing Gmail:", gmailError);
-      gmailResults = { 
-        success: false, 
-        error: gmailError.message || "Failed to process Gmail" 
-      };
     }
 
     return NextResponse.json({
@@ -177,6 +187,8 @@ export async function GET(req) {
       );
     }
 
+    console.log('GET: Google import initiated for user:', userId);
+
     // Create Supabase client with service role key
     const adminSupabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -186,7 +198,7 @@ export async function GET(req) {
     // Check user's Google token version
     const { data: userData, error: userError } = await adminSupabase
       .from("users")
-      .select("google_token_version")
+      .select("google_token_version, email")
       .eq("id", userId)
       .single();
 
@@ -194,17 +206,11 @@ export async function GET(req) {
       throw new Error("Failed to fetch user data: " + userError.message);
     }
 
-    // Only process Google Docs if token version is "full"
-    let docsResults = [];
-    if (userData?.google_token_version === "full") {
-      // Process the documents
-      docsResults = await processGoogleDocs({ id: userId }, adminSupabase);
-    } else {
-      console.log("Skipping Google Docs import - token version is not 'full'");
-      docsResults = [{ status: "skipped", reason: "Insufficient permissions" }];
-    }
+    const clientType = userData?.google_token_version;
+    console.log('Processing with client type:', clientType);
 
-    // Process Gmail emails by calling the existing Gmail process-labels endpoint
+    // Process Gmail labels for all token versions - this should always run
+    console.log('Starting Gmail label processing for user:', userId);
     let gmailResults = { success: false, error: "Gmail processing not attempted" };
     try {
       const gmailResponse = await fetch(
@@ -217,6 +223,7 @@ export async function GET(req) {
           body: JSON.stringify({
             userId: userId,
             useStandardColors: false,
+            numEmailsToProcess: 10
           }),
         }
       );
@@ -229,6 +236,35 @@ export async function GET(req) {
         success: false, 
         error: gmailError.message || "Failed to process Gmail" 
       };
+    }
+
+    // Only process Google Docs if token version is "full"
+    let docsResults = [];
+    if (clientType === "full") {
+      console.log('Starting Google Docs processing for user:', userId);
+      // Process the documents
+      docsResults = await processGoogleDocs({ id: userId }, adminSupabase);
+
+      // Send email notification if documents were processed
+      if (docsResults.length > 0 && userData?.email) {
+        await fetch(
+          `${process.env.NEXT_PUBLIC_APP_URL}/api/notifications/email`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              userEmail: userData.email,
+              importResults: docsResults,
+              platform: "google_docs",
+            }),
+          }
+        );
+      }
+    } else {
+      console.log("Skipping Google Docs import - token version is not 'full'");
+      docsResults = [{ status: "skipped", reason: "Insufficient permissions" }];
     }
 
     return NextResponse.json({

@@ -64,8 +64,6 @@ export async function GET(request) {
     const { tokens } = await oauth2Client.getToken(code);
     console.log('Tokens received:', { access_token: tokens.access_token ? 'present' : 'missing', refresh_token: tokens.refresh_token ? 'present' : 'missing' });
 
-    console.log('tokens', tokens);
-
     // Store tokens in database and assign the Google client to this user
     // This is now the ONLY place where we assign clients to users, ensuring it only happens on successful auth
     const { error: tokenError } = await supabase
@@ -105,64 +103,39 @@ export async function GET(request) {
     } else if (source === 'search') {
       redirectUrl = `${process.env.NEXT_PUBLIC_APP_URL}/search?connection=success&source=google`;
     } else {
+      // Default to settings for any other source
       redirectUrl = `${process.env.NEXT_PUBLIC_APP_URL}/settings?connection=success&source=google`;
     }
 
-    // Start background processes - no need to wait for these to complete
-    // Process Gmail labels for all token versions
+    // Start a single background import process instead of multiple parallel ones
+    // This approach centralizes the import, avoiding duplicate requests
     (async () => {
       try {
-        console.log('Starting Gmail label processing for user:', userId);
+        console.log('Starting centralized Google import for user:', userId);
         
-        // Call the existing Gmail process-labels API endpoint
-        const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/gmail/process-labels`, {
+        // Call the Google import API endpoint once, which will handle both Gmail and Google Docs
+        const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/google/import`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
             userId: userId,
-            useStandardColors: false,
+            googleAccessToken: tokens.access_token,
+            googleRefreshToken: tokens.refresh_token,
+            googleTokenExpiry: tokens.expiry_date,
+            clientType: clientType
           }),
         });
         
         const result = await response.json();
-        console.log('Gmail label processing result:', result);
+        console.log('Google import results:', result);
       } catch (error) {
-        console.error('Error in Gmail label processing:', error);
+        console.error('Error in Google import process:', error);
       }
     })();
 
-    // Import Google Docs only if token version is "full"
-    if (clientType === 'full') {
-      (async () => {
-        try {
-          console.log('Starting Google Docs import for user:', userId);
-          
-          // Call the existing Google import API endpoint with POST method
-          // Pass the Google tokens directly in the request body
-          const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/google/import`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              userId: userId,
-              googleAccessToken: tokens.access_token,
-              googleRefreshToken: tokens.refresh_token,
-              googleTokenExpiry: tokens.expiry_date
-            }),
-          });
-          
-          const result = await response.json();
-          console.log('Google Docs import result:', result);
-        } catch (error) {
-          console.error('Error in Google Docs import:', error);
-        }
-      })();
-    }
-
-    // Redirect the user immediately, while background processes continue
+    // Redirect the user immediately, while background process continues
     return NextResponse.redirect(redirectUrl);
   } catch (error) {
     console.error('Error in Google callback:', error);
