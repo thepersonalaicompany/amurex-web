@@ -116,7 +116,7 @@ export default function SignUp() {
       }
 
       // Log the redirect destination for debugging
-      const destination = redirectUrl || "/meetings";
+      const destination = redirectUrl || "/emails";
       console.log("Attempting to redirect to:", destination);
 
       // Try a more direct approach to redirection

@@ -237,6 +237,18 @@ function EmailsContent() {
           </p>
 
           {/* Email Tagging Toggle Card */}
+          {/* Fake search bar */}
+          <a href="/search" target="_blank" rel="noopener noreferrer">
+          <div 
+              className="my-2 bg-zinc-800 rounded-xl flex items-center px-3 py-2 cursor-text hover:bg-zinc-700 transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-400 mr-2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <div className="text-zinc-400 text-md">Search in emails...</div>
+            </div>
+            </a>
           <div className="rounded-xl border text-card-foreground shadow bg-black border-zinc-800 p-4 mb-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
@@ -340,8 +352,8 @@ function EmailsContent() {
                 >
                   {/* Header */}
                   <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800">
-                    <h2 className="text-white">Show in inbox?</h2>
-                    <h2 className="text-white">Categories</h2>
+                    <h2 className="text-white">Label names</h2>
+                    {/* <h2 className="text-white">Categories</h2> */}
                   </div>
 
                   {/* Category Items */}

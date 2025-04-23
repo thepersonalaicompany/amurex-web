@@ -57,7 +57,7 @@ export default function SignIn() {
         window.close();
       } else {
         // Redirect to the original URL if it exists, otherwise to /meetings
-        router.push(redirectUrl || "/meetings");
+        router.push(redirectUrl || "/emails");
         setMessage("Signing in...");
       }
     }
