@@ -239,7 +239,7 @@ function EmailsContent() {
           {/* Email Tagging Toggle Card */}
           {/* Fake search bar */}
           <a href="/search" target="_blank" rel="noopener noreferrer">
-          <div 
+            <div 
               className="my-2 bg-zinc-800 rounded-xl flex items-center px-3 py-2 cursor-text hover:bg-zinc-700 transition-colors"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-400 mr-2">
@@ -248,9 +248,9 @@ function EmailsContent() {
               </svg>
               <div className="text-zinc-400 text-md">Search in emails...</div>
             </div>
-            </a>
+          </a>
           <div className="rounded-xl border text-card-foreground shadow bg-black border-zinc-800 p-4 mb-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-4">
               <div className="flex items-center gap-4">
                 <img
                   src={PROVIDER_ICONS.gmail}
@@ -263,11 +263,14 @@ function EmailsContent() {
                 </div>
               </div>
               <div className="flex items-center gap-6">
-                <Switch
-                  checked={emailTaggingEnabled}
-                  onCheckedChange={handleEmailTaggingToggle}
-                  className={emailTaggingEnabled ? "bg-[#9334E9]" : "bg-zinc-700"}
-                />
+                <div className="flex items-center gap-2">
+                  <span className="text-zinc-400 text-sm">Enable email tagging</span>
+                  <Switch
+                    checked={emailTaggingEnabled}
+                    onCheckedChange={handleEmailTaggingToggle}
+                    className={emailTaggingEnabled ? "bg-[#9334E9]" : "bg-zinc-700"}
+                  />
+                </div>
                 {emailTaggingEnabled && (
                   <Button
                     variant="outline"
@@ -293,285 +296,286 @@ function EmailsContent() {
                   </Button>
                 )}
               </div>
+              <AnimatePresence>
+                {emailTaggingEnabled && hasEmailRecord ? (
+                  <motion.div
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                  >
+                    {/* Info Card */}
+                    <div className="hidden bg-black rounded-lg p-4 mb-6 flex items-start gap-3">
+                      <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="text-gray-400 mt-1"
+                      >
+                        <path
+                          d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        <path
+                          d="M12 16V12"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        <path
+                          d="M12 8H12.01"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                      <span className="text-gray-400">
+                        If you switch a category off here, emails in that category will be
+                        filed away in their folder or label, and won&apos;t be shown in
+                        your main inbox.
+                      </span>
+                    </div>
+
+                    {/* Categories Section */}
+                    <motion.div 
+                      className="overflow-hidden border text-card-foreground shadow rounded-xl bg-black border-zinc-800"
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      transition={{ duration: 0.5, ease: "easeInOut" }}
+                    >
+                      {/* Header */}
+                      <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800">
+                        <h2 className="text-white">Label names</h2>
+                        {/* <h2 className="text-white">Categories</h2> */}
+                      </div>
+
+                      {/* Category Items */}
+                      <div className="divide-y divide-zinc-800">
+                        {/* To respond */}
+                        <motion.div 
+                          className="px-6 py-4 flex items-center justify-between"
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ duration: 0.3, delay: 0.1 }}
+                        >
+                          <Switch
+                            checked={categories.categories.to_respond}
+                            onCheckedChange={(checked) => handleCategoryToggle('to_respond', checked)}
+                            className="data-[state=checked]:bg-[#F87171] data-[state=unchecked]:bg-zinc-700"
+                          />
+                          <div className="flex-1 flex items-center gap-3 ml-6">
+                            <span className="bg-[#F87171] text-black px-3 py-1 rounded text-sm font-medium">
+                              To respond
+                            </span>
+                            <span className="text-gray-400">
+                              Emails you need to respond to
+                            </span>
+                          </div>
+                        </motion.div>
+
+                        {/* FYI */}
+                        <motion.div 
+                          className="px-6 py-4 flex items-center justify-between"
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ duration: 0.3, delay: 0.2 }}
+                        >
+                          <Switch
+                            checked={categories.categories.fyi}
+                            onCheckedChange={(checked) => handleCategoryToggle('fyi', checked)}
+                            className="data-[state=checked]:bg-[#F59E0B] data-[state=unchecked]:bg-zinc-700"
+                          />
+                          <div className="flex-1 flex items-center gap-3 ml-6">
+                            <span className="bg-[#F59E0B] text-black px-3 py-1 rounded text-sm font-medium">
+                              FYI
+                            </span>
+                            <span className="text-gray-400">
+                              Emails that don&apos;t require your response, but are
+                              important
+                            </span>
+                          </div>
+                        </motion.div>
+
+                        {/* Comment */}
+                        <motion.div 
+                          className="px-6 py-4 flex items-center justify-between"
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ duration: 0.3, delay: 0.3 }}
+                        >
+                          <Switch
+                            checked={categories.categories.comment}
+                            onCheckedChange={(checked) => handleCategoryToggle('comment', checked)}
+                            className="data-[state=checked]:bg-[#F59E0B] data-[state=unchecked]:bg-zinc-700"
+                          />
+                          <div className="flex-1 flex items-center gap-3 ml-6">
+                            <span className="bg-[#F59E0B] text-black px-3 py-1 rounded text-sm font-medium">
+                              Comment
+                            </span>
+                            <span className="text-gray-400">
+                              Team chats in tools like Google Docs or Microsoft Office
+                            </span>
+                          </div>
+                        </motion.div>
+
+                        {/* Notification */}
+                        <motion.div 
+                          className="px-6 py-4 flex items-center justify-between"
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ duration: 0.3, delay: 0.4 }}
+                        >
+                          <Switch
+                            checked={categories.categories.notification}
+                            onCheckedChange={(checked) => handleCategoryToggle('notification', checked)}
+                            className="data-[state=checked]:bg-[#34D399] data-[state=unchecked]:bg-zinc-700"
+                          />
+                          <div className="flex-1 flex items-center gap-3 ml-6">
+                            <span className="bg-[#34D399] text-black px-3 py-1 rounded text-sm font-medium">
+                              Notification
+                            </span>
+                            <span className="text-gray-400">
+                              Automated updates from tools you use
+                            </span>
+                          </div>
+                        </motion.div>
+
+                        {/* Meeting update */}
+                        <motion.div 
+                          className="px-6 py-4 flex items-center justify-between"
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ duration: 0.3, delay: 0.5 }}
+                        >
+                          <Switch
+                            checked={categories.categories.meeting_update}
+                            onCheckedChange={(checked) => handleCategoryToggle('meeting_update', checked)}
+                            className="data-[state=checked]:bg-[#60A5FA] data-[state=unchecked]:bg-zinc-700"
+                          />
+                          <div className="flex-1 flex items-center gap-3 ml-6">
+                            <span className="bg-[#60A5FA] text-black px-3 py-1 rounded text-sm font-medium">
+                              Meeting update
+                            </span>
+                            <span className="text-gray-400">
+                              Calendar updates from Zoom, Google Meet, etc
+                            </span>
+                          </div>
+                        </motion.div>
+
+                        {/* Awaiting reply */}
+                        <motion.div 
+                          className="px-6 py-4 flex items-center justify-between"
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ duration: 0.3, delay: 0.6 }}
+                        >
+                          <Switch
+                            checked={categories.categories.awaiting_reply}
+                            onCheckedChange={(checked) => handleCategoryToggle('awaiting_reply', checked)}
+                            className="data-[state=checked]:bg-[#8B5CF6] data-[state=unchecked]:bg-zinc-700"
+                          />
+                          <div className="flex-1 flex items-center gap-3 ml-6">
+                            <span className="bg-[#8B5CF6] text-white px-3 py-1 rounded text-sm font-medium">
+                              Awaiting reply
+                            </span>
+                            <span className="text-gray-400">
+                              Emails you&apos;ve sent that you&apos;re expecting a reply
+                              to
+                            </span>
+                          </div>
+                        </motion.div>
+
+                        {/* Actioned */}
+                        <motion.div 
+                          className="px-6 py-4 flex items-center justify-between"
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ duration: 0.3, delay: 0.7 }}
+                        >
+                          <Switch
+                            checked={categories.categories.actioned}
+                            onCheckedChange={(checked) => handleCategoryToggle('actioned', checked)}
+                            className="data-[state=checked]:bg-[#8B5CF6] data-[state=unchecked]:bg-zinc-700"
+                          />
+                          <div className="flex-1 flex items-center gap-3 ml-6">
+                            <span className="bg-[#8B5CF6] text-white px-3 py-1 rounded text-sm font-medium">
+                              Actioned
+                            </span>
+                            <span className="text-gray-400">
+                              Emails you&apos;ve sent that you&apos;re not expecting a
+                              reply to
+                            </span>
+                          </div>
+                        </motion.div>
+
+                        {/* Add custom category button */}
+                        <motion.div 
+                          className="px-6 py-4 flex justify-center hidden"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ duration: 0.3, delay: 0.8 }}
+                        >
+                          <button className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors">
+                            <Plus className="w-5 h-5" />
+                            Add custom category
+                          </button>
+                        </motion.div>
+                      </div>
+                    </motion.div>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                  >
+                    <div className="mt-8">
+                      <div className="relative">
+                        <div className="absolute -inset-0.5 bg-gradient-to-r from-[#9334E9] to-[#9334E9] rounded-lg blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-gradient-x"></div>
+                        <Card className="bg-black border-zinc-500 relative overflow-hidden w-full">
+                          <div className="absolute inset-0 bg-[#9334E9]/20 animate-pulse"></div>
+                          <div className="absolute inset-0 bg-gradient-to-r from-[#9334E9]/30 via-[#9334E9]/20 to-[#9334E9]/30"></div>
+                          <CardContent className="p-4 relative text-center">
+                            <div className="flex items-center gap-4 justify-center">
+                              <Video className="w-6 h-6 text-[#9334E9] hidden" />
+                              <div>
+                                <h3 className="font-medium text-white text-lg">
+                                  Try Amurex for Smart Email Categorization
+                                </h3>
+                                <p className="text-sm text-zinc-400">
+                                  Get automated categorization for your emails
+                                </p>
+                              </div>
+                            </div>
+                            <div className="mt-4">
+                              <a
+                                href="/settings"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center px-4 py-2 rounded-md text-sm font-medium border border-white/10 bg-[#9334E9] text-[#FAFAFA] hover:bg-[#3c1671] hover:border-[#6D28D9] transition-colors duration-200"
+                              >
+                                Connect Google account
+                              </a>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
 
-          <AnimatePresence>
-            {emailTaggingEnabled && hasEmailRecord ? (
-              <motion.div
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.3, ease: "easeInOut" }}
-              >
-                {/* Info Card */}
-                <div className="hidden bg-black rounded-lg p-4 mb-6 flex items-start gap-3">
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="text-gray-400 mt-1"
-                  >
-                    <path
-                      d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <path
-                      d="M12 16V12"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <path
-                      d="M12 8H12.01"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                  <span className="text-gray-400">
-                    If you switch a category off here, emails in that category will be
-                    filed away in their folder or label, and won&apos;t be shown in
-                    your main inbox.
-                  </span>
-                </div>
-
-                {/* Categories Section */}
-                <motion.div 
-                  className="overflow-hidden border text-card-foreground shadow rounded-xl bg-black border-zinc-800"
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  transition={{ duration: 0.5, ease: "easeInOut" }}
-                >
-                  {/* Header */}
-                  <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800">
-                    <h2 className="text-white">Label names</h2>
-                    {/* <h2 className="text-white">Categories</h2> */}
-                  </div>
-
-                  {/* Category Items */}
-                  <div className="divide-y divide-zinc-800">
-                    {/* To respond */}
-                    <motion.div 
-                      className="px-6 py-4 flex items-center justify-between"
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.3, delay: 0.1 }}
-                    >
-                      <Switch
-                        checked={categories.categories.to_respond}
-                        onCheckedChange={(checked) => handleCategoryToggle('to_respond', checked)}
-                        className="data-[state=checked]:bg-[#F87171] data-[state=unchecked]:bg-zinc-700"
-                      />
-                      <div className="flex-1 flex items-center gap-3 ml-6">
-                        <span className="bg-[#F87171] text-black px-3 py-1 rounded text-sm font-medium">
-                          To respond
-                        </span>
-                        <span className="text-gray-400">
-                          Emails you need to respond to
-                        </span>
-                      </div>
-                    </motion.div>
-
-                    {/* FYI */}
-                    <motion.div 
-                      className="px-6 py-4 flex items-center justify-between"
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.3, delay: 0.2 }}
-                    >
-                      <Switch
-                        checked={categories.categories.fyi}
-                        onCheckedChange={(checked) => handleCategoryToggle('fyi', checked)}
-                        className="data-[state=checked]:bg-[#F59E0B] data-[state=unchecked]:bg-zinc-700"
-                      />
-                      <div className="flex-1 flex items-center gap-3 ml-6">
-                        <span className="bg-[#F59E0B] text-black px-3 py-1 rounded text-sm font-medium">
-                          FYI
-                        </span>
-                        <span className="text-gray-400">
-                          Emails that don&apos;t require your response, but are
-                          important
-                        </span>
-                      </div>
-                    </motion.div>
-
-                    {/* Comment */}
-                    <motion.div 
-                      className="px-6 py-4 flex items-center justify-between"
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.3, delay: 0.3 }}
-                    >
-                      <Switch
-                        checked={categories.categories.comment}
-                        onCheckedChange={(checked) => handleCategoryToggle('comment', checked)}
-                        className="data-[state=checked]:bg-[#F59E0B] data-[state=unchecked]:bg-zinc-700"
-                      />
-                      <div className="flex-1 flex items-center gap-3 ml-6">
-                        <span className="bg-[#F59E0B] text-black px-3 py-1 rounded text-sm font-medium">
-                          Comment
-                        </span>
-                        <span className="text-gray-400">
-                          Team chats in tools like Google Docs or Microsoft Office
-                        </span>
-                      </div>
-                    </motion.div>
-
-                    {/* Notification */}
-                    <motion.div 
-                      className="px-6 py-4 flex items-center justify-between"
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.3, delay: 0.4 }}
-                    >
-                      <Switch
-                        checked={categories.categories.notification}
-                        onCheckedChange={(checked) => handleCategoryToggle('notification', checked)}
-                        className="data-[state=checked]:bg-[#34D399] data-[state=unchecked]:bg-zinc-700"
-                      />
-                      <div className="flex-1 flex items-center gap-3 ml-6">
-                        <span className="bg-[#34D399] text-black px-3 py-1 rounded text-sm font-medium">
-                          Notification
-                        </span>
-                        <span className="text-gray-400">
-                          Automated updates from tools you use
-                        </span>
-                      </div>
-                    </motion.div>
-
-                    {/* Meeting update */}
-                    <motion.div 
-                      className="px-6 py-4 flex items-center justify-between"
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.3, delay: 0.5 }}
-                    >
-                      <Switch
-                        checked={categories.categories.meeting_update}
-                        onCheckedChange={(checked) => handleCategoryToggle('meeting_update', checked)}
-                        className="data-[state=checked]:bg-[#60A5FA] data-[state=unchecked]:bg-zinc-700"
-                      />
-                      <div className="flex-1 flex items-center gap-3 ml-6">
-                        <span className="bg-[#60A5FA] text-black px-3 py-1 rounded text-sm font-medium">
-                          Meeting update
-                        </span>
-                        <span className="text-gray-400">
-                          Calendar updates from Zoom, Google Meet, etc
-                        </span>
-                      </div>
-                    </motion.div>
-
-                    {/* Awaiting reply */}
-                    <motion.div 
-                      className="px-6 py-4 flex items-center justify-between"
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.3, delay: 0.6 }}
-                    >
-                      <Switch
-                        checked={categories.categories.awaiting_reply}
-                        onCheckedChange={(checked) => handleCategoryToggle('awaiting_reply', checked)}
-                        className="data-[state=checked]:bg-[#8B5CF6] data-[state=unchecked]:bg-zinc-700"
-                      />
-                      <div className="flex-1 flex items-center gap-3 ml-6">
-                        <span className="bg-[#8B5CF6] text-white px-3 py-1 rounded text-sm font-medium">
-                          Awaiting reply
-                        </span>
-                        <span className="text-gray-400">
-                          Emails you&apos;ve sent that you&apos;re expecting a reply
-                          to
-                        </span>
-                      </div>
-                    </motion.div>
-
-                    {/* Actioned */}
-                    <motion.div 
-                      className="px-6 py-4 flex items-center justify-between"
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.3, delay: 0.7 }}
-                    >
-                      <Switch
-                        checked={categories.categories.actioned}
-                        onCheckedChange={(checked) => handleCategoryToggle('actioned', checked)}
-                        className="data-[state=checked]:bg-[#8B5CF6] data-[state=unchecked]:bg-zinc-700"
-                      />
-                      <div className="flex-1 flex items-center gap-3 ml-6">
-                        <span className="bg-[#8B5CF6] text-white px-3 py-1 rounded text-sm font-medium">
-                          Actioned
-                        </span>
-                        <span className="text-gray-400">
-                          Emails you&apos;ve sent that you&apos;re not expecting a
-                          reply to
-                        </span>
-                      </div>
-                    </motion.div>
-
-                    {/* Add custom category button */}
-                    <motion.div 
-                      className="px-6 py-4 flex justify-center hidden"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 0.3, delay: 0.8 }}
-                    >
-                      <button className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors">
-                        <Plus className="w-5 h-5" />
-                        Add custom category
-                      </button>
-                    </motion.div>
-                  </div>
-                </motion.div>
-              </motion.div>
-            ) : (
-              <motion.div
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.3, ease: "easeInOut" }}
-              >
-                <div className="mt-8">
-                  <div className="relative">
-                    <div className="absolute -inset-0.5 bg-gradient-to-r from-[#9334E9] to-[#9334E9] rounded-lg blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-gradient-x"></div>
-                    <Card className="bg-black border-zinc-500 relative overflow-hidden w-full">
-                      <div className="absolute inset-0 bg-[#9334E9]/20 animate-pulse"></div>
-                      <div className="absolute inset-0 bg-gradient-to-r from-[#9334E9]/30 via-[#9334E9]/20 to-[#9334E9]/30"></div>
-                      <CardContent className="p-4 relative text-center">
-                        <div className="flex items-center gap-4 justify-center">
-                          <Video className="w-6 h-6 text-[#9334E9] hidden" />
-                          <div>
-                            <h3 className="font-medium text-white text-lg">
-                              Try Amurex for Smart Email Categorization
-                            </h3>
-                            <p className="text-sm text-zinc-400">
-                              Get automated categorization for your emails
-                            </p>
-                          </div>
-                        </div>
-                        <div className="mt-4">
-                          <a
-                            href="/settings"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center px-4 py-2 rounded-md text-sm font-medium border border-white/10 bg-[#9334E9] text-[#FAFAFA] hover:bg-[#3c1671] hover:border-[#6D28D9] transition-colors duration-200"
-                          >
-                            Connect Google account
-                          </a>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          
         </div>
 
         {/* Right Column - Gmail Preview */}
