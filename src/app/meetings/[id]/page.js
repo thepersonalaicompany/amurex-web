@@ -317,8 +317,8 @@ export default function TranscriptDetail({ params }) {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#09090B]">
-        <div className="p-6 max-w-7xl mx-auto">
-          <h1 className="text-2xl font-bold text-white">Loading...</h1>
+        <div className="p-6 mx-auto">
+          <h1 className="text-xl font-normal text-white">Loading...</h1>
         </div>
       </div>
     )
@@ -327,7 +327,7 @@ export default function TranscriptDetail({ params }) {
   if (error || !transcript) {
     return (
       <div className="min-h-screen bg-[#09090B]">
-        <div className="p-6 max-w-7xl mx-auto">
+        <div className="p-6 mx-auto">
           <div className="bg-[#1C1C1E] rounded-lg p-6">
             <h1 className="text-red-500 text-xl mb-4">
               {error || "Transcript not found"}
@@ -348,7 +348,7 @@ export default function TranscriptDetail({ params }) {
   return (
     <>
       <div className="min-h-screen bg-black">
-        <div className="p-6 max-w-7xl mx-auto">
+        <div className="p-6 mx-auto">
           {/* Modal Component */}
           {isModalOpen && (
             <div 
