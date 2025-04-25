@@ -2,7 +2,6 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { Switch } from "@/components/ui/switch";
-import { Navbar } from "@/components/Navbar";
 import { Plus } from "lucide-react";
 import { createClient } from '@supabase/supabase-js';
 import { toast } from "sonner";
@@ -11,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Video } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import MobileWarningBanner from "@/components/MobileWarningBanner";
+import IconToggle from "@/components/ui/IconToggle";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -27,6 +27,7 @@ function EmailsContent() {
   const [isProcessingEmails, setIsProcessingEmails] = useState(false);
   const [emailTaggingEnabled, setEmailTaggingEnabled] = useState(false);
   const [hasEmailRecord, setHasEmailRecord] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
   const [categories, setCategories] = useState({
     categories: {
       to_respond: true,
@@ -224,21 +225,21 @@ function EmailsContent() {
   return (
     <div className="flex min-h-screen bg-black">
       <MobileWarningBanner />
-      <Navbar />
-
       {/* Main Content Area */}
-      <div className="flex flex-1 ml-16 p-8 gap-8">
+      <div className="flex flex-1 p-8 gap-8">
         {/* Left Column - Settings */}
-        <div className="w-[60%]">
-          <h2 className="text-2xl font-medium text-white">Emails</h2>
+        <div className={`${showPreview ? 'w-[60%]' : 'w-full'} transition-all duration-500`}>
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-2xl font-medium text-white">Emails</h2>
+          </div>
           <p className="text-sm text-zinc-400 mb-6">
-            Automatically sort and filter your emails to keep your main inbox
+            Automated email categorization to keep your inbox
             focused on important messages
           </p>
 
           {/* Email Tagging Toggle Card */}
           {/* Fake search bar */}
-          <a href="/search" target="_blank" rel="noopener noreferrer">
+          <a href="/search" rel="noopener noreferrer">
             <div 
               className="my-2 bg-zinc-800 rounded-xl flex items-center px-3 py-2 cursor-text hover:bg-zinc-700 transition-colors"
             >
@@ -249,52 +250,68 @@ function EmailsContent() {
               <div className="text-zinc-400 text-md">Search in emails...</div>
             </div>
           </a>
-          <div className="rounded-xl border text-card-foreground shadow bg-black border-zinc-800 p-4 mb-6">
-            <div className="flex flex-col gap-4">
-              <div className="flex items-center gap-4">
-                <img
-                  src={PROVIDER_ICONS.gmail}
-                  alt="Gmail"
-                  className="w-8"
-                />
-                <div>
-                  <h2 className="font-medium text-white text-lg">Gmail Smart Labels</h2>
-                  <p className="text-xs text-zinc-600 max-w-72">Auto-categorize emails with AI</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-6">
-                <div className="flex items-center gap-2">
-                  <span className="text-zinc-400 text-sm">Enable email tagging</span>
-                  <Switch
-                    checked={emailTaggingEnabled}
-                    onCheckedChange={handleEmailTaggingToggle}
-                    className={emailTaggingEnabled ? "bg-[#9334E9]" : "bg-zinc-700"}
+          <div className="rounded-xl border text-card-foreground shadow bg-black border-zinc-800 mb-6">
+            <div className="flex flex-col">
+              <div className="flex flex-row justify-between gap-2 border-b border-zinc-800 bg-zinc-800/50 rounded-t-xl">
+                <div className="flex items-center gap-4 px-6 py-4">
+                  <img
+                    src={PROVIDER_ICONS.gmail}
+                    alt="Gmail"
+                    className="hidden w-8"
                   />
-                </div>
-                {emailTaggingEnabled && (
-                  <Button
-                    variant="outline"
-                    className="hidden bg-zinc-900 text-zinc-300 hover:bg-zinc-800 hover:border-[#9334E9] border border-zinc-700 min-w-[140px] px-4 py-2"
-                    onClick={processGmailLabels}
-                    disabled={isProcessingEmails}
-                  >
-                    {isProcessingEmails ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#9334E9] mr-2"></div>
-                        <span>Processing...</span>
-                      </>
-                    ) : (
-                      <div className="flex items-center">
-                        <img
-                          src={PROVIDER_ICONS.gmail}
-                          alt="Gmail"
-                          className="w-4 mr-2"
-                        />
-                        Process new emails
-                      </div>
+                  <div>
+                    <h2 className="font-medium text-white text-lg">AI categorization</h2>
+                    {/* <p className="text-xs text-zinc-600 max-w-72">Auto-categorize emails with AI</p> */}
+                  </div>
+                  <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-2">
+                      <span className="hidden text-white text-sm">Enable email tagging</span>
+                      <IconToggle 
+                        checked={emailTaggingEnabled}
+                        onChange={handleEmailTaggingToggle}
+                      />
+                    </div>
+                    {emailTaggingEnabled && (
+                      <Button
+                        variant="outline"
+                        className="hidden bg-zinc-900 text-zinc-300 hover:bg-zinc-800 hover:border-[#9334E9] border border-zinc-700 min-w-[140px] px-4 py-2"
+                        onClick={processGmailLabels}
+                        disabled={isProcessingEmails}
+                      >
+                        {isProcessingEmails ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#9334E9] mr-2"></div>
+                            <span>Processing...</span>
+                          </>
+                        ) : (
+                          <div className="flex items-center">
+                            <img
+                              src={PROVIDER_ICONS.gmail}
+                              alt="Gmail"
+                              className="w-4 mr-2"
+                            />
+                            Process new emails
+                          </div>
+                        )}
+                      </Button>
                     )}
-                  </Button>
-                )}
+                  </div>
+                </div>
+                <div 
+                  className="flex items-center mx-6 gap-2 px-3 py-1 bg-zinc-700 rounded-md cursor-pointer hover:bg-zinc-900 transition-colors h-fit my-auto"
+                  onClick={() => setShowPreview(!showPreview)}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="hidden h-4 w-4 text-black" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                    <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                  </svg>
+                  <img
+                      src={PROVIDER_ICONS.gmail}
+                      alt="Gmail"
+                      className="w-6 mr-2"
+                    />
+                  <span className="text-white text-lg">{showPreview ? "Hide Preview" : "Show Preview"}</span>
+                </div>
               </div>
               <AnimatePresence>
                 {emailTaggingEnabled && hasEmailRecord ? (
@@ -345,13 +362,13 @@ function EmailsContent() {
 
                     {/* Categories Section */}
                     <motion.div 
-                      className="overflow-hidden border text-card-foreground shadow rounded-xl bg-black border-zinc-800"
+                      className="overflow-hidden text-card-foreground shadow bg-black border-zinc-800 rounded-2xl"
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: "auto" }}
                       transition={{ duration: 0.5, ease: "easeInOut" }}
                     >
                       {/* Header */}
-                      <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800">
+                      <div className="hidden flex items-center justify-between px-6 py-4 border-b border-zinc-800">
                         <h2 className="text-white">Label names</h2>
                         {/* <h2 className="text-white">Categories</h2> */}
                       </div>
@@ -365,17 +382,25 @@ function EmailsContent() {
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ duration: 0.3, delay: 0.1 }}
                         >
-                          <Switch
-                            checked={categories.categories.to_respond}
-                            onCheckedChange={(checked) => handleCategoryToggle('to_respond', checked)}
-                            className="data-[state=checked]:bg-[#F87171] data-[state=unchecked]:bg-zinc-700"
-                          />
+                          <div 
+                            className="h-7 w-7 flex items-center justify-center cursor-pointer rounded border border-zinc-800" 
+                            style={{ 
+                              backgroundColor: categories.categories.to_respond ? '#F87171' : 'transparent',
+                            }}
+                            onClick={() => handleCategoryToggle('to_respond', !categories.categories.to_respond)}
+                          >
+                            {categories.categories.to_respond && (
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-black" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                            )}
+                          </div>
                           <div className="flex-1 flex items-center gap-3 ml-6">
                             <span className="bg-[#F87171] text-black px-3 py-1 rounded text-sm font-medium">
                               To respond
                             </span>
                             <span className="text-gray-400">
-                              Emails you need to respond to
+                              Awaiting your response
                             </span>
                           </div>
                         </motion.div>
@@ -387,18 +412,25 @@ function EmailsContent() {
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ duration: 0.3, delay: 0.2 }}
                         >
-                          <Switch
-                            checked={categories.categories.fyi}
-                            onCheckedChange={(checked) => handleCategoryToggle('fyi', checked)}
-                            className="data-[state=checked]:bg-[#F59E0B] data-[state=unchecked]:bg-zinc-700"
-                          />
+                          <div 
+                            className="h-7 w-7 flex items-center justify-center cursor-pointer rounded border border-zinc-800" 
+                            style={{ 
+                              backgroundColor: categories.categories.fyi ? '#F59E0B' : 'transparent',
+                            }}
+                            onClick={() => handleCategoryToggle('fyi', !categories.categories.fyi)}
+                          >
+                            {categories.categories.fyi && (
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-black" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                            )}
+                          </div>
                           <div className="flex-1 flex items-center gap-3 ml-6">
                             <span className="bg-[#F59E0B] text-black px-3 py-1 rounded text-sm font-medium">
                               FYI
                             </span>
                             <span className="text-gray-400">
-                              Emails that don&apos;t require your response, but are
-                              important
+                              Information you might need to know
                             </span>
                           </div>
                         </motion.div>
@@ -410,17 +442,25 @@ function EmailsContent() {
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ duration: 0.3, delay: 0.3 }}
                         >
-                          <Switch
-                            checked={categories.categories.comment}
-                            onCheckedChange={(checked) => handleCategoryToggle('comment', checked)}
-                            className="data-[state=checked]:bg-[#F59E0B] data-[state=unchecked]:bg-zinc-700"
-                          />
+                          <div 
+                            className="h-7 w-7 flex items-center justify-center cursor-pointer rounded border border-zinc-800" 
+                            style={{ 
+                              backgroundColor: categories.categories.comment ? '#F59E0B' : 'transparent',
+                            }}
+                            onClick={() => handleCategoryToggle('comment', !categories.categories.comment)}
+                          >
+                            {categories.categories.comment && (
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-black" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                            )}
+                          </div>
                           <div className="flex-1 flex items-center gap-3 ml-6">
                             <span className="bg-[#F59E0B] text-black px-3 py-1 rounded text-sm font-medium">
                               Comment
                             </span>
                             <span className="text-gray-400">
-                              Team chats in tools like Google Docs or Microsoft Office
+                              Team comments (Google Docs, Microsoft Office, etc.)
                             </span>
                           </div>
                         </motion.div>
@@ -432,11 +472,19 @@ function EmailsContent() {
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ duration: 0.3, delay: 0.4 }}
                         >
-                          <Switch
-                            checked={categories.categories.notification}
-                            onCheckedChange={(checked) => handleCategoryToggle('notification', checked)}
-                            className="data-[state=checked]:bg-[#34D399] data-[state=unchecked]:bg-zinc-700"
-                          />
+                          <div 
+                            className="h-7 w-7 flex items-center justify-center cursor-pointer rounded border border-zinc-800" 
+                            style={{ 
+                              backgroundColor: categories.categories.notification ? '#34D399' : 'transparent',
+                            }}
+                            onClick={() => handleCategoryToggle('notification', !categories.categories.notification)}
+                          >
+                            {categories.categories.notification && (
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-black" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                            )}
+                          </div>
                           <div className="flex-1 flex items-center gap-3 ml-6">
                             <span className="bg-[#34D399] text-black px-3 py-1 rounded text-sm font-medium">
                               Notification
@@ -454,17 +502,25 @@ function EmailsContent() {
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ duration: 0.3, delay: 0.5 }}
                         >
-                          <Switch
-                            checked={categories.categories.meeting_update}
-                            onCheckedChange={(checked) => handleCategoryToggle('meeting_update', checked)}
-                            className="data-[state=checked]:bg-[#60A5FA] data-[state=unchecked]:bg-zinc-700"
-                          />
+                          <div 
+                            className="h-7 w-7 flex items-center justify-center cursor-pointer rounded border border-zinc-800" 
+                            style={{ 
+                              backgroundColor: categories.categories.meeting_update ? '#60A5FA' : 'transparent',
+                            }}
+                            onClick={() => handleCategoryToggle('meeting_update', !categories.categories.meeting_update)}
+                          >
+                            {categories.categories.meeting_update && (
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-black" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                            )}
+                          </div>
                           <div className="flex-1 flex items-center gap-3 ml-6">
                             <span className="bg-[#60A5FA] text-black px-3 py-1 rounded text-sm font-medium">
                               Meeting update
                             </span>
                             <span className="text-gray-400">
-                              Calendar updates from Zoom, Google Meet, etc
+                              Calendar updates from Zoom, Google Meet, etc.
                             </span>
                           </div>
                         </motion.div>
@@ -476,18 +532,25 @@ function EmailsContent() {
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ duration: 0.3, delay: 0.6 }}
                         >
-                          <Switch
-                            checked={categories.categories.awaiting_reply}
-                            onCheckedChange={(checked) => handleCategoryToggle('awaiting_reply', checked)}
-                            className="data-[state=checked]:bg-[#8B5CF6] data-[state=unchecked]:bg-zinc-700"
-                          />
+                          <div 
+                            className="h-7 w-7 flex items-center justify-center cursor-pointer rounded border border-zinc-800" 
+                            style={{ 
+                              backgroundColor: categories.categories.awaiting_reply ? '#8B5CF6' : 'transparent',
+                            }}
+                            onClick={() => handleCategoryToggle('awaiting_reply', !categories.categories.awaiting_reply)}
+                          >
+                            {categories.categories.awaiting_reply && (
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-white" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                            )}
+                          </div>
                           <div className="flex-1 flex items-center gap-3 ml-6">
                             <span className="bg-[#8B5CF6] text-white px-3 py-1 rounded text-sm font-medium">
                               Awaiting reply
                             </span>
                             <span className="text-gray-400">
-                              Emails you&apos;ve sent that you&apos;re expecting a reply
-                              to
+                              Sent emails awaiting a reply
                             </span>
                           </div>
                         </motion.div>
@@ -499,18 +562,25 @@ function EmailsContent() {
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ duration: 0.3, delay: 0.7 }}
                         >
-                          <Switch
-                            checked={categories.categories.actioned}
-                            onCheckedChange={(checked) => handleCategoryToggle('actioned', checked)}
-                            className="data-[state=checked]:bg-[#8B5CF6] data-[state=unchecked]:bg-zinc-700"
-                          />
+                          <div 
+                            className="h-7 w-7 flex items-center justify-center cursor-pointer rounded border border-zinc-800"
+                            style={{ 
+                              backgroundColor: categories.categories.actioned ? '#8B5CF6' : 'transparent',
+                            }}
+                            onClick={() => handleCategoryToggle('actioned', !categories.categories.actioned)}
+                          >
+                            {categories.categories.actioned && (
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-white" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                            )}
+                          </div>
                           <div className="flex-1 flex items-center gap-3 ml-6">
                             <span className="bg-[#8B5CF6] text-white px-3 py-1 rounded text-sm font-medium">
                               Actioned
                             </span>
                             <span className="text-gray-400">
-                              Emails you&apos;ve sent that you&apos;re not expecting a
-                              reply to
+                              Sent emails not awaiting a reply
                             </span>
                           </div>
                         </motion.div>
@@ -537,37 +607,35 @@ function EmailsContent() {
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.3, ease: "easeInOut" }}
                   >
-                    <div className="mt-8">
-                      <div className="relative">
-                        <div className="absolute -inset-0.5 bg-gradient-to-r from-[#9334E9] to-[#9334E9] rounded-lg blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-gradient-x"></div>
-                        <Card className="bg-black border-zinc-500 relative overflow-hidden w-full">
-                          <div className="absolute inset-0 bg-[#9334E9]/20 animate-pulse"></div>
-                          <div className="absolute inset-0 bg-gradient-to-r from-[#9334E9]/30 via-[#9334E9]/20 to-[#9334E9]/30"></div>
-                          <CardContent className="p-4 relative text-center">
-                            <div className="flex items-center gap-4 justify-center">
-                              <Video className="w-6 h-6 text-[#9334E9] hidden" />
-                              <div>
-                                <h3 className="font-medium text-white text-lg">
-                                  Try Amurex for Smart Email Categorization
-                                </h3>
-                                <p className="text-sm text-zinc-400">
-                                  Get automated categorization for your emails
-                                </p>
-                              </div>
+                    <div className="relative">
+                      <div className="absolute -inset-0.5 bg-gradient-to-r from-[#9334E9] to-[#9334E9] rounded-lg blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-gradient-x"></div>
+                      <Card className="bg-black border-zinc-500 relative overflow-hidden w-full">
+                        <div className="absolute inset-0 bg-[#9334E9]/20 animate-pulse"></div>
+                        <div className="absolute inset-0 bg-gradient-to-r from-[#9334E9]/30 via-[#9334E9]/20 to-[#9334E9]/30"></div>
+                        <CardContent className="p-4 relative text-center">
+                          <div className="flex items-center gap-4 justify-center">
+                            <Video className="w-6 h-6 text-[#9334E9] hidden" />
+                            <div>
+                              <h3 className="font-medium text-white text-lg">
+                                Try Amurex for Smart Email Categorization
+                              </h3>
+                              <p className="text-sm text-zinc-400">
+                                Get automated categorization for your emails
+                              </p>
                             </div>
-                            <div className="mt-4">
-                              <a
-                                href="/settings"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center px-4 py-2 rounded-md text-sm font-medium border border-white/10 bg-[#9334E9] text-[#FAFAFA] hover:bg-[#3c1671] hover:border-[#6D28D9] transition-colors duration-200"
-                              >
-                                Connect Google account
-                              </a>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </div>
+                          </div>
+                          <div className="mt-4">
+                            <a
+                              href="/settings"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center px-4 py-2 rounded-md text-sm font-medium border border-white/10 bg-[#9334E9] text-[#FAFAFA] hover:bg-[#3c1671] hover:border-[#6D28D9] transition-colors duration-200"
+                            >
+                              Connect Google account
+                            </a>
+                          </div>
+                        </CardContent>
+                      </Card>
                     </div>
                   </motion.div>
                 )}
@@ -579,69 +647,81 @@ function EmailsContent() {
         </div>
 
         {/* Right Column - Gmail Preview */}
-        <div className="w-[40%] flex flex-col">
-          {/* Invisible spacer to match the header height */}
-          <div className="h-[88px]"></div>
-          
-          <div className="bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden h-fit">
-            <div className="bg-zinc-800 p-3 flex items-center">
-              <img
-                src={PROVIDER_ICONS.gmail}
-                alt="Gmail"
-                className="w-6 mr-2"
-              />
-              <h3 className="text-white font-medium">Inbox Preview</h3>
-            </div>
-            
-            <div className="divide-y divide-zinc-800">
-              {sampleEmails.map(email => {
-                return (
-                  <div 
-                    key={email.id} 
-                    className="p-3 hover:bg-zinc-800/50 cursor-pointer"
-                    onClick={() => handleEmailClick(email.sender)}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div className="font-medium text-white">
-                        {email.sender}
-                        {/* {(email.sender === "Sanskar Jethi" || email.sender === "Arsen Kylyshbek") && (
-                          <span className="text-xs text-zinc-500 ml-1">(click to view profile)</span>
-                        )} */}
-                      </div>
-                      <div className="text-xs text-zinc-500">{email.time}</div>
-                    </div>
-                    <div className="flex items-center gap-2 mt-1">
-                      <div className="text-sm text-zinc-400">{email.subject}</div>
-                      
-                      {/* Labels next to subject */}
-                      {email.category === "to_respond" && categories.categories.to_respond && (
-                        <span className="bg-[#F87171] text-black text-xs px-2 py-0.5 rounded">To respond</span>
-                      )}
-                      {email.category === "fyi" && categories.categories.fyi && (
-                        <span className="bg-[#F59E0B] text-black text-xs px-2 py-0.5 rounded">FYI</span>
-                      )}
-                      {email.category === "comment" && categories.categories.comment && (
-                        <span className="bg-[#F59E0B] text-black text-xs px-2 py-0.5 rounded">Comment</span>
-                      )}
-                      {email.category === "notification" && categories.categories.notification && (
-                        <span className="bg-[#34D399] text-black text-xs px-2 py-0.5 rounded">Notification</span>
-                      )}
-                      {email.category === "meeting_update" && categories.categories.meeting_update && (
-                        <span className="bg-[#60A5FA] text-black text-xs px-2 py-0.5 rounded">Meeting update</span>
-                      )}
-                      {email.category === "awaiting_reply" && categories.categories.awaiting_reply && (
-                        <span className="bg-[#8B5CF6] text-white text-xs px-2 py-0.5 rounded">Awaiting reply</span>
-                      )}
-                      {email.category === "actioned" && categories.categories.actioned && (
-                        <span className="bg-[#8B5CF6] text-white text-xs px-2 py-0.5 rounded">Actioned</span>
-                      )}
-                    </div>
+        <AnimatePresence>
+          {showPreview && (
+            <motion.div 
+              className="w-[40%] flex flex-col"
+              initial={{ opacity: 0, width: 0 }}
+              animate={{ opacity: 1, width: '40%' }}
+              exit={{ opacity: 0, width: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              {/* Invisible spacer to match the header height */}
+              <div className="h-[88px]"></div>
+              
+              <div className="bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden h-fit">
+                <div className="bg-zinc-800 p-3 flex items-center justify-between">
+                  <div className="flex items-center">
+                    <h3 className="text-white font-medium">Inbox Preview</h3>
                   </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
+                  <div 
+                    className="p-1 hover:bg-zinc-700 rounded-full cursor-pointer transition-colors"
+                    onClick={() => setShowPreview(false)}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-zinc-400" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                </div>
+                
+                <div className="divide-y divide-zinc-800">
+                  {sampleEmails.map(email => {
+                    return (
+                      <div 
+                        key={email.id} 
+                        className="p-3 hover:bg-zinc-800/50 cursor-pointer"
+                        onClick={() => handleEmailClick(email.sender)}
+                      >
+                        <div className="flex justify-between items-start">
+                          <div className="font-medium text-white">
+                            {email.sender}
+                          </div>
+                          <div className="text-xs text-zinc-500">{email.time}</div>
+                        </div>
+                        <div className="flex items-center gap-2 mt-1">
+                          <div className="text-sm text-zinc-400">{email.subject}</div>
+                          
+                          {/* Labels next to subject */}
+                          {email.category === "to_respond" && categories.categories.to_respond && (
+                            <span className="bg-[#F87171] text-black text-xs px-2 py-0.5 rounded">To respond</span>
+                          )}
+                          {email.category === "fyi" && categories.categories.fyi && (
+                            <span className="bg-[#F59E0B] text-black text-xs px-2 py-0.5 rounded">FYI</span>
+                          )}
+                          {email.category === "comment" && categories.categories.comment && (
+                            <span className="bg-[#F59E0B] text-black text-xs px-2 py-0.5 rounded">Comment</span>
+                          )}
+                          {email.category === "notification" && categories.categories.notification && (
+                            <span className="bg-[#34D399] text-black text-xs px-2 py-0.5 rounded">Notification</span>
+                          )}
+                          {email.category === "meeting_update" && categories.categories.meeting_update && (
+                            <span className="bg-[#60A5FA] text-black text-xs px-2 py-0.5 rounded">Meeting update</span>
+                          )}
+                          {email.category === "awaiting_reply" && categories.categories.awaiting_reply && (
+                            <span className="bg-[#8B5CF6] text-white text-xs px-2 py-0.5 rounded">Awaiting reply</span>
+                          )}
+                          {email.category === "actioned" && categories.categories.actioned && (
+                            <span className="bg-[#8B5CF6] text-white text-xs px-2 py-0.5 rounded">Actioned</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

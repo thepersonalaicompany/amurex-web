@@ -11,7 +11,6 @@ import {
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { supabase } from "@/lib/supabaseClient";
-import { Navbar } from "@/components/Navbar";
 import StarButton from "@/components/star-button";
 import { useRouter } from "next/navigation";
 import MobileWarningBanner from "@/components/MobileWarningBanner";
@@ -495,11 +494,11 @@ export default function AISearch() {
   return (
     <>
       <MobileWarningBanner />
-      <Navbar />
       <div
-        className={`min-h-screen bg-black lg:ml-[4rem] ${
+        className={`min-h-screen bg-black ${
           isSearchInitiated ? "pt-6" : "flex items-center justify-center"
         }`}
+        // className={"min-h-screen bg-black pt-6 flex items-center justify-center"}
       >
         <div className="fixed top-4 right-4 z-50 hidden">
           <StarButton />
@@ -1499,16 +1498,9 @@ const OnboardingFlow = ({ onClose, setHasSeenOnboarding }) => {
 
   return (
     <div className="fixed inset-0 flex items-center justify-center z-40 pointer-events-none">
-      {/* Overlay with click-through for navbar */}
-      <div
-        className="absolute inset-0 bg-zinc-800 bg-opacity-40 pointer-events-auto"
-        style={{ marginLeft: "64px" }}
-      ></div>
-
       {/* Main content positioned to avoid navbar */}
       <div
         className="bg-black bg-opacity-90 rounded-lg border border-zinc-700 max-w-4xl w-full p-6 relative pointer-events-auto"
-        style={{ marginLeft: "64px" }}
       >
         <div className="absolute -top-2 -left-2 bg-zinc-700 p-2 rounded-full shadow-lg">
           <svg

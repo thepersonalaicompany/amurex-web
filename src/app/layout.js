@@ -7,6 +7,7 @@ import { AuthProvider } from "@/components/AuthProvider";
 import { defaultSEOConfig } from "./seo";
 import { Inter } from "next/font/google";
 import IntercomProvider from "@/components/IntercomProvider";
+import { Navbar } from "@/components/Navbar";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -73,7 +74,7 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${notoSerif.variable} antialiased ${inter.className}`}
+        className={`${geistSans.variable} ${geistMono.variable} ${notoSerif.variable} antialiased ${inter.className} bg-black`}
       >
         <AuthProvider>
           <IntercomProvider>
@@ -86,7 +87,12 @@ export default function RootLayout({ children }) {
 
                 // style={{ backgroundColor: "var(--surface-color-2)" }}
               >
-                {children}
+                <div className="flex flex-row h-screen">
+                  <Navbar />
+                  <div className="flex-1 overflow-y-auto">
+                    {children}
+                  </div>
+                </div>
               </main>
             </span>
             <SpeedInsights />

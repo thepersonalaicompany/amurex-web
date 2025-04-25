@@ -1,13 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FileText, Search, Calendar, Clock, Video } from "lucide-react";
+import { FileText, Search, Calendar, Clock, Video, BellRing } from "lucide-react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
-import { Navbar } from "@/components/Navbar";
 import { Card } from "@/components/ui/card";
 import { CardContent } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import IconToggle from "@/components/ui/IconToggle";
+import { toast } from "react-hot-toast";
 
 export default function TranscriptList() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -17,10 +19,12 @@ export default function TranscriptList() {
   const [filter, setFilter] = useState("personal");
   const router = useRouter();
   const [userTeams, setUserTeams] = useState([]);
+  const [emailNotificationsEnabled, setEmailNotificationsEnabled] = useState(false);
 
   useEffect(() => {
     fetchTranscripts();
     fetchUserTeams();
+    fetchUserSettings();
   }, [filter]);
 
   const fetchTranscripts = async () => {
@@ -149,6 +153,49 @@ export default function TranscriptList() {
     }
   };
 
+  const fetchUserSettings = async () => {
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const { data: user, error } = await supabase
+        .from("users")
+        .select("emails_enabled")
+        .eq("id", session.user.id)
+        .single();
+
+      if (error) throw error;
+      if (user) {
+        setEmailNotificationsEnabled(user.emails_enabled || false);
+      }
+    } catch (err) {
+      console.error("Error fetching user settings:", err);
+    }
+  };
+
+  const handleEmailNotificationsToggle = async (checked) => {
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (session) {
+        const { error } = await supabase
+          .from("users")
+          .update({ emails_enabled: checked })
+          .eq("id", session.user.id);
+
+        if (error) throw error;
+        setEmailNotificationsEnabled(checked);
+        toast.success(checked ? "Email notifications enabled" : "Email notifications disabled");
+      }
+    } catch (error) {
+      console.error("Error updating email notification settings:", error);
+      toast.error("Failed to update email settings");
+    }
+  };
+
   const formatTranscripts = (data) => {
     return data.map((meeting) => ({
       id: meeting.id,
@@ -173,8 +220,8 @@ export default function TranscriptList() {
   if (loading) {
     return (
       <div className="min-h-screen bg-black">
-        <div className="p-6 max-w-7xl mx-auto">
-          <h1 className="text-3xl font-bold mb-6 text-white">Loading...</h1>
+        <div className="p-8 mx-auto">
+          <h1 className="text-2xl font-medium mb-6 text-white">Loading...</h1>
         </div>
       </div>
     );
@@ -182,10 +229,21 @@ export default function TranscriptList() {
 
   return (
     <>
-      <Navbar />
       <div className="min-h-screen bg-black">
-        <div className="p-6 max-w-7xl mx-auto">
-        <h2 className="text-2xl font-medium text-white mb-4">Meetings</h2>
+        <div className="p-8 mx-auto">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-medium text-white">Meetings</h2>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <BellRing className="w-5 h-5 text-white" />
+                <div className="text-white hidden sm:block">Email notes after meetings</div>
+                <IconToggle 
+                  checked={emailNotificationsEnabled}
+                  onChange={handleEmailNotificationsToggle}
+                />
+              </div>
+            </div>
+          </div>
 
           <div className="flex items-center gap-2 mb-6 flex-wrap bg-[#1C1C1E] p-1 rounded-lg w-fit hidden">
             <label

@@ -247,68 +247,77 @@ export default function HomePage() {
     checkConnections();
   }, []);
 
-  if (!session) {
+  // if (!session) {
+  //   return (
+  //     <div className="flex items-center justify-center h-screen">
+  //       <Loader />
+  //     </div>
+  //   );
+  // }
+
+  const nope = "nope";
+
+  if (nope === "nope") {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <Loader />
-      </div>
+      <Navbar />
     );
   }
-
   return (
     <>
       <Navbar />
-      <div className={`${louizeFont.variable} flex flex-col h-screen ml-16`} style={{ backgroundColor: "var(--surface-color-2)" }}>
-      <div className="sticky top-0 z-40 w-full bg-opacity-90 backdrop-blur-sm" style={{ backgroundColor: "var(--surface-color-2)" }}>
-        <div className="w-full py-4 px-8 flex justify-between items-center">
-          <div className="relative w-full flex items-center">
-            <Input
-              type="search"
-              placeholder="Search..."
-              className="w-full text-6xl py-4 px-2 font-serif bg-transparent border-0 border-b-2 rounded-none focus:ring-0 transition-colors"
-              style={{ 
-                fontFamily: "var(--font-louize), serif",
-                borderColor: "var(--line-color)",
-                color: "var(--color)",
-              }}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onKeyDown={(e) => {
-                if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-                  e.preventDefault();
-                  handleAiSearch();
-                }
-              }}
-            />
-            {searchTerm && (
-              <Button
-                variant="ghost"
-                onClick={() => setSearchTerm('')}
-                className="absolute right-4 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
+      <div className="hidden bg-black">
+        <div className={`${louizeFont.variable} flex flex-col h-screen ml-16`} style={{ backgroundColor: "var(--surface-color-2)" }}>
+        <div className="sticky top-0 z-40 w-full bg-opacity-90 backdrop-blur-sm" style={{ backgroundColor: "var(--surface-color-2)" }}>
+          <div className="w-full py-4 px-8 flex justify-between items-center">
+            <div className="relative w-full flex items-center">
+              <Input
+                type="search"
+                placeholder="Search..."
+                className="w-full text-6xl py-4 px-2 font-serif bg-transparent border-0 border-b-2 rounded-none focus:ring-0 transition-colors"
+                style={{ 
+                  fontFamily: "var(--font-louize), serif",
+                  borderColor: "var(--line-color)",
+                  color: "var(--color)",
+                }}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyDown={(e) => {
+                  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                    e.preventDefault();
+                    handleAiSearch();
+                  }
+                }}
               />
+              {searchTerm && (
+                <Button
+                  variant="ghost"
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
+                />
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="flex-grow overflow-hidden">
+          <div className="h-full overflow-y-auto p-8">
+            {isLoading ? (
+              <Loader />
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 min-h-full">
+                <NoteEditorTile onSave={handleSaveNote} onOpenFocusMode={handleOpenFocusMode} />
+                {pins.map((pin) => (
+                  <PinTile key={pin.id} pin={pin} />
+                ))}
+              </div>
             )}
           </div>
         </div>
+        {isFocusMode && (
+          <div className="fixed inset-0 bg-white z-50 flex flex-col p-8">
+            <FocusedEditor onSave={handleSaveFocusNote} onClose={handleCloseFocusMode} />
+          </div>
+        )}
       </div>
-      <div className="flex-grow overflow-hidden">
-        <div className="h-full overflow-y-auto p-8">
-          {isLoading ? (
-            <Loader />
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 min-h-full">
-              <NoteEditorTile onSave={handleSaveNote} onOpenFocusMode={handleOpenFocusMode} />
-              {pins.map((pin) => (
-                <PinTile key={pin.id} pin={pin} />
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-      {isFocusMode && (
-        <div className="fixed inset-0 bg-white z-50 flex flex-col p-8">
-          <FocusedEditor onSave={handleSaveFocusNote} onClose={handleCloseFocusMode} />
-        </div>
-      )}
     </div>
     </>
   );

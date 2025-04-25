@@ -8,7 +8,6 @@ import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/lib/supabaseClient";
 import styles from './TranscriptDetail.module.css';
 import { Plus, Minus } from 'lucide-react';
-import { Navbar } from '@/components/Navbar';
 import ReactMarkdown from 'react-markdown';
 
 
@@ -348,8 +347,7 @@ export default function TranscriptDetail({ params }) {
 
   return (
     <>
-      <Navbar />
-      <div className="min-h-screen bg-black lg:ml-[4rem]">
+      <div className="min-h-screen bg-black">
         <div className="p-6 max-w-7xl mx-auto">
           {/* Modal Component */}
           {isModalOpen && (
@@ -497,6 +495,7 @@ export default function TranscriptDetail({ params }) {
           </div>
 
           <div className="bg-[#09090A] rounded-lg border border-zinc-800">
+          {/* <div className="bg-zinc-900/70 rounded-lg border border-zinc-800"> */}
             <div className="p-6 border-b border-zinc-800 hidden lg:block">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">

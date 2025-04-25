@@ -65,10 +65,16 @@ module.exports = {
   					'background-size': '200% 200%',
   					'background-position': 'right center'
   				}
-  			}
+  			},
+                        'shimmer': {
+                          '0%': { transform: 'translateX(-100%)' },
+                          '100%': { transform: 'translateX(100%)' }
+                        }
   		},
   		animation: {
-  			'gradient-x': 'gradient-x 3s ease infinite'
+  			'gradient-x': 'gradient-x 3s ease infinite',
+                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'shimmer': 'shimmer 2s infinite'
   		}
   	}
   },
