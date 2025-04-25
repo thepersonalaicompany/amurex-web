@@ -197,13 +197,15 @@ function OnboardingContent() {
   };
 
   const handleConnectGoogleDocs = useCallback(async () => {
-    setIsProcessingEmails(true);
     try {
+      setIsProcessingEmails(true);
+
       const {
         data: { session },
       } = await supabase.auth.getSession();
 
       if (session) {
+        // Create a POST request to start the Google OAuth flow
         const response = await fetch("/api/google/auth", {
           method: "POST",
           headers: {
@@ -211,14 +213,14 @@ function OnboardingContent() {
           },
           body: JSON.stringify({
             userId: session.user.id,
-            source: "onboarding",
+            source: "onboarding", // Add source for better redirect handling
           }),
         });
 
         const data = await response.json();
 
         if (data.url) {
-          localStorage.setItem("pendingGoogleDocsImport", "true");
+          // No need to use localStorage anymore as import is handled in the callback route
           router.push(data.url);
         } else {
           console.error("Error starting Google OAuth flow:", data.error);
@@ -242,10 +244,11 @@ function OnboardingContent() {
       const params = new URLSearchParams(window.location.search);
       const code = params.get("code");
       const scope = params.get("scope");
+      const connection = params.get("connection");
 
-      // If we have a code and scope, it's likely an OAuth callback
-      if (code && scope) {
-        // Show processing animation
+      // Check if this is a successful OAuth callback
+      if (connection === "success") {
+        // Show completion animation
         setIsProcessingEmails(true);
 
         // Simulate email processing with progress updates
@@ -266,20 +269,35 @@ function OnboardingContent() {
             setShowEmailStats(true);
             setAuthCompleted(true);
             setIsProcessingEmails(false);
-            // DO NOT redirect here
+            
+            // Redirect to completion page after showing stats
+            setTimeout(() => {
+              router.push("/onboarding/complete");
+            }, 2000);
           }
         }, 250); // Update every 250ms for a total of ~5 seconds
+      }
+      // If we have a code and scope, but no connection=success, it might be a direct callback
+      else if (code && scope) {
+        // Let the server-side callback handle it first
+        // Just show processing animation for user feedback
+        setIsProcessingEmails(true);
+        
+        // Simulate progress for better UX
+        let progress = 0;
+        const progressInterval = setInterval(() => {
+          progress += 5;
+          setProcessingProgress(progress);
 
-        // Process the actual OAuth response
-        try {
-          // Your existing OAuth handling code
-          // ...
-          // DO NOT redirect here
-        } catch (error) {
-          console.error("Error processing OAuth callback:", error);
-          clearInterval(progressInterval);
-          setIsProcessingEmails(false);
-        }
+          if (progress >= 100) {
+            clearInterval(progressInterval);
+            setAuthCompleted(true);
+            setIsProcessingEmails(false);
+            
+            // Redirect to completion page
+            router.push("/onboarding/complete");
+          }
+        }, 250);
       }
     };
 

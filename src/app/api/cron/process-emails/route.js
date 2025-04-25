@@ -64,7 +64,8 @@ export async function GET(req) {
           body: JSON.stringify({
             userId: userId,
             useStandardColors: false,
-            useGroq: true  // Add flag to use Groq instead of OpenAI
+            useGroq: true,
+            numEmailsToProcess: 20  // Add flag to use Groq instead of OpenAI
           })
         });
         
