@@ -402,7 +402,7 @@ async function processGoogleDocs(session, supabase, providedTokens = null) {
           .from("documents")
           .select("id")
           .eq("user_id", session.id)
-          .eq("checksum", checksum)
+          .eq("url", `https://docs.google.com/document/d/${file.id}`)
           .single();
 
         console.log("existing doc?", existingDoc);

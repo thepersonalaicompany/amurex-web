@@ -33,8 +33,6 @@ const GMAIL_COLORS = {
   "meeting update": { "backgroundColor": "#8e63ce", "textColor": "#ffffff" }, // Purple (changed from #9334e9)
   "awaiting reply": { "backgroundColor": "#ffad47", "textColor": "#ffffff" }, // Orange
   "actioned": { "backgroundColor": "#4986e7", "textColor": "#ffffff" },    // Blue
-  "promotions": { "backgroundColor": "#2da2bb", "textColor": "#ffffff" },   // Teal
-  "none": { "backgroundColor": "#999999", "textColor": "#ffffff" }         // Gray
 };
 
 // Standard Gmail colors for reference (uncomment if needed):
@@ -59,9 +57,13 @@ async function categorizeWithAI(fromEmail, subject, body, enabledCategories) {
     let categoryMap = {};
     let index = 1;
     
+    // Track if we have any enabled categories
+    let hasEnabledCategories = false;
+    
     // Add enabled categories to the prompt and mapping
     for (const [category, enabled] of Object.entries(enabledCategories)) {
       if (enabled) {
+        hasEnabledCategories = true;
         const formattedCategory = category.replace(/_/g, ' '); // Convert to_respond to "to respond"
         systemPrompt += `${index} = ${formattedCategory}\n`;
         categoryMap[index] = formattedCategory;
@@ -69,11 +71,13 @@ async function categorizeWithAI(fromEmail, subject, body, enabledCategories) {
       }
     }
     
-    // Always include "none" as the last option
-    systemPrompt += `${index} = none\n`;
-    categoryMap[index] = "none";
+    // If no categories are enabled, return empty string to indicate no categorization
+    if (!hasEnabledCategories) {
+      console.log("No categories enabled for this user, skipping categorization");
+      return "";
+    }
     
-    systemPrompt += `\nRespond ONLY with the number (1-${index}). Use category ${index} (none) if the email doesn't fit into any of the other categories. Do not include any other text, just the single digit number.`;
+    systemPrompt += `\nRespond ONLY with the number (1-${index-1}). If the email doesn't fit into any of these categories, respond with 0. Do not include any other text, just the single digit number.`;
 
     const response = await groq.chat.completions.create({
       model: "llama-3.3-70b-versatile",
@@ -93,28 +97,24 @@ async function categorizeWithAI(fromEmail, subject, body, enabledCategories) {
 
     // Get the raw response and convert to a number
     const rawResponse = response.choices[0].message.content.trim();
-    console.log(`Raw Groq category response:`, rawResponse);
     
     // Extract just the first digit from the response
     const numberMatch = rawResponse.match(/\d+/);
     const categoryNumber = numberMatch ? parseInt(numberMatch[0]) : null;
     
-    console.log("Extracted category number:", categoryNumber);
-    
-    // Look up the category by number
-    if (categoryNumber && categoryMap[categoryNumber]) {
+    // Look up the category by number (0 means no category fits)
+    if (categoryNumber && categoryNumber > 0 && categoryMap[categoryNumber]) {
       const category = categoryMap[categoryNumber];
-      console.log("Mapped to category:", category);
       return category;
     } else {
-      // Default to "none" if we couldn't get a valid number
-      console.log(`Invalid category number "${categoryNumber}", using default`);
-      return "none";
+      // Return empty string if no category fits or if the number is invalid
+      console.log(`No matching category (${categoryNumber}), skipping categorization`);
+      return "";
     }
   } catch (error) {
     console.error(`Error categorizing with Groq:`, error);
-    // Default to "none" on error
-    return "none";
+    // Return empty string on error to indicate no categorization
+    return "";
   }
 }
 
@@ -395,41 +395,94 @@ async function storeEmailInDatabase(userId, messageId, threadId, sender, subject
   return !existingEmail; // Return true if we inserted a new email
 }
 
+// Helper function to validate token by making a simple API call
+async function validateGmailAccess(oauth2Client) {
+  try {
+    console.log(`Validating Gmail access with OAuth client`);
+    
+    // Create Gmail API client
+    const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
+    
+    // Make API calls that require the specific scopes we need:
+    // 1. Try to get labels (requires gmail.labels)
+    const labels = await gmail.users.labels.list({ userId: 'me' });
+    
+    // 2. Try to modify a label (requires gmail.modify)
+    // Use a dummy modification on an existing label just to test permissions
+    if (labels.data.labels && labels.data.labels.length > 0) {
+      const testLabelId = labels.data.labels[0].id;
+      // We're not actually changing anything, just checking permissions
+      await gmail.users.labels.get({
+        userId: 'me',
+        id: testLabelId
+      });
+    } else {
+      // If no labels, we need to check permissions another way for gmail.modify
+      // Try to get a message to test gmail.readonly
+      const messages = await gmail.users.messages.list({
+        userId: 'me',
+        maxResults: 1
+      });
+      
+      if (messages.data.messages && messages.data.messages.length > 0) {
+        // Try to get a message (requires gmail.readonly)
+        await gmail.users.messages.get({
+          userId: 'me',
+          id: messages.data.messages[0].id
+        });
+      }
+    }
+    
+    // If we get here, the token is valid and has the required scopes
+    return { valid: true };
+  } catch (error) {
+    console.error(`Token validation failed:`, error);
+    
+    // Check for specific error types that indicate permission issues
+    const errorMessage = error.message || "";
+    const errorCode = error.code || "";
+    const status = error.status || (error.response && error.response.status);
+    
+    if (status === 401 || status === 403 || 
+        errorMessage.includes("insufficient authentication") ||
+        errorMessage.includes("invalid_grant") ||
+        errorMessage.includes("invalid credentials") ||
+        errorMessage.includes("insufficient permission") ||
+        errorCode === "EAUTH") {
+      return { 
+        valid: false, 
+        reason: "insufficient_permissions", 
+        message: "User needs to reconnect their Google account with gmail.readonly, gmail.modify, and gmail.labels permissions" 
+      };
+    }
+    
+    // For other types of errors (network, etc.), we'll still return invalid but with a different reason
+    return { 
+      valid: false, 
+      reason: "error", 
+      message: errorMessage || "Unknown error" 
+    };
+  }
+}
+
 export async function POST(req) {
   try {
     const requestData = await req.json();
     const userId = requestData.userId;
     const useStandardColors = requestData.useStandardColors === true;
-    const accessToken = requestData.accessToken;
 
     if (!userId) {
       return NextResponse.json({ success: false, error: "User ID is required" }, { status: 400 });
     }
 
-    // Update the admin Supabase client with the access token if provided
-    let currentAdminSupabase = adminSupabase;
-    if (accessToken) {
-      currentAdminSupabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL,
-        process.env.SUPABASE_SERVICE_ROLE_KEY,
-        {
-          global: {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-            },
-          },
-        }
-      );
-    }
-
     // Fetch user's Google credentials and email tagging settings using admin Supabase client
-    const { data: userData, error: userError } = await currentAdminSupabase
+    const { data: userData, error: userError } = await adminSupabase
       .from("users")
-      .select("google_refresh_token, email_tagging_enabled, email_categories")
+      .select("google_refresh_token, email_tagging_enabled, email_categories, google_cohort")
       .eq("id", userId)
       .single();
 
-    console.log("User data:", userData);
+    console.log("Processing emails for user:", userId);
 
     if (userError || !userData || !userData.google_refresh_token) {
       return NextResponse.json({ 
@@ -454,7 +507,6 @@ export async function POST(req) {
       meeting_update: true,
       awaiting_reply: true,
       actioned: true,
-      promotions: true
     };
 
     try {
@@ -472,15 +524,54 @@ export async function POST(req) {
       // Continue with default categories
     }
 
-    console.log("User's enabled categories:", enabledCategories);
+    // Fetch client credentials for this user's cohort
+    if (!userData.google_cohort) {
+      return NextResponse.json({ 
+        success: false, 
+        error: "User has no assigned Google client cohort" 
+      }, { status: 400 });
+    }
+    
+    const { data: clientData, error: clientError } = await adminSupabase
+      .from('google_clients')
+      .select('client_id, client_secret')
+      .eq('id', userData.google_cohort)
+      .single();
+      
+    if (clientError) {
+      console.error("Error fetching client credentials:", clientError);
+      return NextResponse.json({ 
+        success: false, 
+        error: "Error fetching OAuth client credentials" 
+      }, { status: 500 });
+    }
 
-    // Get the appropriate OAuth client based on user signup date
-    const oauth2Client = await getOAuth2Client(userId);
+    // Create the OAuth client with the fetched credentials
+    const oauth2Client = new google.auth.OAuth2(
+      clientData.client_id,
+      clientData.client_secret,
+      process.env.GOOGLE_REDIRECT_URI
+    );
 
     oauth2Client.setCredentials({
       refresh_token: userData.google_refresh_token
     });
 
+    // Validate the OAuth token by making a simple API call
+    const validation = await validateGmailAccess(oauth2Client);
+    
+    if (!validation.valid) {
+      console.log(`Token validation failed for user ${userId}: ${validation.reason}`);
+      return NextResponse.json({ 
+        success: false, 
+        error: validation.message || "Token validation failed",
+        errorType: validation.reason || "auth_error"
+      }, { status: 403 });
+    }
+    
+    // Token is valid, proceed with Gmail operations
+    console.log(`Token validated for user ${userId}, proceeding with email processing`);
+    
     const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
 
     try {
@@ -497,11 +588,10 @@ export async function POST(req) {
       
       for (const [labelName, colors] of Object.entries(GMAIL_COLORS)) {
         // Convert label name to the format used in enabledCategories (e.g., "to respond" -> "to_respond")
-        const categoryKey = labelName.replace(/\s+/g, '_');
+        const categoryKey = labelName.replace(/\s+/g, '_').toLowerCase();
         
         // Skip this label if it's not enabled (except for "none" which we always include)
-        if (labelName !== "none" && enabledCategories[categoryKey] === false) {
-          console.log(`Skipping disabled category: ${labelName}`);
+        if (enabledCategories[categoryKey] === false) {
           continue;
         }
         
@@ -521,7 +611,7 @@ export async function POST(req) {
             if (!useStandardColors) {
               requestBody.color = colors;
             }
-            
+
             const newLabel = await gmail.users.labels.create({
               userId: 'me',
               requestBody
@@ -567,7 +657,7 @@ export async function POST(req) {
       // Fetch recent unread emails - fetch more for storage
       const messages = await gmail.users.messages.list({
         userId: 'me',
-        q: 'is:unread',  // Simplified query without processed label filter
+        q: 'is:unread -category:promotions -in:sent',  // Exclude promotions and sent mail
         maxResults: 10  // Fetch up to 100 emails
       });
       
@@ -580,10 +670,11 @@ export async function POST(req) {
       }
 
       // Create a set of already processed message IDs to avoid duplicates
-      const { data: processedEmails, error: processedError } = await currentAdminSupabase
+      const { data: processedEmails, error: processedError } = await adminSupabase
         .from('emails')
         .select('message_id')
-        .eq('user_id', userId);
+        .eq('user_id', userId)
+        .order('received_at', { ascending: false });
         
       const processedMessageIds = new Set();
       
@@ -592,35 +683,90 @@ export async function POST(req) {
           processedMessageIds.add(email.message_id);
         });
       }
+      
+      console.log(`Found ${processedMessageIds.size} already processed emails for user ${userId}`);
 
+      // Process each message to check for Amurex labels before full processing
+      const messagesToProcess = [];
+      let skippedAlreadyProcessed = 0;
+      let skippedAlreadyLabeled = 0;
+      
+      // First pass: Check which messages need processing (not in database and no Amurex label)
+      for (const message of messages.data.messages) {
+        // Skip if already in database
+        if (processedMessageIds.has(message.id)) {
+          skippedAlreadyProcessed++;
+          continue;
+        }
+        
+        // Get the full message to check labels
+        const fullMessageResponse = await gmail.users.messages.get({
+          userId: 'me',
+          id: message.id,
+          format: 'minimal'  // Use minimal format to reduce data transfer
+        });
+        
+        // Check if it has an Amurex label
+        const hasAmurexLabel = fullMessageResponse.data.labelIds && 
+          fullMessageResponse.data.labelIds.some(labelId => {
+            // Get the actual label name for this ID if it exists
+            const matchingLabels = labels.data.labels.filter(label => label.id === labelId);
+            if (matchingLabels.length > 0) {
+              return matchingLabels[0].name.includes('Amurex/');
+            }
+            return false;
+          });
+        
+        if (hasAmurexLabel) {
+          skippedAlreadyLabeled++;
+          continue;
+        }
+
+        // If we get here, the message needs processing
+        messagesToProcess.push(message);
+      }
+      
       // Filter out already processed messages
-      const newMessages = messages.data.messages.filter(message => 
-        !processedMessageIds.has(message.id)
-      );
+      console.log(`Found ${messages.data.messages.length} unread emails, ${messagesToProcess.length} new to process, ${skippedAlreadyProcessed} already in database, ${skippedAlreadyLabeled} already labeled`);
       
-      console.log(`Found ${messages.data.messages.length} unread emails, ${newMessages.length} new to process`);
-      
-      if (newMessages.length === 0) {
+      if (messagesToProcess.length === 0) {
         return NextResponse.json({ 
           success: true, 
           message: "No new emails to process", 
-          processed: 0 
+          processed: 0,
+          skipped_already_processed: skippedAlreadyProcessed,
+          skipped_already_labeled: skippedAlreadyLabeled
         });
       }
 
       // Process each email
       const results = [];
-      const categorizedCount = Math.min(20, newMessages.length); // Only categorize the first 20
+      const categorizedCount = Math.min(20, messagesToProcess.length); // Only categorize the first 20
       let totalStoredCount = 0;
+      let skippedPromotions = 0;
+      let skippedSent = 0;
       
-      for (let i = 0; i < newMessages.length; i++) {
-        const message = newMessages[i];
+      for (let i = 0; i < messagesToProcess.length; i++) {
+        const message = messagesToProcess[i];
         const shouldCategorize = i < categorizedCount; // Only categorize first 20 emails
         
+        // Get the full message details for processing
         const fullMessage = await gmail.users.messages.get({
           userId: 'me',
           id: message.id
         });
+        
+        // Skip promotions and sent emails
+        const emailLabels = fullMessage.data.labelIds || [];
+        if (emailLabels.includes('CATEGORY_PROMOTIONS')) {
+          skippedPromotions++;
+          continue;
+        }
+        
+        if (emailLabels.includes('SENT')) {
+          skippedSent++;
+          continue;
+        }
         
         const headers = {};
         fullMessage.data.payload.headers.forEach(header => {
@@ -639,8 +785,6 @@ export async function POST(req) {
         let category = "none";
         
         if (shouldCategorize) {
-          const emailLabels = fullMessage.data.labelIds || [];
-          
           // Create a reverse map of label IDs to label names for checking
           const labelIdToName = {};
           Object.entries(amurexLabels).forEach(([name, id]) => {
@@ -765,8 +909,8 @@ export async function POST(req) {
           const truncatedBody = body.length > 1500 ? body.substring(0, 1500) + "..." : body;
           category = await categorizeWithAI(fromEmail, subject, truncatedBody, enabledCategories);
           
-          // Apply the label only if the category is not "none" and the label exists
-          if (category !== "none" && amurexLabels[category]) {
+          // Apply the label only if a category was assigned
+          if (category && category !== "" && amurexLabels[category]) {
             await gmail.users.messages.modify({
               userId: 'me',
               id: message.id,
@@ -780,7 +924,7 @@ export async function POST(req) {
           results.push({
             messageId: message.id,
             subject,
-            category,
+            category: category || "uncategorized",
             success: true
           });
         }
@@ -801,7 +945,11 @@ export async function POST(req) {
         message: "Emails processed successfully", 
         processed: results.length,
         total_stored: totalStoredCount,
-        total_found: newMessages.length,
+        total_found: messagesToProcess.length,
+        skipped_promotions: skippedPromotions,
+        skipped_sent: skippedSent,
+        skipped_already_processed: skippedAlreadyProcessed,
+        skipped_already_labeled: skippedAlreadyLabeled,
         results 
       });
     } catch (gmailError) {

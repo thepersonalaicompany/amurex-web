@@ -131,7 +131,7 @@ export async function POST(req) {
         const { data: existingPage } = await adminSupabase
           .from("documents")
           .select("id")
-          .eq("checksum", checksum)
+          .eq("url", page.url)
           .eq("user_id", session.user.id)
           .single();
 
