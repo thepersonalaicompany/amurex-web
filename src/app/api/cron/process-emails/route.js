@@ -107,10 +107,10 @@ async function validateGmailAccess(userId, refreshToken, clientsMap) {
 
 export async function GET(req) {
   // Verify this is a legitimate cron job request
-  // const authHeader = req.headers.get('authorization');
-  // if (!authHeader || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-  //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  // }
+  const authHeader = req.headers.get('authorization');
+  if (!authHeader || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
 
   try {
@@ -118,10 +118,9 @@ export async function GET(req) {
     const { data: users, error: usersError } = await supabaseAdmin
       .from("users")
       .select("id, email_tagging_enabled, google_refresh_token, google_cohort")
-      .eq("email", "arsenfounder@gmail.com");
-      // .eq("email_tagging_enabled", true)
-      // .not("google_refresh_token", "is", null)
-      // .order("created_at", { ascending: false });
+      .eq("email_tagging_enabled", true)
+      .not("google_refresh_token", "is", null)
+      .order("created_at", { ascending: false });
 
     if (usersError) {
       console.error("Error fetching users:", usersError);
