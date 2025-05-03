@@ -63,6 +63,12 @@
   background: rgba(255, 255, 255, 0.13);
   border: 1px solid #414144;
 }
+.sidebarItemActive {
+  /* border: 1px solid #646466; */
+  /* background: rgba(255, 255, 255, 0.21) */
+  background: #3c1671;
+  border: 1px solid #6D28D9;
+}
 .deleteIcon {
   position: absolute;
   right: 5px;

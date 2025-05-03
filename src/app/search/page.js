@@ -938,7 +938,7 @@ sources: ${JSON.stringify(item.sources)}`
                     New search
                   </div>
                   {sidebarSessions?.map((session, index) => (
-                    <div className="sidebarItem" key={session.id + index} onClick={() => openThread(session.id)}>
+                    <div className={`sidebarItem ${session.id == currentThreadId ? "sidebarItemActive" : ""}`} key={session.id + index} onClick={() => openThread(session.id)}>
                       {session.title}
                       <img src="/delete.png" alt="" className="deleteIcon" onClick={(e) => {
                         e.preventDefault();
