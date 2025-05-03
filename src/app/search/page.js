@@ -909,9 +909,11 @@ sources: ${JSON.stringify(item.sources)}`
               className={`sidebarIcon ${isSidebarOpened ? 'sidebarIconActive' : ''}`}
               onClick={() => setIsSidebarOpened(prev => !prev)}
             >
-              <span className="sidebarIconTop"></span>
-              <span className="sidebarIconMiddle"></span>
-              <span className="sidebarIconBottom"></span>
+              <img 
+                src={isSidebarOpened ? "/sidebar-left.svg" : "/sidebar-right.svg"} 
+                alt={isSidebarOpened ? "Close sidebar" : "Open sidebar"}
+                className="w-8 h-8"
+              />
             </div>
             {/* <h3 className="sidebarTitle">Your sessions:</h3> */}
             <h2 className="text-2xl font-medium text-white mb-6">Knowledge Search</h2>
@@ -938,7 +940,7 @@ sources: ${JSON.stringify(item.sources)}`
                     New search
                   </div>
                   {sidebarSessions?.map((session, index) => (
-                    <div className={`sidebarItem ${session.id == currentThreadId ? "sidebarItemActive" : ""}`} key={session.id + index} onClick={() => openThread(session.id)}>
+                    <div className={`sidebarItem ${session.id === currentThreadId ? "sidebarItemActive" : ""}`} key={session.id + index} onClick={() => openThread(session.id)}>
                       {session.title}
                       <img src="/delete.png" alt="" className="deleteIcon" onClick={(e) => {
                         e.preventDefault();
@@ -1512,7 +1514,7 @@ export const Query = ({ content = "", sourcesTime, completionTime }) => {
       </div>
       <div className="text-sm text-zinc-500 mt-1 md:mt-0 flex flex-col md:items-end">
         {completionTime && (
-          <div className="px-2 py-1 rounded-md bg-[#9334E9] text-white w-fit">
+          <div className="px-2 rounded-md text-zinc-400 w-fit">
             Searched in {completionTime} seconds
           </div>
         )}
@@ -1847,13 +1849,13 @@ const GPT = ({ content = "" }) => {
   return (
     <div ref={contentRef}>
       <ReactMarkdown
-        className="prose text-base md:text-xl mt-1 w-full break-words prose-p:leading-relaxed prose-p:mb-4"
+        className="prose text-base md:text-xl mt-1 w-full break-words prose-p:leading-relaxed prose-p:mb-4 text-white font-light"
         remarkPlugins={[remarkGfm]}
         components={{
           a: ({ node, ...props }) => (
             <a
               {...props}
-              className="text-[#9334E9] font-medium hover:text-[#7928CA] underline transition-colors"
+              className="text-[#9334E9] font-normal hover:text-[#7928CA] transition-colors"
               target="_blank"
               rel="noopener noreferrer"
             />

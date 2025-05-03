@@ -38,7 +38,6 @@
   margin-top: 20px;
   flex: 1 1 auto;
   overflow-y: auto;
-  padding: 0 8px;
 }
 .sidebarItem:first-child {
   font-weight: 500;
@@ -48,38 +47,51 @@
   user-select: none;
 }
 .sidebarItem {
-  padding: 14px;
-  border-radius: 9px;
+  font-size: 14px;
+  padding: 12px;
+  padding-right: 35px; /* Make space for delete icon */
+  border-radius: 6px;
   border: 1px solid rgb(39 39 42/var(--tw-bg-opacity));
-  /* background: rgba(255, 255, 255, 0.13); */
   background: rgb(39 39 42/var(--tw-bg-opacity));
   cursor: pointer;
   margin-bottom: 12px;
   transition: all 0.25s ease;
   position: relative;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
+
 .sidebarItem:hover {
-  /* background: rgba(255, 255, 255, 0.16); */
   background: rgba(255, 255, 255, 0.13);
   border: 1px solid #414144;
 }
-.sidebarItemActive {
-  /* border: 1px solid #646466; */
-  /* background: rgba(255, 255, 255, 0.21) */
+
+.sidebarItem.sidebarItemActive {
   background: #3c1671;
   border: 1px solid #6D28D9;
 }
+
+.sidebarItem.sidebarItemActive:hover {
+  background: #56239d;
+  border: 1px solid #6D28D9;
+}
+
 .deleteIcon {
   position: absolute;
   right: 5px;
   top: 50%;
-  width: 28px;
+  width: 20px;
+  height: 20px;
   transform: translateY(-50%);
-  padding: 5px;
+  padding: 2px;
   opacity: 0;
   visibility: hidden;
   transition: all 0.2s ease;
+  z-index: 5;
 }
+
 .sidebarItem:hover .deleteIcon {
   opacity: 1;
   visibility: visible;
@@ -91,51 +103,12 @@
   top: 15px;
   width: 50px;
   height: 50px;
-  background: #111113;
-  border: 1px solid #27272A;
-  border-radius: 8px;
   transition: all 0.25s ease;
   cursor: pointer;
-}
-.sidebarIcon:hover {
-  background: #17171a;
-}
-.sidebarIcon span {
-  display: block;
-  width: 30px;
-  height: 2px;
-  background: #fff;
-  transition: all 0.3s ease;
-  position: absolute;
-  left: 50%;
-  transition: all 0.7s ease;
-  will-change: transform;
-}
-.sidebarIconTop {
-  top: 14px;
-  transform: translateX(-50%);
-}
-.sidebarIconMiddle {
-  top: 50%;
-  transform: translateX(-50%) translateY(-50%);
-}
-.sidebarIconBottom {
-  bottom: 14px;
-  transform: translateX(-50%);
-}
-.sidebarIconActive .sidebarIconTop {
-  transform: rotate(45deg);
-  left: 20%;
-  top: 23px;
-}
-.sidebarIconActive .sidebarIconMiddle {
-  opacity: 0;
-  left: 100%;
-}
-.sidebarIconActive .sidebarIconBottom {
-  transform: rotate(-45deg);
-  left: 20%;
-  bottom: 23px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
 }
 
 .chat {
