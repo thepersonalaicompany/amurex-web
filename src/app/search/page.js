@@ -17,6 +17,131 @@ import MobileWarningBanner from "@/components/MobileWarningBanner";
 import "./search.css"
 import Popup from "@/components/Popup/Popup";
 
+// Add SpotlightSearch component after imports
+const SpotlightSearch = ({ isVisible, onClose, onSearch, suggestedPrompts = [] }) => {
+  const [inputValue, setInputValue] = useState("");
+  const [selectedSuggestion, setSelectedSuggestion] = useState(-1);
+  const inputRef = useRef(null);
+  
+  // Reset selected suggestion when input changes
+  useEffect(() => {
+    setSelectedSuggestion(-1);
+  }, [inputValue]);
+
+  // Reset state when popup visibility changes
+  useEffect(() => {
+    if (isVisible) {
+      setInputValue("");
+      setSelectedSuggestion(-1);
+    }
+  }, [isVisible]);
+  
+  useEffect(() => {
+    // Focus input when popup becomes visible
+    if (isVisible && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [isVisible]);
+  
+  // Handle keyboard navigation and escape key
+  useEffect(() => {
+    if (!isVisible) return;
+    
+    const handleKeyDown = (e) => {
+      const filteredPrompts = suggestedPrompts.filter(item => item.type === "prompt").slice(0, 3);
+      
+      if (e.key === 'Escape') {
+        onClose();
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSelectedSuggestion(prev => 
+          prev < filteredPrompts.length - 1 ? prev + 1 : prev
+        );
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSelectedSuggestion(prev => prev > -1 ? prev - 1 : -1);
+      } else if (e.key === 'Enter') {
+        if (selectedSuggestion >= 0 && selectedSuggestion < filteredPrompts.length) {
+          e.preventDefault();
+          onSearch(filteredPrompts[selectedSuggestion].text);
+        }
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isVisible, onClose, selectedSuggestion, suggestedPrompts, onSearch]);
+  
+  // Close when clicking outside
+  const handleOutsideClick = (e) => {
+    if (e.target.classList.contains('spotlight-overlay')) {
+      onClose();
+    }
+  };
+  
+  // Handle search submission
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (inputValue.trim()) {
+      onSearch(inputValue);
+    }
+  };
+  
+  if (!isVisible) return null;
+  
+  const filteredPrompts = suggestedPrompts.filter(item => item.type === "prompt").slice(0, 3);
+  
+  return (
+    <div className="spotlight-overlay fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" 
+         onClick={handleOutsideClick}>
+      <div className="spotlight-container w-full max-w-2xl bg-black/80 border border-white/10 rounded-xl shadow-2xl overflow-hidden">
+        <form onSubmit={handleSubmit} className="relative">
+          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+          </div>
+          <input
+            ref={inputRef}
+            type="text"
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            placeholder="Search your knowledge..."
+            className="w-full py-4 px-12 bg-transparent text-white text-lg focus:outline-none"
+          />
+          <div className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 text-xs">
+            ESC to close
+          </div>
+        </form>
+        
+        {/* Suggested prompts */}
+        {filteredPrompts.length > 0 && (
+          <div className="p-3 border-t border-white/10">
+            <div className="text-xs text-zinc-500 mb-2 px-2">Suggested searches</div>
+            <div className="space-y-1">
+              {filteredPrompts.map((prompt, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => onSearch(prompt.text)}
+                  className={`w-full text-left px-3 py-2 text-zinc-300 rounded transition-colors text-sm flex items-center ${selectedSuggestion === idx ? 'bg-white/10' : 'hover:bg-white/5'}`}
+                  onMouseEnter={() => setSelectedSuggestion(idx)}
+                  onMouseLeave={() => setSelectedSuggestion(-1)}
+                >
+                  <svg className="w-4 h-4 mr-2 text-zinc-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {prompt.text}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const BASE_URL_BACKEND = "https://api.amurex.ai";
 
 // 3. Home component
@@ -97,6 +222,7 @@ export default function AISearch() {
     isWaiting: false,
     error: ""
   })
+  const [showSpotlight, setShowSpotlight] = useState(false);
 
   // Add source filter states - these are only for frontend filtering
   const [showGoogleDocs, setShowGoogleDocs] = useState(true);
@@ -703,6 +829,7 @@ sources: ${JSON.stringify(item.sources)}`
 
   const openThread = async (threadId) => {
     console.log("opening thread" + threadId)
+    setShowSpotlight(false); // Close spotlight if open
     if (!threadId) return;
     try {
       const { data, error } = await supabase
@@ -905,15 +1032,26 @@ sources: ${JSON.stringify(item.sources)}`
       <div
         className={`min-h-screen bg-black ${isSearchInitiated ? "" : ""
           }`}
-      // className={"min-h-screen bg-black pt-6 flex items-center justify-center"}
       >
+      <SpotlightSearch 
+        isVisible={showSpotlight} 
+        onClose={() => setShowSpotlight(false)} 
+        onSearch={(query) => {
+          setShowSpotlight(false);
+          setInputValue(query);
+          sendMessage(query);
+        }}
+        suggestedPrompts={suggestedPrompts}
+      />
+      
       <div className="flex items-center justify-center gap-2">
         <button
           className={`fixed top-4 z-50 px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-medium border border-white/10 bg-zinc-900 text-white transition-all duration-200 hover:border-[#6D28D9]`}
           onClick={() => {
             setIsSearchInitiated(false);
-            setCurrentThread([])
-            setCurrentThreadId("")
+            setCurrentThread([]);
+            setCurrentThreadId("");
+            setShowSpotlight(true); // Show the spotlight search
           }}
         >
           <img src="/plus.png" alt="New session" className="w-2 h-2 inline-block" />
@@ -1023,8 +1161,9 @@ sources: ${JSON.stringify(item.sources)}`
                 <>
                   <div className="sidebarItem" onClick={() => {
                     setIsSearchInitiated(false);
-                    setCurrentThread([])
-                    setCurrentThreadId("")
+                    setCurrentThread([]);
+                    setCurrentThreadId("");
+                    setShowSpotlight(true); // Show spotlight instead of just resetting
                   }}>
                     <img src="/plus.png" alt="New session" className="w-3 h-3 mr-2 inline-block" />
                     <span>New search</span>
