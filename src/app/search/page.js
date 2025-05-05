@@ -110,8 +110,9 @@ const SpotlightSearch = ({ isVisible, onClose, onSearch, suggestedPrompts = [] }
             placeholder="Search your knowledge..."
             className="w-full py-4 px-12 bg-transparent text-white text-lg focus:outline-none"
           />
-          <div className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 text-xs">
-            ESC to close
+          <div className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 flex items-center gap-2">
+            <span className="text-xs">ESC to close</span>
+            <div className="px-1.5 py-0.5 bg-zinc-800 rounded text-[10px]">⌘K</div>
           </div>
         </form>
         
@@ -152,6 +153,20 @@ export default function AISearch() {
     import('ldrs').then(({ ring }) => {
       ring.register();
     });
+  }, []);
+
+  // Add global hotkey for Spotlight search
+  useEffect(() => {
+    const handleHotkey = (e) => {
+      // Check for Cmd+K or Ctrl+K
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setShowSpotlight(true);
+      }
+    };
+
+    window.addEventListener('keydown', handleHotkey);
+    return () => window.removeEventListener('keydown', handleHotkey);
   }, []);
 
   // 4. Initialize states and refs
@@ -1056,6 +1071,7 @@ sources: ${JSON.stringify(item.sources)}`
         >
           <img src="/plus.png" alt="New session" className="w-2 h-2 inline-block" />
           <span>New search</span>
+          <div className="ml-2 px-1.5 py-0.5 bg-zinc-800 rounded text-[10px] text-zinc-400">⌘K</div>
         </button>
       </div>
 
@@ -1167,6 +1183,7 @@ sources: ${JSON.stringify(item.sources)}`
                   }}>
                     <img src="/plus.png" alt="New session" className="w-3 h-3 mr-2 inline-block" />
                     <span>New search</span>
+                    <span className="ml-2 px-1.5 py-0.5 bg-zinc-800 rounded text-[10px] text-zinc-400">⌘K</span>
                   </div>
                   <div className="divider">
                     <div className="h-px bg-zinc-800 my-4"></div>
