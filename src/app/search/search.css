@@ -4,23 +4,25 @@
 }
 .sidebar {
   position: absolute;
-  top: 0;
-  height: 100vh;
+  top: 50%;
+  margin-left: 10px;
+  transform: translateY(-50%) translateX(-100%);
+  height: 96vh;
   display: flex;
   flex-direction: column;
-  background: #000;
+  background: rgb(24 24 27 / 0.7);
   /* backdrop-filter: blur(9px); */
-  border-right: 1px solid #27272A;
+  border: 1px solid #27272A;
+  border-radius: 0.5rem;
   z-index: 48;
   /* padding: 18px 10px; */
   padding: 1rem;
   color: #fff;
   width: 300px;
   transition: all 0.7s ease;
-  transform: translateX(-100%);
 }
 .sidebarActive {
-  transform: translateX(0%);
+  transform: translateY(-50%) translateX(0%);
 }
 .sidebarLoader {
   position: absolute;
@@ -33,59 +35,52 @@
   font-weight: 500;
   letter-spacing: 0.4px;
 }
-
 .sidebarItems {
-  margin-top: 20px;
   flex: 1 1 auto;
   overflow-y: auto;
-}
-.sidebarItem:first-child {
-  font-weight: 500;
-  margin-bottom: 27px;
-  display: flex;
-  align-items: center;
-  user-select: none;
 }
 .sidebarItem {
   font-size: 14px;
   padding: 12px;
   padding-right: 35px; /* Make space for delete icon */
-  border-radius: 6px;
-  border: 1px solid rgb(39 39 42/var(--tw-bg-opacity));
-  background: rgb(39 39 42/var(--tw-bg-opacity));
   cursor: pointer;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
+  margin-top: 0;
   transition: all 0.25s ease;
   position: relative;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 100%;
+  z-index: 1;
+  border-radius: 0.5rem;
+  border: 1px solid transparent;
 }
 
 .sidebarItem:hover {
   background: rgba(255, 255, 255, 0.13);
-  border: 1px solid #414144;
 }
 
 .sidebarItem.sidebarItemActive {
   background: #3c1671;
-  border: 1px solid #6D28D9;
+  border: 1px solid transparent;
+  border-radius: 0.5rem;
 }
 
 .sidebarItem.sidebarItemActive:hover {
-  background: #56239d;
   border: 1px solid #6D28D9;
 }
 
 .deleteIcon {
+  background: black;
+  border-radius: 0.5rem;
   position: absolute;
   right: 5px;
   top: 50%;
-  width: 20px;
-  height: 20px;
+  width: 25px;
+  height: 25px;
   transform: translateY(-50%);
-  padding: 2px;
+  padding: 6px;
   opacity: 0;
   visibility: hidden;
   transition: all 0.2s ease;
@@ -99,7 +94,7 @@
 
 .sidebarIcon {
   position: absolute;
-  right: -65px;
+  right: -55px;
   top: 15px;
   width: 50px;
   height: 50px;
@@ -165,7 +160,7 @@
 }
 
 .threadItem {
-  margin-bottom: 60px;
+  /* margin-bottom: 60px; */
 }
 .threadItem:last-child {
   margin-bottom: 0;
@@ -174,19 +169,17 @@
 
 .popupTitle {
   font-size: 21px;
-  font-weight: 500;
+  font-weight: 600;
   color: #fff;
   word-break: break-all;
-  padding-right: 19px;
 }
 .popupSubtitle {
-  margin-top: 4px;
+  margin-top: 10px;
   margin-bottom: 16px;
   font-size: 15px;
-  line-height: 136%;
-  letter-spacing: 0.3px;
+  font-weight: 400;
+  word-break: break-word;
   color: #fff;
-  word-break: break-all;
 }
 .errorMessage {
   text-align: right;
@@ -250,4 +243,46 @@
 .no-scrollbar {
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */
+}
+
+.sidebarDateHeader {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 10px 12px;
+  color: #a1a1aa;
+  cursor: pointer;
+  border-radius: 6px;
+  margin-bottom: 5px;
+  position: relative;
+  z-index: 2;
+  background-color: rgb(24 24 27 / 0.7);
+}
+
+.sidebarDateHeader:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.sidebarThreads {
+  transition: all 0.3s ease;
+  overflow: hidden;
+  position: relative;
+}
+
+.sidebarThreads.collapsed {
+  max-height: 0;
+  margin: 0;
+  opacity: 0;
+  visibility: hidden;
+  margin-top: 0;
+  margin-bottom: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.sidebarThreads.expanded {
+  max-height: 1000px;
+  opacity: 1;
+  visibility: visible;
+  margin-bottom: 10px;
+  padding-top: 5px;
 }

@@ -71,7 +71,8 @@ export function Navbar() {
               isActive("/search") ? "bg-[#3c1671] border border-[#6D28D9]" : ""
             }
           >
-            <Search className="h-6 w-6" style={{ color: "var(--color-4)", strokeWidth: "2.5" }} />
+            {/* <Search className="h-6 w-6" style={{ color: "var(--color-4)", strokeWidth: "2.5" }} /> */}
+            <Search className="h-6 w-6" style={{ color: "oklch(55.2% 0.016 285.938)", strokeWidth: "2.5" }} />
           </Button>
           <span className="absolute left-12 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-white">
             Search
@@ -86,7 +87,7 @@ export function Navbar() {
               isActive("/emails") ? "bg-[#3c1671] border border-[#6D28D9]" : ""
             }
           >
-            <Mail className="h-6 w-6" style={{ color: "var(--color-4)" }} />
+            <Mail className="h-6 w-6" style={{ color: "oklch(55.2% 0.016 285.938)" }} />
           </Button>
           <span className="absolute left-12 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-white">
             Emails
@@ -103,7 +104,7 @@ export function Navbar() {
                 : ""
             }
           >
-            <Video className="h-6 w-6" style={{ color: "var(--color-4)" }} />
+            <Video className="h-6 w-6" style={{ color: "oklch(55.2% 0.016 285.938)" }} />
           </Button>
           <span className="absolute left-12 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-white">
             Meetings
@@ -120,7 +121,7 @@ export function Navbar() {
                 : ""
             }
           >
-            <Settings className="h-6 w-6" style={{ color: "var(--color-4)" }} />
+            <Settings className="h-6 w-6" style={{ color: "oklch(55.2% 0.016 285.938)" }} />
           </Button>
           <span className="absolute left-12 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-white">
             Settings

@@ -82,8 +82,10 @@ export default function AISearch() {
   const [searchStartTime, setSearchStartTime] = useState(null);
   const [sourcesTime, setSourcesTime] = useState(null);
   const [completionTime, setCompletionTime] = useState(null);
-  const [isSidebarOpened, setIsSidebarOpened] = useState(true);
+  const [isSidebarOpened, setIsSidebarOpened] = useState(false);
   const [sidebarSessions, setSidebarSessions] = useState([]);
+  const [groupedSidebarSessions, setGroupedSidebarSessions] = useState({});
+  const [collapsedDays, setCollapsedDays] = useState({});
   const [isWaitingSessions, setIsWaitingSessions] = useState(true);
   const [currentThread, setCurrentThread] = useState([]);  // Initialize as empty array
   const [currentThreadId, setCurrentThreadId] = useState("")
@@ -224,7 +226,30 @@ export default function AISearch() {
 
         console.log(data)
 
+        // Group threads by day
+        const groupedThreads = {};
+        const initialCollapsedState = {};
+        
+        data.forEach(thread => {
+          const date = new Date(thread.created_at);
+          const dateString = date.toLocaleDateString('en-US', { 
+            weekday: 'long', 
+            month: 'short', 
+            day: 'numeric' 
+          });
+          
+          if (!groupedThreads[dateString]) {
+            groupedThreads[dateString] = [];
+            // Initialize all days as expanded by default
+            initialCollapsedState[dateString] = false;
+          }
+          groupedThreads[dateString].push(thread);
+        });
+
         setSidebarSessions(data);
+        setGroupedSidebarSessions(groupedThreads);
+        // Initialize collapsed state for all days
+        setCollapsedDays(initialCollapsedState);
         setIsWaitingSessions(false);
       } catch (err) {
         setIsWaitingSessions(false);
@@ -489,6 +514,21 @@ sources: ${JSON.stringify(item.sources)}`
         let finalAnswer = "";
         let finalSources = [];
 
+        // Update thread in real-time during streaming 
+        const updateThreadWithStreamingContent = (chunk) => {
+          setCurrentThread(prev => {
+            const updatedThread = [...prev];
+            // Only update the last item in the thread array
+            if (updatedThread.length > 0) {
+              const lastIndex = updatedThread.length - 1;
+              updatedThread[lastIndex] = {
+                ...updatedThread[lastIndex],
+                reply: (updatedThread[lastIndex].reply || "") + chunk
+              };
+            }
+            return updatedThread;
+          });
+        };
 
         function readStream() {
           reader
@@ -504,24 +544,45 @@ sources: ${JSON.stringify(item.sources)}`
                 console.log("done")
 
                 // writing results as the last element of currentThread
-                setCurrentThread(prev => prev.map((item, index) => {
-                  console.log(item)
-                  if (index == currentThread.length) {
-                    return {
-                      ...item,
-                      sources: finalSources,
-                      reply: finalAnswer,
-                      completionTime: completionTimeLocal
+                // This is now just a safety measure as the thread is updated in real-time
+                setCurrentThread(prev => {
+                  console.log("Finalizing thread update, thread length:", prev.length);
+                  // Just in case the array is empty (shouldn't happen)
+                  if (prev.length === 0) return prev;
+                  
+                  return prev.map((item, index) => {
+                    if (index === prev.length - 1) {
+                      console.log("Updating last message with final content");
+                      return {
+                        ...item,
+                        sources: finalSources,
+                        reply: finalAnswer,
+                        completionTime: completionTimeLocal
+                      };
                     }
-                  }
-
-                  return item
-                })
-                )
+                    return item;
+                  });
+                });
 
 
                 if (!sidebarSessions.some(session => session.id === currentThreadId)) {
                   setSidebarSessions(prev => [{ title: message, id: threadId }, ...prev])
+                  
+                  // Add the new thread to groupedSidebarSessions
+                  const today = new Date().toLocaleDateString('en-US', { 
+                    weekday: 'long', 
+                    month: 'short', 
+                    day: 'numeric' 
+                  });
+                  
+                  setGroupedSidebarSessions(prev => {
+                    const newGrouped = {...prev};
+                    if (!newGrouped[today]) {
+                      newGrouped[today] = [];
+                    }
+                    newGrouped[today] = [{ title: message, id: threadId }, ...newGrouped[today]];
+                    return newGrouped;
+                  });
                 }
 
                 try {
@@ -592,6 +653,8 @@ sources: ${JSON.stringify(item.sources)}`
 
                       if (data.chunk) {
                         finalAnswer += data.chunk;
+                        // Update thread in real-time with each chunk
+                        updateThreadWithStreamingContent(data.chunk);
                       }
 
                       if (data.sources && data.sources.length > 0) {
@@ -703,6 +766,21 @@ sources: ${JSON.stringify(item.sources)}`
         setSidebarSessions(prev =>
           prev.filter(session => session.id !== threadId)
         );
+
+        // Also update the grouped sessions
+        setGroupedSidebarSessions(prev => {
+          const newGrouped = {...prev};
+          // Loop through each day group
+          Object.keys(newGrouped).forEach(date => {
+            // Filter out the deleted thread from this day's threads
+            newGrouped[date] = newGrouped[date].filter(session => session.id !== threadId);
+            // If this day now has no threads, remove the day entirely
+            if (newGrouped[date].length === 0) {
+              delete newGrouped[date];
+            }
+          });
+          return newGrouped;
+        });
 
         setIsDeletionConfirmationPopupOpened(false)
         setTimeout(() => {
@@ -829,9 +907,22 @@ sources: ${JSON.stringify(item.sources)}`
           }`}
       // className={"min-h-screen bg-black pt-6 flex items-center justify-center"}
       >
+      <div className="flex items-center justify-center gap-2">
+        <button
+          className={`fixed top-4 z-50 px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-medium border border-white/10 bg-zinc-900 text-white transition-all duration-200 hover:border-[#6D28D9]`}
+          onClick={() => {
+            setIsSearchInitiated(false);
+            setCurrentThread([])
+            setCurrentThreadId("")
+          }}
+        >
+          <img src="/plus.png" alt="New session" className="w-2 h-2 inline-block" />
+          <span>New search</span>
+        </button>
+      </div>
 
         <Popup isPopupOpened={isDeletionConfirmationPopupOpened} setIsPopupOpened={setIsDeletionConfirmationPopupOpened} forbidClosing={deletionConfirmation?.isWaiting}>
-          <h3 className="popupTitle">Deleting thread &quot;{deletionConfirmation?.deletingThread?.title}&quot;?</h3>
+          <h3 className="popupTitle">Deleting thread?</h3>
           <p className="popupSubtitle">
             Are you sure you want to delete thread with name &quot;{deletionConfirmation?.deletingThread?.title}&quot;?
           </p>
@@ -839,10 +930,10 @@ sources: ${JSON.stringify(item.sources)}`
           <p className="errorMessage">{deletionConfirmation?.error}</p>
 
           <div className="popupConfirmationButtons">
-            <button className="fileMutationButton" onClick={() => setIsDeletionConfirmationPopupOpened(false)} disabled={deletionConfirmation?.isWaiting}>
+            <button className="mr-2 mt-2 lg:px-4 lg:py-2 px-2 py-2 inline-flex items-center justify-center gap-2 rounded-md text-sm font-normal border border-white/10 bg-transparent text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:border-[#6D28D9]" onClick={() => setIsDeletionConfirmationPopupOpened(false)} disabled={deletionConfirmation?.isWaiting}>
               Cancel
             </button>
-            <button className="fileMutationButtonHighlight" onClick={deleteThread} disabled={deletionConfirmation?.isWaiting}>
+            <button className="mt-2 lg:px-4 lg:py-2 px-2 py-2 inline-flex items-center justify-center gap-2 rounded-md text-sm font-normal border border-white/10 bg-[#6D28D9] text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:bg-[#3c1671] hover:border-[#6D28D9]" onClick={deleteThread} disabled={deletionConfirmation?.isWaiting}>
               {deletionConfirmation?.isWaiting ? (
                 <>
                   <span>Deleting...</span>
@@ -855,7 +946,6 @@ sources: ${JSON.stringify(item.sources)}`
               ) : "Delete"}
             </button>
           </div>
-
         </Popup>
 
         <div className="fixed top-4 right-4 z-50 hidden">
@@ -912,11 +1002,11 @@ sources: ${JSON.stringify(item.sources)}`
               <img 
                 src={isSidebarOpened ? "/sidebar-left.svg" : "/sidebar-right.svg"} 
                 alt={isSidebarOpened ? "Close sidebar" : "Open sidebar"}
-                className="w-8 h-8"
+                className="w-6 h-6"
               />
             </div>
             {/* <h3 className="sidebarTitle">Your sessions:</h3> */}
-            <h2 className="text-2xl font-medium text-white mb-6">Knowledge Search</h2>
+            <h2 className="hidden text-2xl font-medium text-white mb-6">Knowledge Search</h2>
             <div className="sidebarItems no-scrollbar">
               {isWaitingSessions && (
                 <div className="sidebarLoader">
@@ -936,21 +1026,68 @@ sources: ${JSON.stringify(item.sources)}`
                     setCurrentThread([])
                     setCurrentThreadId("")
                   }}>
-                    <img src="/plus.png" alt="New session" className="w-4 h-4 mr-2 inline-block" />
-                    New search
+                    <img src="/plus.png" alt="New session" className="w-3 h-3 mr-2 inline-block" />
+                    <span>New search</span>
                   </div>
-                  {sidebarSessions?.map((session, index) => (
-                    <div className={`sidebarItem ${session.id === currentThreadId ? "sidebarItemActive" : ""}`} key={session.id + index} onClick={() => openThread(session.id)}>
-                      {session.title}
-                      <img src="/delete.png" alt="" className="deleteIcon" onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setIsDeletionConfirmationPopupOpened(true);
-                        setDeletionConfirmation(prev => ({
-                          ...prev,
-                          deletingThread: session
-                        }))
-                      }} />
+                  <div className="divider">
+                    <div className="h-px bg-zinc-800 my-4"></div>
+                  </div>
+                  
+                  {/* Display grouped sessions by date */}
+                  {Object.entries(groupedSidebarSessions).map(([date, threads]) => (
+                    <div key={date}>
+                      <div 
+                        className="sidebarDateHeader"
+                        onClick={() => {
+                          setCollapsedDays(prev => ({
+                            ...prev,
+                            [date]: !prev[date]
+                          }));
+                        }}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span>{date.toUpperCase()}</span>
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className={`transition-transform duration-200 ${collapsedDays[date] ? '-rotate-90' : ''}`}
+                          >
+                            <path d="m6 9 6 6 6-6"/>
+                          </svg>
+                        </div>
+                      </div>
+                      <div className={`sidebarThreads ${collapsedDays[date] ? 'collapsed' : 'expanded'}`}>
+                        {threads.map((session, index) => (
+                          <div 
+                            className={`sidebarItem ${session.id === currentThreadId ? "sidebarItemActive" : ""}`} 
+                            key={session.id + index} 
+                            onClick={() => openThread(session.id)}
+                          >
+                            {session.title}
+                            <img 
+                              src="/delete.png" 
+                              alt="" 
+                              className="deleteIcon" 
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setIsDeletionConfirmationPopupOpened(true);
+                                setDeletionConfirmation(prev => ({
+                                  ...prev,
+                                  deletingThread: session
+                                }))
+                              }} 
+                            />
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   ))}
                 </>
@@ -969,170 +1106,164 @@ sources: ${JSON.stringify(item.sources)}`
           <div className={`chat ${isSidebarOpened ? '' : "chatSidebarClosed"}`}>
             <div className="chatContent no-scrollbar">
               <h2 className="hidden text-2xl font-medium text-white mb-4">Knowledge Search</h2>
-              <div className="bg-zinc-900/70 rounded-lg border border-zinc-800 relative">
+              {/* <div className="bg-zinc-900/70 rounded-lg border border-zinc-800 relative"> */}
+              <div className="rounded-lg border border-zinc-800 relative">
                 <div className="p-4 md:p-6 border-b border-zinc-800">
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                      <div className="text-[#9334E9]">
-                        <ChatCenteredDots className="h-5 w-5" />
-                      </div>
-                      <h1 className="text-xl md:text-2xl font-medium text-white">
-                        Search your knowledge
-                      </h1>
-                    </div>
-                    <div className="flex flex-col gap-2 w-full md:w-auto">
-                      <div className="grid grid-cols-2 md:grid-cols-3 items-center gap-2">
-                        {/* Google Docs button */}
-                        {hasGoogleDocs ? (
-                          <button
-                            onClick={handleGoogleDocsClick}
-                            className={`px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-medium border border-white/10 ${showGoogleDocs
-                              ? "bg-[#3c1671] text-white border-[#6D28D9]"
-                              : "bg-zinc-900 text-white"
-                              } transition-all duration-200 hover:border-[#6D28D9]`}
-                          >
-                            <img
-                              src="https://upload.wikimedia.org/wikipedia/commons/0/01/Google_Docs_logo_%282014-2020%29.svg"
-                              alt="Google Docs"
-                              className="w-4 h-4"
-                            />
-                            <span>Google Docs</span>
-                          </button>
-                        ) : (
-                          <button
-                            onClick={handleGoogleDocsClick}
-                            className="px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-medium border border-white/10 bg-zinc-900 text-white hover:bg-[#3c1671] transition-all duration-200 relative group"
-                          >
-                            <img
-                              src="https://upload.wikimedia.org/wikipedia/commons/0/01/Google_Docs_logo_%282014-2020%29.svg"
-                              alt="Google Docs"
-                              className="w-4 h-4"
-                            />
-                            <span>Google Docs</span>
-                            <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-white text-black px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
-                              Connect Google Docs
-                            </span>
-                          </button>
-                        )}
-
-                        {/* Notion button */}
-                        {hasNotion ? (
-                          <button
-                            onClick={handleNotionClick}
-                            className={`px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-medium border border-white/10 ${showNotion
-                              ? "bg-[#3c1671] text-white border-[#6D28D9]"
-                              : "bg-zinc-900 text-white"
-                              } transition-all duration-200 hover:border-[#6D28D9]`}
-                          >
-                            <img
-                              src="https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png"
-                              alt="Notion"
-                              className="w-4"
-                            />
-                            <span>Notion</span>
-                          </button>
-                        ) : (
-                          <button
-                            onClick={handleNotionClick}
-                            className="px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-medium border border-white/10 bg-zinc-900 text-white hover:bg-[#3c1671] transition-all duration-200 relative group"
-                          >
-                            <img
-                              src="https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png"
-                              alt="Notion"
-                              className="w-4"
-                            />
-                            <span>Notion</span>
-                            <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-white text-black px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
-                              Connect Notion
-                            </span>
-                          </button>
-                        )}
-
-                        {/* Obsidian button */}
-                        {hasObsidian ? (
-                          <button
-                            onClick={handleObsidianClick}
-                            className={`px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-medium border border-white/10 ${showObsidian
-                              ? "bg-[#3c1671] text-white border-[#6D28D9]"
-                              : "bg-zinc-900 text-white"
-                              } transition-all duration-200 hover:border-[#6D28D9]`}
-                          >
-                            <img
-                              src="https://obsidian.md/images/obsidian-logo-gradient.svg"
-                              alt="Obsidian"
-                              className="w-4"
-                            />
-                            <span>Obsidian</span>
-                          </button>
-                        ) : (
-                          <button
-                            onClick={handleObsidianClick}
-                            className="px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-medium border border-white/10 bg-zinc-900 text-white hover:bg-[#3c1671] transition-all duration-200 relative group"
-                          >
-                            <img
-                              src="https://obsidian.md/images/obsidian-logo-gradient.svg"
-                              alt="Obsidian"
-                              className="w-4"
-                            />
-                            <span>Obsidian</span>
-                            <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-white text-black px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
-                              Upload Obsidian Files
-                            </span>
-                          </button>
-                        )}
-
-                        {/* Meetings button */}
+                  <div className="flex flex-col gap-2 w-full md:w-auto">
+                    <p className="text-md font-medium text-white">
+                      Search across
+                    </p>
+                    <div className="grid grid-cols-5 items-center gap-2 max-w-[70%]">
+                      {/* Google Docs button */}
+                      {hasGoogleDocs ? (
                         <button
-                          onClick={handleMeetingsClick}
-                          className={`px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-medium border border-white/10 ${showMeetings && hasMeetings
+                          onClick={handleGoogleDocsClick}
+                          className={`px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-medium border border-white/10 ${showGoogleDocs
                             ? "bg-[#3c1671] text-white border-[#6D28D9]"
                             : "bg-zinc-900 text-white"
-                            } transition-all duration-200 hover:border-[#6D28D9] ${!hasMeetings ? "opacity-50 cursor-not-allowed" : ""
-                            }`}
-                          disabled={!hasMeetings}
+                            } transition-all duration-200 hover:border-[#6D28D9]`}
                         >
-                          <ChatCenteredDots className="w-4 h-4" />
-                          <span>Meetings</span>
-                          {!hasMeetings && (
-                            <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-white text-black px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
-                              No meetings found
-                            </span>
-                          )}
+                          <img
+                            src="https://upload.wikimedia.org/wikipedia/commons/0/01/Google_Docs_logo_%282014-2020%29.svg"
+                            alt="Google Docs"
+                            className="w-4 h-4"
+                          />
+                          <span>Docs</span>
                         </button>
+                      ) : (
+                        <button
+                          onClick={handleGoogleDocsClick}
+                          className="px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-medium border border-white/10 bg-zinc-900 text-white hover:bg-[#3c1671] transition-all duration-200 relative group"
+                        >
+                          <img
+                            src="https://upload.wikimedia.org/wikipedia/commons/0/01/Google_Docs_logo_%282014-2020%29.svg"
+                            alt="Google Docs"
+                            className="w-4 h-4"
+                          />
+                          <span>Google Docs</span>
+                          <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-white text-black px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
+                            Connect Google Docs
+                          </span>
+                        </button>
+                      )}
 
-                        {/* Gmail button */}
-                        {hasGmail ? (
-                          <button
-                            onClick={handleGmailClick}
-                            className={`px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-medium border border-white/10 ${showGmail
-                              ? "bg-[#3c1671] text-white border-[#6D28D9]"
-                              : "bg-zinc-900 text-white"
-                              } transition-all duration-200 hover:border-[#6D28D9]`}
-                          >
-                            <img
-                              src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/2560px-Gmail_icon_%282020%29.svg.png"
-                              alt="Gmail"
-                              className="w-4"
-                            />
-                            <span>Gmail</span>
-                          </button>
-                        ) : (
-                          <button
-                            onClick={handleGmailClick}
-                            className="px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-medium border border-white/10 bg-zinc-900 text-white hover:bg-[#3c1671] transition-all duration-200 relative"
-                          >
-                            <img
-                              src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/2560px-Gmail_icon_%282020%29.svg.png"
-                              alt="Gmail"
-                              className="w-4"
-                            />
-                            <span>Gmail</span>
-                            <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-white text-black px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
-                              Connect Gmail
-                            </span>
-                          </button>
+                      {/* Notion button */}
+                      {hasNotion ? (
+                        <button
+                          onClick={handleNotionClick}
+                          className={`px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-medium border border-white/10 ${showNotion
+                            ? "bg-[#3c1671] text-white border-[#6D28D9]"
+                            : "bg-zinc-900 text-white"
+                            } transition-all duration-200 hover:border-[#6D28D9]`}
+                        >
+                          <img
+                            src="https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png"
+                            alt="Notion"
+                            className="w-4"
+                          />
+                          <span>Notion</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={handleNotionClick}
+                          className="px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-medium border border-white/10 bg-zinc-900 text-white hover:bg-[#3c1671] transition-all duration-200 relative group"
+                        >
+                          <img
+                            src="https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png"
+                            alt="Notion"
+                            className="w-4"
+                          />
+                          <span>Notion</span>
+                          <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-white text-black px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
+                            Connect Notion
+                          </span>
+                        </button>
+                      )}
+
+                      {/* Obsidian button */}
+                      {hasObsidian ? (
+                        <button
+                          onClick={handleObsidianClick}
+                          className={`px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-medium border border-white/10 ${showObsidian
+                            ? "bg-[#3c1671] text-white border-[#6D28D9]"
+                            : "bg-zinc-900 text-white"
+                            } transition-all duration-200 hover:border-[#6D28D9]`}
+                        >
+                          <img
+                            src="https://obsidian.md/images/obsidian-logo-gradient.svg"
+                            alt="Obsidian"
+                            className="w-4"
+                          />
+                          <span>Obsidian</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={handleObsidianClick}
+                          className="px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-medium border border-white/10 bg-zinc-900 text-white hover:bg-[#3c1671] transition-all duration-200 relative group"
+                        >
+                          <img
+                            src="https://obsidian.md/images/obsidian-logo-gradient.svg"
+                            alt="Obsidian"
+                            className="w-4"
+                          />
+                          <span>Obsidian</span>
+                          <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-white text-black px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
+                            Upload Obsidian Files
+                          </span>
+                        </button>
+                      )}
+
+                      {/* Meetings button */}
+                      <button
+                        onClick={handleMeetingsClick}
+                        className={`px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-medium border border-white/10 ${showMeetings && hasMeetings
+                          ? "bg-[#3c1671] text-white border-[#6D28D9]"
+                          : "bg-zinc-900 text-white"
+                          } transition-all duration-200 hover:border-[#6D28D9] ${!hasMeetings ? "opacity-50 cursor-not-allowed" : ""
+                          }`}
+                        disabled={!hasMeetings}
+                      >
+                        <ChatCenteredDots className="w-4 h-4" />
+                        <span>Meetings</span>
+                        {!hasMeetings && (
+                          <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-white text-black px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
+                            No meetings found
+                          </span>
                         )}
-                      </div>
+                      </button>
+
+                      {/* Gmail button */}
+                      {hasGmail ? (
+                        <button
+                          onClick={handleGmailClick}
+                          className={`px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-medium border border-white/10 ${showGmail
+                            ? "bg-[#3c1671] text-white border-[#6D28D9]"
+                            : "bg-zinc-900 text-white"
+                            } transition-all duration-200 hover:border-[#6D28D9]`}
+                        >
+                          <img
+                            src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/2560px-Gmail_icon_%282020%29.svg.png"
+                            alt="Gmail"
+                            className="w-4"
+                          />
+                          <span>Gmail</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={handleGmailClick}
+                          className="px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-medium border border-white/10 bg-zinc-900 text-white hover:bg-[#3c1671] transition-all duration-200 relative"
+                        >
+                          <img
+                            src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/2560px-Gmail_icon_%282020%29.svg.png"
+                            alt="Gmail"
+                            className="w-4"
+                          />
+                          <span>Gmail</span>
+                          <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-white text-black px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
+                            Connect Gmail
+                          </span>
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1149,7 +1280,8 @@ sources: ${JSON.stringify(item.sources)}`
 
                   <div>
                     {currentThread?.map((question, index) => (
-                      <div className="space-y-6 threadItem" key={index}>
+                      <div>
+                      <div className="space-y-6 threadItem">
                         <Query
                           content={question?.query || ""}
                           sourcesTime={sourcesTime}
@@ -1185,9 +1317,10 @@ sources: ${JSON.stringify(item.sources)}`
                             </button>
                           )} */}
                             </div>
-                            <div className="bg-black rounded-lg p-4 border border-zinc-800 text-zinc-300">
-                              <GPT content={question?.reply || ""} />
-                              {!question?.reply?.length && (
+                            <div className="text-zinc-300 text-left w-[80%] font-poppins tracking-wide">
+                            {/* <div className="bg-black rounded-lg p-4 border border-zinc-800 text-zinc-300"> */}
+                              <GPT content={question?.reply || ""} className="text-sm"/>
+                              {isSearching && index === currentThread.length - 1 && (
                                 <span className="inline-block animate-pulse">▋</span>
                               )}
                             </div>
@@ -1199,6 +1332,13 @@ sources: ${JSON.stringify(item.sources)}`
                             </div>
                           )}
                         </div>
+                      </div>
+                      <div className="divider" key={index}>
+                        {/* Only show divider if this isn't the last item */}
+                        {index < currentThread.length - 1 && (
+                          <div className="border-t border-zinc-800 my-10"></div>
+                        )}
+                      </div>
                       </div>
                     ))}
                   </div>
@@ -1266,7 +1406,7 @@ sources: ${JSON.stringify(item.sources)}`
               {/* Suggested prompts moved outside the main box */}
               {!isSearchInitiated && (
                 <div className="mt-6 space-y-2">
-                  <div className="text-zinc-500 text-md">Personalized prompt suggestions</div>
+                  <div className="text-zinc-500 text-sm">Personalized prompt suggestions</div>
                   <div className="flex flex-col gap-3">
                     {suggestedPrompts.length === 0 ? (
                       <>
@@ -1291,7 +1431,7 @@ sources: ${JSON.stringify(item.sources)}`
                                 setInputValue(item.text);
                                 sendMessage(item.text);
                               }}
-                              className="transition-all duration-500 w-[70%] px-4 py-4 pr-16 rounded-lg bg-zinc-900/70 border border-zinc-800 text-zinc-300 hover:bg-[#3c1671] hover:border-[#6D28D9] transition-colors text-lg text-left relative group"
+                              className="transition-all duration-500 w-[70%] px-4 py-4 pr-16 rounded-lg bg-zinc-900/70 border border-zinc-800 text-zinc-300 hover:bg-[#3c1671] hover:border-[#6D28D9] transition-colors text-sm text-left relative group"
                             >
                               {item.text}
                               <div className="absolute right-4 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -1323,7 +1463,7 @@ sources: ${JSON.stringify(item.sources)}`
                                 setInputValue(item.text);
                                 sendMessage(item.text);
                               }}
-                              className="transition-all duration-500 w-[70%] px-4 py-4 pr-16 rounded-lg bg-zinc-900/70 border border-zinc-800 text-zinc-300 hover:bg-[#3c1671] hover:border-[#6D28D9] transition-colors text-lg text-left relative group"
+                              className="transition-all duration-500 w-[70%] px-4 py-4 pr-16 rounded-lg bg-zinc-900/70 border border-zinc-800 text-zinc-300 hover:bg-[#3c1671] hover:border-[#6D28D9] transition-colors text-sm text-left relative group"
                             >
                               <span>{item.text}</span>
                               <div className="absolute right-4 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -1350,6 +1490,7 @@ sources: ${JSON.stringify(item.sources)}`
                   </div>
                 </div>
               )}
+
             </div>
 
             <div className="followUpInputArea">
@@ -1358,6 +1499,7 @@ sources: ${JSON.stringify(item.sources)}`
                 setInputValue={setInputValue}
                 sendMessage={sendMessage}
                 className={`w-full ${!isSearchInitiated && "hidden"}`}
+                placeholder="Ask a follow-up question..."
               />
             </div>
           </div>
@@ -1467,6 +1609,7 @@ export function InputArea({
   setInputValue,
   sendMessage,
   className = "",
+  placeholder = "Search anything...",
 }) {
   return (
     <div className={`flex items-center ${className}`}>
@@ -1489,8 +1632,8 @@ export function InputArea({
         </div>
         <input
           type="text"
-          placeholder="Search anything..."
-          className="flex-1 p-3 md:p-4 pl-10 md:pl-12 text-sm md:text-base rounded-l-lg focus:outline-none bg-black border border-zinc-800 text-zinc-300 focus:border-[#6D28D9] transition-colors"
+          placeholder={placeholder}
+          className="flex-1 p-3 md:p-4 pl-10 md:pl-12 text-md rounded-l-lg focus:outline-none bg-black border border-zinc-800 text-zinc-300 focus:border-[#6D28D9] transition-colors"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && sendMessage()}
@@ -1509,7 +1652,7 @@ export function InputArea({
 export const Query = ({ content = "", sourcesTime, completionTime }) => {
   return (
     <div className="flex flex-col md:flex-row md:items-center justify-between">
-      <div className="text-xl md:text-3xl font-medium text-white">
+      <div className="text-xl md:text-3xl font-semibold text-zinc-500">
         {content}
       </div>
       <div className="text-sm text-zinc-500 mt-1 md:mt-0 flex flex-col md:items-end">
@@ -1551,7 +1694,7 @@ export const Sources = ({ content = [], filters = {} }) => {
           <img
             src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/2560px-Gmail_icon_%282020%29.svg.png"
             alt="Gmail"
-            className="w-6 flex-shrink-0"
+            className="w-4 flex-shrink-0"
           />
         );
 
@@ -1560,7 +1703,7 @@ export const Sources = ({ content = [], filters = {} }) => {
           <img
             src="https://www.svgrepo.com/show/303180/microsoft-teams-logo.svg"
             alt="Microsoft Teams"
-            className="w-8"
+            className="w-4"
           />
         );
 
@@ -1569,7 +1712,7 @@ export const Sources = ({ content = [], filters = {} }) => {
           <img
             src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Google_Meet_icon_%282020%29.svg/1024px-Google_Meet_icon_%282020%29.svg.png?20221213135236"
             alt="Google Meet"
-            className="w-8"
+            className="w-4"
           />
         );
 
@@ -1578,7 +1721,7 @@ export const Sources = ({ content = [], filters = {} }) => {
           <img
             src="https://upload.wikimedia.org/wikipedia/commons/0/01/Google_Docs_logo_%282014-2020%29.svg"
             alt="Google Docs"
-            className="w-6 h-6"
+            className="w-3"
           />
         );
 
@@ -1587,7 +1730,7 @@ export const Sources = ({ content = [], filters = {} }) => {
           <img
             src="https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png"
             alt="Notion"
-            className="w-6 h-6"
+            className="w-4"
           />
         );
 
@@ -1596,7 +1739,7 @@ export const Sources = ({ content = [], filters = {} }) => {
           <img
             src="https://obsidian.md/images/obsidian-logo-gradient.svg"
             alt="Obsidian"
-            className="w-6 h-6"
+            className="w-4"
           />
         );
 
@@ -1605,7 +1748,7 @@ export const Sources = ({ content = [], filters = {} }) => {
           <img
             src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/2560px-Gmail_icon_%282020%29.svg.png"
             alt="Gmail"
-            className="w-6 flex-shrink-0"
+            className="w-4 flex-shrink-0"
           />
         );
 
@@ -1621,7 +1764,7 @@ export const Sources = ({ content = [], filters = {} }) => {
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
-            className="w-6 h-6 text-zinc-400"
+            className="w-4 h-4 text-zinc-400"
           >
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
             <polyline points="14 2 14 8 20 8"></polyline>
@@ -1688,25 +1831,44 @@ export const Sources = ({ content = [], filters = {} }) => {
                 rel="noopener noreferrer"
               >{/* bg-black rounded-lg p-4 border border-zinc-800 hover:border-[#6D28D9] transition-colors h-[160px] relative */}
                 <div className="">
-                  <Link className="absolute top-4 right-4 w-4 h-4 text-zinc-500" />
+                  <svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    className="absolute top-4 right-4 w-4 h-4 text-zinc-500" 
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    stroke="currentColor"
+                  >
+                    <path 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round" 
+                      strokeWidth={2} 
+                      d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" 
+                    />
+                  </svg>
                   <div className="text-zinc-300 text-sm font-medium mb-2 flex items-center gap-2">
                     {getSourceIcon(source.type)}
                     <div className="flex flex-col overflow-hidden">
-                      <span className="truncate font-medium max-w-full">
-                        {source.type || "Service"}
-
+                      <span className="truncate font-normal max-w-full text-zinc-400 text-xs">
+                        {
+                          source.type === "gmail" || source.type === "email" ? "Gmail" :
+                          source.type === "google_docs" ? "Docs" :
+                          source.type === "notion" ? "Notion" :
+                          source.type === "obsidian" ? "Obsidian" :
+                          source.type === "msteams" || source.type === "google_meet" ? "Meeting" :
+                          "Note"
+                        }
                       </span>
 
                       {/* Show sender if available (for email types) */}
-                      {source.sender && (
+                      {source.from && (
                         <span className="text-xs text-zinc-400 truncate max-w-full">
-                          {source.sender}
+                          {source.from}
                         </span>
                       )}
                     </div>
                   </div>
-                  <div className="text-zinc-500 text-sm overflow-hidden line-clamp-4">
-                    <ReactMarkdown>{/* {source.content || ""} */}{source.title || "Document"}</ReactMarkdown>
+                  <div className="text-zinc-300 font-medium text-xs overflow-hidden line-clamp-2">
+                    <p>{source.title || "Document"}</p>
                   </div>
                 </div>
               </a>
@@ -1849,17 +2011,25 @@ const GPT = ({ content = "" }) => {
   return (
     <div ref={contentRef}>
       <ReactMarkdown
-        className="prose text-base md:text-xl mt-1 w-full break-words prose-p:leading-relaxed prose-p:mb-4 text-white font-light"
+        className="prose text-md leading-8 font mt-1 w-full break-words prose-p:mb-4 text-white"
         remarkPlugins={[remarkGfm]}
         components={{
-          a: ({ node, ...props }) => (
-            <a
-              {...props}
-              className="text-[#9334E9] font-normal hover:text-[#7928CA] transition-colors"
-              target="_blank"
-              rel="noopener noreferrer"
-            />
-          ),
+          a: (() => {
+            let linkCounter = 0;
+            return ({ node, ...props }) => {
+              linkCounter += 1;
+              return (
+                <a
+                  {...props}
+                  className="text-[#9334E9] font-normal hover:text-[#7928CA] transition-colors"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  (Link {linkCounter})
+                </a>
+              );
+            };
+          })(),
           p: ({ node, ...props }) => <p className="mb-4" {...props} />,
         }}
       >

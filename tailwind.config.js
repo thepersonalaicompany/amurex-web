@@ -75,7 +75,21 @@ module.exports = {
   			'gradient-x': 'gradient-x 3s ease infinite',
                         'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
                         'shimmer': 'shimmer 2s infinite'
-  		}
+  		},
+		fontFamily: {
+			roboto: ['Roboto', 'sans-serif'],
+			helvetica: ['Helvetica', 'sans-serif'],
+			segoe: ['segoe ui', 'sans-serif'],
+			arial: ['Arial', 'sans-serif'],
+			verdana: ['Verdana', 'sans-serif'],
+			tahoma: ['Tahoma', 'sans-serif'],
+			times: ['Times New Roman', 'serif'],
+			georgia: ['Georgia', 'serif'],
+			garamond: ['Garamond', 'serif'],
+			nunito: ['Nunito', 'sans-serif'],
+			poppins: ['Poppins', 'sans-serif'],
+			quicksand: ['Quicksand', 'sans-serif'],
+		},
   	}
   },
   plugins: [require("tailwindcss-animate")],
