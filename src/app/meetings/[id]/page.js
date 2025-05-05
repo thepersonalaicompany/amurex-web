@@ -22,9 +22,9 @@ export default function TranscriptDetail({ params }) {
   const [error, setError] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false)
-  const [copyButtonText, setCopyButtonText] = useState("Copy URL");
-  const [copyActionItemsText, setCopyActionItemsText] = useState("Copy");
-  const [copyMeetingSummaryText, setCopyMeetingSummaryText] = useState("Copy");
+  const [copyButtonText, setCopyButtonText] = useState("Copy share link");
+  const [copyActionItemsText, setCopyActionItemsText] = useState("Copy text");
+  const [copyMeetingSummaryText, setCopyMeetingSummaryText] = useState("Copy text");
   const [emails, setEmails] = useState([]);
   const [emailInput, setEmailInput] = useState("");
   const [isMobile, setIsMobile] = useState(false);
@@ -190,13 +190,13 @@ export default function TranscriptDetail({ params }) {
       
       const userEmail = userData.email;
       const baseLink = `${window.location.host.includes('localhost') ? 'http://' : 'https://'}${window.location.host}/shared/${params.id}`;
-      const shareText = `Sharing my meeting notes with you: ${baseLink}`;
+      const shareText = baseLink;
       
       navigator.clipboard.writeText(shareText)
         .then(async () => {
           console.log('Link copied to clipboard');
           setCopyButtonText("Copied!"); // Change button text
-          setTimeout(() => setCopyButtonText("Copy URL"), 3000); // Revert text after 3 seconds
+          setTimeout(() => setCopyButtonText("Copy share link"), 3000); // Revert text after 3 seconds
 
           await logUserAction(session.user.id, 'web_share_url_copied');
         })
@@ -457,13 +457,18 @@ export default function TranscriptDetail({ params }) {
                     type="text"
                     value={`${window.location.host.includes('localhost') ? 'http://' : 'https://'}${window.location.host}/shared/${params.id}`}
                     readOnly
-                    className="w-full mt-2 p-2 border rounded bg-transparent text-white lg:text-md text-sm"
+                    className="w-[30%] mt-2 px-4 py-2 border border-[#27272A] rounded-[8px] bg-transparent text-zinc-400 text-sm focus:outline-none"
+                    onClick={(e) => e.target.select()}
+                    style={{ 
+                      userSelect: "none", 
+                      outline: "none"
+                    }}
                   />
                   <button 
-                    className="mt-2 lg:px-4 lg:py-2 px-2 py-2 inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium border border-white/10 bg-[#9334E9] text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:bg-[#3c1671] hover:border-[#6D28D9]"
+                    className="mt-2 lg:px-4 lg:py-2 px-4 py-2 inline-flex items-center justify-center gap-2 rounded-md text-xs font-normal border border-white/10 bg-[#3c1671] text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:bg-[#3c1671] hover:border-[#6D28D9]"
                     onClick={handleCopyLink}
                   >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <svg width="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                       <path d="M8 4V16C8 17.1046 8.89543 18 10 18H18C19.1046 18 20 17.1046 20 16V7.24853C20 6.77534 19.7893 6.32459 19.4142 6.00001L16.9983 3.75735C16.6232 3.43277 16.1725 3.22205 15.6993 3.22205H10C8.89543 3.22205 8 4.11748 8 5.22205" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                       <path d="M16 4V7H19" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                       <path d="M4 8V20C4 21.1046 4.89543 22 6 22H14C15.1046 22 16 21.1046 16 20" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -499,7 +504,7 @@ export default function TranscriptDetail({ params }) {
               }}
             >
               <div className="bg-black bg-opacity-40 backdrop-blur-sm p-8 rounded-lg shadow-lg border border-white/20 w-[90%] max-w-4xl max-h-[80vh] flex flex-col">
-                <h2 className="lg:text-xl text-md font-medium mb-4 text-white">Preview Transcript: <b>{transcript.title}</b></h2>
+                <h2 className="lg:text-xl text-md font-medium mb-4 text-white">Full transcript</h2>
                 
                 <div className="flex-grow overflow-auto bg-[#27272A] rounded-lg p-4 mb-4">
                   {isLoadingPreview ? (
@@ -515,13 +520,13 @@ export default function TranscriptDetail({ params }) {
 
                 <div className="flex justify-end gap-4">
                   <button 
-                    className="px-4 py-2 inline-flex items-center justify-center gap-2 rounded-md text-md font-medium border border-white/10 text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:bg-[#3c1671] hover:border-[#6D28D9]"
+                    className="mr-2 mt-2 lg:px-4 lg:py-2 px-2 py-2 inline-flex items-center justify-center gap-2 rounded-md text-sm font-normal border border-white/10 bg-transparent text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:border-[#6D28D9]"
                     onClick={() => setIsPreviewModalOpen(false)}
                   >
                     <span>Cancel</span>
                   </button>
                   <button 
-                    className="px-4 py-2 inline-flex items-center justify-center gap-2 rounded-md text-md font-medium border border-white/10 bg-[#9334E9] text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:bg-[#3c1671] hover:border-[#6D28D9]"
+                    className="mt-2 lg:px-4 lg:py-2 px-2 py-2 inline-flex items-center justify-center gap-2 rounded-md text-sm font-normal border border-white/10 bg-[#6D28D9] text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:bg-[#3c1671] hover:border-[#6D28D9]"
                     onClick={handleActualDownload}
                   >
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -565,12 +570,36 @@ export default function TranscriptDetail({ params }) {
             </div>
           </div>
 
-          <div className="bg-[#09090A] rounded-lg border border-zinc-800">
+          <div className="flex items-center justify-center gap-4 mx-auto mb-4">
+            <input
+              type="text"
+              value={`${window.location.host.includes('localhost') ? 'http://' : 'https://'}${window.location.host}/shared/${params.id}`}
+              readOnly
+              className="w-[30%] mt-2 px-4 py-2 border border-[#27272A] rounded-lg bg-transparent text-zinc-400 text-sm focus:outline-none"
+              onClick={(e) => e.target.select()}
+              style={{ 
+                userSelect: "none", 
+                outline: "none"
+              }}
+            />
+            <button 
+              className="mt-2 lg:px-4 lg:py-2 px-4 py-2 inline-flex items-center justify-center gap-2 rounded-lg text-xs font-normal border border-white/10 bg-[#6D28D9] text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:bg-[#3c1671] hover:border-[#6D28D9]"
+              onClick={handleCopyLink}
+            >
+              <svg width="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M8 4V16C8 17.1046 8.89543 18 10 18H18C19.1046 18 20 17.1046 20 16V7.24853C20 6.77534 19.7893 6.32459 19.4142 6.00001L16.9983 3.75735C16.6232 3.43277 16.1725 3.22205 15.6993 3.22205H10C8.89543 3.22205 8 4.11748 8 5.22205" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M16 4V7H19" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M4 8V20C4 21.1046 4.89543 22 6 22H14C15.1046 22 16 21.1046 16 20" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              <span>{copyButtonText}</span>
+            </button>
+          </div>
+          <div className="bg-black rounded-xl border border-zinc-800">
           {/* <div className="bg-zinc-900/70 rounded-lg border border-zinc-800"> */}
             <div className="p-6 border-b border-zinc-800 hidden lg:block">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="text-[#9334E9]">
+                  <div className="text-[#6D28D9]">
                     <FileText className="h-5 w-5" />
                   </div>
                   <h1 className="text-2xl font-medium text-white">
@@ -579,7 +608,7 @@ export default function TranscriptDetail({ params }) {
                 </div>
                 <div className="flex gap-2">
                   <button 
-                    className="px-4 py-2 inline-flex items-center justify-center gap-2 rounded-[8px] text-md font-medium border border-white/10 bg-[#9334E9] text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:bg-[#3c1671] hover:border-[#6D28D9]"
+                    className="hidden px-4 py-2 inline-flex items-center justify-center gap-2 rounded-[8px] text-md font-medium border border-white/10 bg-[#9334E9] text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:bg-[#3c1671] hover:border-[#6D28D9]"
                     onClick={toggleModal}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" strokeLinejoin="round">
@@ -591,13 +620,14 @@ export default function TranscriptDetail({ params }) {
                   </button>
 
                   <button 
-                    className="px-4 py-2 inline-flex items-center justify-center gap-2 rounded-[8px] text-md font-medium border border-white/10 text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:bg-[#3c1671] hover:border-[#6D28D9]"
+                    className="px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-md font-normal border border-white/10 bg-zinc-900 text-white transition-all duration-200 hover:border-[#6D28D9]"
                     onClick={handleDownload}
                   >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M21 15V16C21 18.2091 19.2091 20 17 20H7C4.79086 20 3 18.2091 3 16V15M12 3V16M12 16L16 11M12 16L8 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+                      <circle cx="12" cy="12" r="3" />
                     </svg>
-                    <span>Download transcript</span>
+                    <span>View transcript</span>
                   </button>
                 </div>
               </div>
@@ -652,22 +682,22 @@ export default function TranscriptDetail({ params }) {
               {transcript.actionItems && (
                 <div onClick={handleActionItemClick}>
                   <div className="flex items-center justify-between mb-3">
-                    <h2 className="text-[#9334E9] font-medium mb-3 lg:text-xl text-md">Action Items</h2>
+                    <h2 className="text-[#6D28D9] font-normal mb-3 lg:text-xl text-md">Action Items</h2>
                     <button 
                       onClick={(e) => {
                         e.stopPropagation();
                         navigator.clipboard.writeText(transcript.actionItems);
                         setCopyActionItemsText("Copied!");
-                        setTimeout(() => setCopyActionItemsText("Copy"), 3000);
+                        setTimeout(() => setCopyActionItemsText("Copy text"), 3000);
                       }}
-                      className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors"
+                      className="px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-medium border border-white/10 bg-zinc-900 text-white transition-all duration-200 hover:border-[#6D28D9]"
                     >
-                      <span className="text-sm">{copyActionItemsText}</span>
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M8 4V16C8 17.1046 8.89543 18 10 18H18C19.1046 18 20 17.1046 20 16V7.24853C20 6.77534 19.7893 6.32459 19.4142 6.00001L16.9983 3.75735C16.6232 3.43277 16.1725 3.22205 15.6993 3.22205H10C8.89543 3.22205 8 4.11748 8 5.22205" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
                         <path d="M16 4V7H19" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
                         <path d="M4 8V20C4 21.1046 4.89543 22 6 22H14C15.1046 22 16 21.1046 16 20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
                       </svg>
+                      <span className="text-sm">{copyActionItemsText}</span>
                     </button>
                   </div>
 
@@ -684,7 +714,7 @@ export default function TranscriptDetail({ params }) {
               {transcript.summary && (
                 <div onClick={handleSummaryClick}>
                   <div className="flex items-center justify-between mb-3">
-                    <h2 className="text-[#9334E9] font-medium mb-3 lg:text-xl text-md">Meeting Summary</h2>
+                    <h2 className="text-[#6D28D9] font-medium mb-3 lg:text-xl text-md">Meeting Summary</h2>
                     <button 
                       onClick={(e) => {
                         e.stopPropagation();
