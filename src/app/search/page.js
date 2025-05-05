@@ -292,6 +292,7 @@ const SpotlightSearch = ({ isVisible, onClose, onSearch, suggestedPrompts = [], 
     </div>
   );
 };
+SpotlightSearch.displayName = 'SpotlightSearch';
 
 const BASE_URL_BACKEND = "https://api.amurex.ai";
 
@@ -1477,7 +1478,7 @@ sources: ${JSON.stringify(item.sources)}`
 
                       <div>
                         {currentThread?.map((question, index) => (
-                          <div>
+                          <div key={`thread-item-${index}`}>
                           <div className="space-y-6 threadItem">
                             <Query
                               content={question?.query || ""}
@@ -1504,7 +1505,7 @@ sources: ${JSON.stringify(item.sources)}`
                               )}
                             </div>
                           </div>
-                          <div className="divider" key={index}>
+                          <div className="divider">
                             {index < currentThread.length - 1 && (
                               <div className="border-t border-zinc-800 my-10"></div>
                             )}
@@ -1653,6 +1654,7 @@ sources: ${JSON.stringify(item.sources)}`
     </>
   );
 }
+
 /* 17. Export InputArea component */
 export function InputArea({
   inputValue,
@@ -1711,6 +1713,8 @@ export function InputArea({
     </div>
   );
 }
+InputArea.displayName = 'InputArea';
+
 /* 21. Query component for displaying content */
 export const Query = ({ content = "", sourcesTime, completionTime }) => {
   return (
@@ -1728,6 +1732,8 @@ export const Query = ({ content = "", sourcesTime, completionTime }) => {
     </div>
   );
 };
+Query.displayName = 'Query';
+
 /* 22. Sources component for displaying list of sources */
 export const Sources = ({ content = [], filters = {} }) => {
   // Filter sources based on filter settings
@@ -1941,6 +1947,8 @@ export const Sources = ({ content = [], filters = {} }) => {
     </div>
   );
 };
+Sources.displayName = 'Sources';
+
 // 27. VectorCreation component for displaying a brief message
 export const VectorCreation = ({ content = "" }) => {
   const [visible, setVisible] = useState(true);
@@ -1958,6 +1966,8 @@ export const VectorCreation = ({ content = "" }) => {
     </div>
   ) : null;
 };
+VectorCreation.displayName = 'VectorCreation';
+
 // 28. Heading component for displaying various headings
 export const Heading = ({ content = "" }) => {
   return (
@@ -1967,6 +1977,7 @@ export const Heading = ({ content = "" }) => {
     </div>
   );
 };
+Heading.displayName = 'Heading';
 
 // Move these utility functions outside of any component
 const fetchSession = async () => {
@@ -2115,6 +2126,8 @@ const GPT = ({ content = "" }) => {
     </div>
   );
 };
+GPT.displayName = 'GPT';
+
 // 31. FollowUp component for displaying follow-up options
 export const FollowUp = ({ content = "", sendMessage = () => { } }) => {
   const [followUp, setFollowUp] = useState([]);
@@ -2168,6 +2181,8 @@ export const FollowUp = ({ content = "", sendMessage = () => { } }) => {
     </>
   );
 };
+FollowUp.displayName = 'FollowUp';
+
 // 40. MessageHandler component for dynamically rendering message components
 const MessageHandler = memo(
   ({ message = { type: "", content: "" }, sendMessage = () => { } }) => {
@@ -2186,9 +2201,7 @@ const MessageHandler = memo(
     ) : null;
   }
 );
-
-// Add this line after the component definition
-MessageHandler.displayName = "MessageHandler";
+MessageHandler.displayName = 'MessageHandler';
 
 // Onboarding component to guide users to connect their accounts
 const OnboardingFlow = ({ onClose, setHasSeenOnboarding }) => {
@@ -2319,3 +2332,4 @@ const OnboardingFlow = ({ onClose, setHasSeenOnboarding }) => {
     </div>
   );
 };
+OnboardingFlow.displayName = 'OnboardingFlow';
