@@ -23,6 +23,8 @@ export default function TranscriptDetail({ params }) {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false)
   const [copyButtonText, setCopyButtonText] = useState("Copy URL");
+  const [copyActionItemsText, setCopyActionItemsText] = useState("Copy");
+  const [copyMeetingSummaryText, setCopyMeetingSummaryText] = useState("Copy");
   const [emails, setEmails] = useState([]);
   const [emailInput, setEmailInput] = useState("");
   const [isMobile, setIsMobile] = useState(false);
@@ -649,7 +651,26 @@ export default function TranscriptDetail({ params }) {
 
               {transcript.actionItems && (
                 <div onClick={handleActionItemClick}>
-                  <h2 className="text-[#9334E9] font-medium mb-3 lg:text-xl text-md">Action Items</h2>
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-[#9334E9] font-medium mb-3 lg:text-xl text-md">Action Items</h2>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigator.clipboard.writeText(transcript.actionItems);
+                        setCopyActionItemsText("Copied!");
+                        setTimeout(() => setCopyActionItemsText("Copy"), 3000);
+                      }}
+                      className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors"
+                    >
+                      <span className="text-sm">{copyActionItemsText}</span>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M8 4V16C8 17.1046 8.89543 18 10 18H18C19.1046 18 20 17.1046 20 16V7.24853C20 6.77534 19.7893 6.32459 19.4142 6.00001L16.9983 3.75735C16.6232 3.43277 16.1725 3.22205 15.6993 3.22205H10C8.89543 3.22205 8 4.11748 8 5.22205" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                        <path d="M16 4V7H19" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                        <path d="M4 8V20C4 21.1046 4.89543 22 6 22H14C15.1046 22 16 21.1046 16 20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                      </svg>
+                    </button>
+                  </div>
+
                   <div className="bg-black rounded-lg p-4 border border-zinc-800">
                     <div
                       className={`text-zinc-300 lg:text-base text-sm ${styles.notesContent}`}
@@ -662,7 +683,26 @@ export default function TranscriptDetail({ params }) {
 
               {transcript.summary && (
                 <div onClick={handleSummaryClick}>
-                  <h2 className="text-[#9334E9] font-medium mb-3 lg:text-xl text-md">Meeting Summary</h2>
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-[#9334E9] font-medium mb-3 lg:text-xl text-md">Meeting Summary</h2>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigator.clipboard.writeText(transcript.summary);
+                        setCopyMeetingSummaryText("Copied!");
+                        setTimeout(() => setCopyMeetingSummaryText("Copy"), 3000);
+                      }}
+                      className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors"
+                    >
+                      <span className="text-sm">{copyMeetingSummaryText}</span>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M8 4V16C8 17.1046 8.89543 18 10 18H18C19.1046 18 20 17.1046 20 16V7.24853C20 6.77534 19.7893 6.32459 19.4142 6.00001L16.9983 3.75735C16.6232 3.43277 16.1725 3.22205 15.6993 3.22205H10C8.89543 3.22205 8 4.11748 8 5.22205" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                        <path d="M16 4V7H19" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                        <path d="M4 8V20C4 21.1046 4.89543 22 6 22H14C15.1046 22 16 21.1046 16 20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                      </svg>
+                    </button>
+                  </div>
+
                   <div className="bg-black rounded-lg p-4 border border-zinc-800">
                     <div className="prose text-zinc-300 lg:text-base text-sm bg-default markdown-body">
                       {transcript.summary ? (
