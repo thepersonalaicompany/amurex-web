@@ -1460,7 +1460,7 @@ sources: ${JSON.stringify(item.sources)}`
                 <div className="h-full flex flex-col items-center justify-center">
                   <div className="text-center max-w-md mx-auto mt-[-100px]">
                     <h2 className="text-2xl font-medium text-white mb-3">Search your knowledge</h2>
-                    <p className="text-zinc-400 mb-6 text-md">Click on "New search" or press <kbd className="px-2 py-1 bg-zinc-800 rounded text-md text-zinc-300">⌘K</kbd> to begin</p>
+                    <p className="text-zinc-400 mb-6 text-md">Click on &quot;New search&quot; or press <kbd className="px-2 py-1 bg-zinc-800 rounded text-md text-zinc-300">⌘K</kbd> to begin</p>
                   </div>
                 </div>
               ) : (
@@ -2090,7 +2090,7 @@ const GPT = ({ content = "" }) => {
         components={{
           a: (() => {
             let linkCounter = 0;
-            return ({ node, ...props }) => {
+            const LinkComponent = ({ node, ...props }) => {
               linkCounter += 1;
               return (
                 <a
@@ -2103,8 +2103,14 @@ const GPT = ({ content = "" }) => {
                 </a>
               );
             };
+            LinkComponent.displayName = 'MarkdownLink';
+            return LinkComponent;
           })(),
-          p: ({ node, ...props }) => <p className="mb-4" {...props} />,
+          p: (() => {
+            const ParagraphComponent = ({ node, ...props }) => <p className="mb-4" {...props} />;
+            ParagraphComponent.displayName = 'MarkdownParagraph';
+            return ParagraphComponent;
+          })(),
         }}
       >
         {content}
