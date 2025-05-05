@@ -364,7 +364,7 @@ export default function TranscriptDetail({ params }) {
                 <h2 className="lg:text-xl text-md font-medium mb-4 text-white">Share notes from <b>{transcript.title}</b></h2>
                 
                 {/* Email Input Section */}
-                <div className="mt-4">
+                <div className="mt-4 hidden">
                   <p className="text-white lg:text-md text-sm font-semibold">Send via email</p>
                   <div className="flex items-center">
                     <input
@@ -423,11 +423,11 @@ export default function TranscriptDetail({ params }) {
                 </div>
 
                 {/* Horizontal Divider */}
-                <div className="my-6 border-t border-white/20"></div>
+                <div className="my-6 border-t border-white/20 hidden"></div>
 
                 {/* Copy Link Section */}
                 <div>
-                  <p className="text-white lg:text-md text-sm font-semibold">Or copy the invite URL</p>
+                  <p className="text-white lg:text-md text-sm font-semibold hidden">Or copy the invite URL</p>
                   <input
                     type="text"
                     value={`${window.location.host.includes('localhost') ? 'http://' : 'https://'}${window.location.host}/shared/${params.id}`}
@@ -448,7 +448,7 @@ export default function TranscriptDetail({ params }) {
                 </div>
 
                 {/* Horizontal Divider */}
-                <div className="my-6 border-t border-white/10"></div>
+                <div className="my-6 border-t border-white/10 hidden"></div>
 
                 {/* Done Button */}
                 <div className="flex justify-end">
