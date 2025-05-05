@@ -21,11 +21,14 @@ export default function TranscriptDetail({ params }) {
   const [transcript, setTranscript] = useState(null)
   const [error, setError] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false)
   const [copyButtonText, setCopyButtonText] = useState("Copy URL");
   const [emails, setEmails] = useState([]);
   const [emailInput, setEmailInput] = useState("");
   const [isMobile, setIsMobile] = useState(false);
   const [sharedWith, setSharedWith] = useState([]);
+  const [previewContent, setPreviewContent] = useState("");
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
 
   const [session, setSession] = useState(null);
 
@@ -206,6 +209,25 @@ export default function TranscriptDetail({ params }) {
   const handleDownload = async () => {
     if (transcript && transcript.content) {
       try {
+        setIsLoadingPreview(true);
+        setIsPreviewModalOpen(true);
+        
+        const response = await fetch(transcript.content);
+        if (!response.ok) throw new Error('Network response was not ok');
+  
+        const text = await response.text();
+        setPreviewContent(text);
+        setIsLoadingPreview(false);
+      } catch (error) {
+        console.error('Error loading preview:', error);
+        setIsLoadingPreview(false);
+      }
+    }
+  };
+
+  const handleActualDownload = async () => {
+    if (transcript && transcript.content) {
+      try {
         const response = await fetch(transcript.content);
         if (!response.ok) throw new Error('Network response was not ok');
   
@@ -227,6 +249,7 @@ export default function TranscriptDetail({ params }) {
         window.URL.revokeObjectURL(url);
 
         await logUserAction(session.user.id, 'web_download_transcript');
+        setIsPreviewModalOpen(false);
       } catch (error) {
         console.error('Error downloading the file:', error);
       }
@@ -457,6 +480,52 @@ export default function TranscriptDetail({ params }) {
                     onClick={toggleModal}
                   >
                     <span>Done</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Preview Modal Component */}
+          {isPreviewModalOpen && (
+            <div 
+              className="px-2 fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+              onClick={(e) => {
+                if (e.target === e.currentTarget) {
+                  setIsPreviewModalOpen(false);
+                }
+              }}
+            >
+              <div className="bg-black bg-opacity-40 backdrop-blur-sm p-8 rounded-lg shadow-lg border border-white/20 w-[90%] max-w-4xl max-h-[80vh] flex flex-col">
+                <h2 className="lg:text-xl text-md font-medium mb-4 text-white">Preview Transcript: <b>{transcript.title}</b></h2>
+                
+                <div className="flex-grow overflow-auto bg-[#27272A] rounded-lg p-4 mb-4">
+                  {isLoadingPreview ? (
+                    <div className="flex items-center justify-center h-full">
+                      <div className="text-white">Loading transcript...</div>
+                    </div>
+                  ) : (
+                    <pre className="text-white whitespace-pre-wrap font-mono text-sm">
+                      {previewContent}
+                    </pre>
+                  )}
+                </div>
+
+                <div className="flex justify-end gap-4">
+                  <button 
+                    className="px-4 py-2 inline-flex items-center justify-center gap-2 rounded-md text-md font-medium border border-white/10 text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:bg-[#3c1671] hover:border-[#6D28D9]"
+                    onClick={() => setIsPreviewModalOpen(false)}
+                  >
+                    <span>Cancel</span>
+                  </button>
+                  <button 
+                    className="px-4 py-2 inline-flex items-center justify-center gap-2 rounded-md text-md font-medium border border-white/10 bg-[#9334E9] text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:bg-[#3c1671] hover:border-[#6D28D9]"
+                    onClick={handleActualDownload}
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M21 15V16C21 18.2091 19.2091 20 17 20H7C4.79086 20 3 18.2091 3 16V15M12 3V16M12 16L16 11M12 16L8 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    <span>Download</span>
                   </button>
                 </div>
               </div>
