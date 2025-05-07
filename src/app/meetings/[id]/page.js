@@ -22,6 +22,10 @@ export default function TranscriptDetail({ params }) {
   const [error, setError] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false)
+  const [isChatOpen, setIsChatOpen] = useState(false)
+  const [chatMessages, setChatMessages] = useState([])
+  const [chatInput, setChatInput] = useState("")
+  const [isSending, setIsSending] = useState(false)
   const [copyButtonText, setCopyButtonText] = useState("Copy share link");
   const [copyActionItemsText, setCopyActionItemsText] = useState("Copy text");
   const [copyMeetingSummaryText, setCopyMeetingSummaryText] = useState("Copy text");
@@ -339,6 +343,36 @@ export default function TranscriptDetail({ params }) {
     }
   }
 
+  const handleChatSubmit = async (e) => {
+    e.preventDefault();
+    if (!chatInput.trim() || isSending) return;
+
+    const newMessage = {
+      role: 'user',
+      content: chatInput.trim()
+    };
+
+    setChatMessages(prev => [...prev, newMessage]);
+    setChatInput('');
+    setIsSending(true);
+
+    try {
+      // Here you would typically make an API call to your chat backend
+      // For now, we'll just simulate a response
+      setTimeout(() => {
+        const botResponse = {
+          role: 'assistant',
+          content: 'This is a simulated response. In a real implementation, this would come from your chat API.'
+        };
+        setChatMessages(prev => [...prev, botResponse]);
+        setIsSending(false);
+      }, 1000);
+    } catch (error) {
+      console.error('Error sending message:', error);
+      setIsSending(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#09090B]">
@@ -518,100 +552,206 @@ export default function TranscriptDetail({ params }) {
                   )}
                 </div>
 
-                <div className="flex justify-end gap-4">
-                  <button 
-                    className="mr-2 mt-2 lg:px-4 lg:py-2 px-2 py-2 inline-flex items-center justify-center gap-2 rounded-md text-sm font-normal border border-white/10 bg-transparent text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:border-[#6D28D9]"
-                    onClick={() => setIsPreviewModalOpen(false)}
-                  >
-                    <span>Cancel</span>
-                  </button>
+                <div className='flex justify-between'>
+
                   <button 
                     className="mt-2 lg:px-4 lg:py-2 px-2 py-2 inline-flex items-center justify-center gap-2 rounded-md text-sm font-normal border border-white/10 bg-[#6D28D9] text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:bg-[#3c1671] hover:border-[#6D28D9]"
-                    onClick={handleActualDownload}
+                    onClick={() => setIsChatOpen(true)}
                   >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M21 15V16C21 18.2091 19.2091 20 17 20H7C4.79086 20 3 18.2091 3 16V15M12 3V16M12 16L16 11M12 16L8 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                    <span>Download</span>
+                    Chat about the meeting
                   </button>
+
+                  <div className="flex justify-end gap-4">
+                    <button 
+                      className="mr-2 mt-2 lg:px-4 lg:py-2 px-2 py-2 inline-flex items-center justify-center gap-2 rounded-md text-sm font-normal border border-white/10 bg-transparent text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:border-[#6D28D9]"
+                      onClick={() => setIsPreviewModalOpen(false)}
+                    >
+                      <span>Cancel</span>
+                    </button>
+                    <button 
+                      className="mt-2 lg:px-4 lg:py-2 px-2 py-2 inline-flex items-center justify-center gap-2 rounded-md text-sm font-normal border border-white/10 bg-[#6D28D9] text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:bg-[#3c1671] hover:border-[#6D28D9]"
+                      onClick={handleActualDownload}
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M21 15V16C21 18.2091 19.2091 20 17 20H7C4.79086 20 3 18.2091 3 16V15M12 3V16M12 16L16 11M12 16L8 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      <span>Download</span>
+                    </button>
+                  </div>
                 </div>
+
               </div>
             </div>
           )}
 
-          <div className="flex items-center justify-between mb-6">
-            <Link 
-              href="/meetings"
-              className="text-zinc-400 hover:text-white transition-colors flex items-center gap-2 lg:text-base text-sm"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back to Meetings
-            </Link>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-4 text-zinc-400 text-sm">
-                <div className="items-center gap-2 border-r border-zinc-800 pr-4 hidden lg:flex">
-                  <span className="text-zinc-400">Memory</span>
-                  <Switch 
-                    checked={memoryEnabled}
-                    disabled={true}
-                    className="data-[state=checked]:bg-purple-500 data-[state=unchecked]:bg-zinc-700"
-                    aria-label="Toggle memory"
-                  />
-                </div>
-                <span className="flex items-center gap-1">
-                  <Calendar className="h-4 w-4" />
-                  {transcript.date}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Clock className="h-4 w-4" />
-                  {transcript.time}
-                </span>
+          {/* Chat Sidebar */}
+          <div 
+            className={`fixed top-0 right-0 h-full w-[400px] bg-black border-l border-zinc-800 transform transition-transform duration-300 ease-in-out z-50 ${
+              isChatOpen ? 'translate-x-0' : 'translate-x-full'
+            }`}
+          >
+            <div className="flex flex-col h-full">
+              {/* Chat Header */}
+              <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
+                <h2 className="text-white text-lg font-medium">Chat about the meeting</h2>
+                <button 
+                  onClick={() => setIsChatOpen(false)}
+                  className="text-zinc-400 hover:text-white transition-colors"
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
               </div>
+
+              {/* Chat Messages */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {chatMessages.map((message, index) => (
+                  <div 
+                    key={index} 
+                    className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div 
+                      className={`max-w-[80%] rounded-lg p-3 ${
+                        message.role === 'user' 
+                          ? 'bg-[#6D28D9] text-white' 
+                          : 'bg-[#27272A] text-zinc-300'
+                      }`}
+                    >
+                      {message.content}
+                    </div>
+                  </div>
+                ))}
+                {isSending && (
+                  <div className="flex justify-start">
+                    <div className="bg-[#27272A] text-zinc-300 rounded-lg p-3">
+                      <div className="flex space-x-2">
+                        <div className="w-2 h-2 bg-zinc-400 rounded-full animate-bounce"></div>
+                        <div className="w-2 h-2 bg-zinc-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                        <div className="w-2 h-2 bg-zinc-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Chat Input */}
+              <form onSubmit={handleChatSubmit} className="p-4 border-t border-zinc-800">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    placeholder="Type your message..."
+                    className="flex-1 px-4 py-2 rounded-lg bg-[#27272A] text-white border border-zinc-700 focus:border-[#6D28D9] focus:outline-none"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!chatInput.trim() || isSending}
+                    className={`px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-sm font-normal border border-white/10 ${
+                      !chatInput.trim() || isSending
+                        ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
+                        : 'bg-[#6D28D9] text-white hover:bg-[#3c1671]'
+                    }`}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M22 2L11 13M22 2L15 22L11 13L2 9L22 2Z"/>
+                    </svg>
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
 
-          <div className="flex items-center justify-center gap-4 mx-auto mb-4">
-            <input
-              type="text"
-              value={`${window.location.host.includes('localhost') ? 'http://' : 'https://'}${window.location.host}/shared/${params.id}`}
-              readOnly
-              className="w-[30%] mt-2 px-4 py-2 border border-[#27272A] rounded-lg bg-transparent text-zinc-400 text-sm focus:outline-none"
-              onClick={(e) => e.target.select()}
-              style={{ 
-                userSelect: "none", 
-                outline: "none"
-              }}
-            />
-            <button 
-              className="mt-2 lg:px-4 lg:py-2 px-4 py-2 inline-flex items-center justify-center gap-2 rounded-lg text-xs font-normal border border-white/10 bg-[#6D28D9] text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:bg-[#3c1671] hover:border-[#6D28D9]"
-              onClick={handleCopyLink}
-            >
-              <svg width="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M8 4V16C8 17.1046 8.89543 18 10 18H18C19.1046 18 20 17.1046 20 16V7.24853C20 6.77534 19.7893 6.32459 19.4142 6.00001L16.9983 3.75735C16.6232 3.43277 16.1725 3.22205 15.6993 3.22205H10C8.89543 3.22205 8 4.11748 8 5.22205" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M16 4V7H19" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M4 8V20C4 21.1046 4.89543 22 6 22H14C15.1046 22 16 21.1046 16 20" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              <span>{copyButtonText}</span>
-            </button>
-          </div>
-          <div className="bg-black rounded-xl border border-zinc-800">
-          {/* <div className="bg-zinc-900/70 rounded-lg border border-zinc-800"> */}
-            <div className="p-6 border-b border-zinc-800 hidden lg:block">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="text-[#6D28D9]">
-                    <FileText className="h-5 w-5" />
+          {/* Main Content */}
+          <div className={`transition-all duration-300 ${isChatOpen ? 'mr-[400px]' : ''}`}>
+            <div className="flex items-center justify-between mb-6">
+              <Link 
+                href="/meetings"
+                className="text-zinc-400 hover:text-white transition-colors flex items-center gap-2 lg:text-base text-sm"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Back to Meetings
+              </Link>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-4 text-zinc-400 text-sm">
+                  <div className="items-center gap-2 border-r border-zinc-800 pr-4 hidden lg:flex">
+                    <span className="text-zinc-400">Memory</span>
+                    <Switch 
+                      checked={memoryEnabled}
+                      disabled={true}
+                      className="data-[state=checked]:bg-purple-500 data-[state=unchecked]:bg-zinc-700"
+                      aria-label="Toggle memory"
+                    />
                   </div>
-                  <h1 className="text-2xl font-medium text-white">
-                    {transcript.title}
-                  </h1>
+                  <span className="flex items-center gap-1">
+                    <Calendar className="h-4 w-4" />
+                    {transcript.date}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Clock className="h-4 w-4" />
+                    {transcript.time}
+                  </span>
                 </div>
-                <div className="flex gap-2">
+              </div>
+            </div>
+
+            <div className="bg-black rounded-xl border border-zinc-800">
+              <div className="p-6 border-b border-zinc-800 hidden lg:block">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="text-[#6D28D9]">
+                      <FileText className="h-5 w-5" />
+                    </div>
+                    <h1 className="text-2xl font-medium text-white">
+                      {transcript.title}
+                    </h1>
+                  </div>
+                  <div className="flex gap-2">
+                    <button 
+                      className="hidden px-4 py-2 inline-flex items-center justify-center gap-2 rounded-[8px] text-md font-medium border border-white/10 bg-[#9334E9] text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:bg-[#3c1671] hover:border-[#6D28D9]"
+                      onClick={toggleModal}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" strokeLinejoin="round">
+                        <path d="M4 12v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6"/>
+                        <polyline points="16 6 12 2 8 6"/>
+                        <line x1="12" y1="2" x2="12" y2="15"/>
+                      </svg>
+                      <span>Share link</span>
+                    </button>
+
+                    <button 
+                      className="px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-md font-normal border border-white/10 bg-zinc-900 text-white transition-all duration-200 hover:border-[#6D28D9]"
+                      onClick={handleDownload}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+                        <circle cx="12" cy="12" r="3" />
+                      </svg>
+                      <span>View transcript</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Mobile layout */}
+              <div className="p-6 border-b border-zinc-800 lg:hidden">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="text-[#9334E9]">
+                      <FileText className="h-5 w-5" />
+                    </div>
+                    <h1 className="text-md font-medium text-white">
+                      {transcript.title}
+                    </h1>
+                  </div>
+                </div>
+                <div className="flex gap-2 mt-2">
                   <button 
-                    className="hidden px-4 py-2 inline-flex items-center justify-center gap-2 rounded-[8px] text-md font-medium border border-white/10 bg-[#9334E9] text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:bg-[#3c1671] hover:border-[#6D28D9]"
+                    className="px-2 py-2 inline-flex items-center justify-center gap-2 rounded-[8px] text-sm font-medium border border-white/10 bg-[#9334E9] text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:bg-[#3c1671] hover:border-[#6D28D9]"
                     onClick={toggleModal}
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" strokeLinejoin="round">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" strokeLinejoin="round">
                       <path d="M4 12v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6"/>
                       <polyline points="16 6 12 2 8 6"/>
                       <line x1="12" y1="2" x2="12" y2="15"/>
@@ -620,140 +760,94 @@ export default function TranscriptDetail({ params }) {
                   </button>
 
                   <button 
-                    className="px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-md font-normal border border-white/10 bg-zinc-900 text-white transition-all duration-200 hover:border-[#6D28D9]"
+                    className="px-2 py-2 inline-flex items-center justify-center gap-2 rounded-[8px] text-sm font-medium border border-white/10 text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:bg-[#3c1671] hover:border-[#6D28D9]"
                     onClick={handleDownload}
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
-                      <circle cx="12" cy="12" r="3" />
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M21 15V16C21 18.2091 19.2091 20 17 20H7C4.79086 20 3 18.2091 3 16V15M12 3V16M12 16L16 11M12 16L8 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
-                    <span>View transcript</span>
+                    <span>Download transcript</span>
                   </button>
                 </div>
               </div>
-            </div>
 
-            {/* Mobile layout */}
-            <div className="p-6 border-b border-zinc-800 lg:hidden">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="text-[#9334E9]">
-                    <FileText className="h-5 w-5" />
-                  </div>
-                  <h1 className="text-md font-medium text-white">
-                    {transcript.title}
-                  </h1>
-                </div>
-              </div>
-              <div className="flex gap-2 mt-2">
-                <button 
-                  className="px-2 py-2 inline-flex items-center justify-center gap-2 rounded-[8px] text-sm font-medium border border-white/10 bg-[#9334E9] text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:bg-[#3c1671] hover:border-[#6D28D9]"
-                  onClick={toggleModal}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" strokeLinejoin="round">
-                    <path d="M4 12v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6"/>
-                    <polyline points="16 6 12 2 8 6"/>
-                    <line x1="12" y1="2" x2="12" y2="15"/>
-                  </svg>
-                  <span>Share link</span>
-                </button>
+              <div className="p-6 space-y-6">
+                {transcript.actionItems && (
+                  <div onClick={handleActionItemClick}>
+                    <div className="flex items-center justify-between mb-3">
+                      <h2 className="text-[#6D28D9] font-normal mb-3 lg:text-xl text-md">Action Items</h2>
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigator.clipboard.writeText(transcript.actionItems);
+                          setCopyActionItemsText("Copied!");
+                          setTimeout(() => setCopyActionItemsText("Copy text"), 3000);
+                        }}
+                        className="px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-medium border border-white/10 bg-zinc-900 text-white transition-all duration-200 hover:border-[#6D28D9]"
+                      >
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M8 4V16C8 17.1046 8.89543 18 10 18H18C19.1046 18 20 17.1046 20 16V7.24853C20 6.77534 19.7893 6.32459 19.4142 6.00001L16.9983 3.75735C16.6232 3.43277 16.1725 3.22205 15.6993 3.22205H10C8.89543 3.22205 8 4.11748 8 5.22205" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                          <path d="M16 4V7H19" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                          <path d="M4 8V20C4 21.1046 4.89543 22 6 22H14C15.1046 22 16 21.1046 16 20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                        </svg>
+                        <span className="text-sm">{copyActionItemsText}</span>
+                      </button>
+                    </div>
 
-                <button 
-                  className="px-2 py-2 inline-flex items-center justify-center gap-2 rounded-[8px] text-sm font-medium border border-white/10 text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:bg-[#3c1671] hover:border-[#6D28D9]"
-                  onClick={handleDownload}
-                >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M21 15V16C21 18.2091 19.2091 20 17 20H7C4.79086 20 3 18.2091 3 16V15M12 3V16M12 16L16 11M12 16L8 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                  <span>Download transcript</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="p-6 space-y-6">
-              {/* {transcript.summary && (
-                <div className="bg-[#27272A] rounded-lg p-4">
-                  <h2 className="text-purple-400 font-medium mb-2">Summary</h2>
-                  <p className="text-zinc-300">{transcript.summary}</p>
-                  
-                </div>
-              )} */}
-
-              {transcript.actionItems && (
-                <div onClick={handleActionItemClick}>
-                  <div className="flex items-center justify-between mb-3">
-                    <h2 className="text-[#6D28D9] font-normal mb-3 lg:text-xl text-md">Action Items</h2>
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigator.clipboard.writeText(transcript.actionItems);
-                        setCopyActionItemsText("Copied!");
-                        setTimeout(() => setCopyActionItemsText("Copy text"), 3000);
-                      }}
-                      className="px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-medium border border-white/10 bg-zinc-900 text-white transition-all duration-200 hover:border-[#6D28D9]"
-                    >
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M8 4V16C8 17.1046 8.89543 18 10 18H18C19.1046 18 20 17.1046 20 16V7.24853C20 6.77534 19.7893 6.32459 19.4142 6.00001L16.9983 3.75735C16.6232 3.43277 16.1725 3.22205 15.6993 3.22205H10C8.89543 3.22205 8 4.11748 8 5.22205" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                        <path d="M16 4V7H19" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                        <path d="M4 8V20C4 21.1046 4.89543 22 6 22H14C15.1046 22 16 21.1046 16 20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                      </svg>
-                      <span className="text-sm">{copyActionItemsText}</span>
-                    </button>
-                  </div>
-
-                  <div className="bg-black rounded-lg p-4 border border-zinc-800">
-                    <div
-                      className={`text-zinc-300 lg:text-base text-sm ${styles.notesContent}`}
-                      style={{ whiteSpace: 'normal' }} // Ensure normal whitespace handling
-                      dangerouslySetInnerHTML={{ __html: transcript.actionItems }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {transcript.summary && (
-                <div onClick={handleSummaryClick}>
-                  <div className="flex items-center justify-between mb-3">
-                    <h2 className="text-[#6D28D9] font-medium mb-3 lg:text-xl text-md">Meeting Summary</h2>
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigator.clipboard.writeText(transcript.summary);
-                        setCopyMeetingSummaryText("Copied!");
-                        setTimeout(() => setCopyMeetingSummaryText("Copy text"), 3000);
-                      }}
-                      className="px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-medium border border-white/10 bg-zinc-900 text-white transition-all duration-200 hover:border-[#6D28D9]"
-                    >
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M8 4V16C8 17.1046 8.89543 18 10 18H18C19.1046 18 20 17.1046 20 16V7.24853C20 6.77534 19.7893 6.32459 19.4142 6.00001L16.9983 3.75735C16.6232 3.43277 16.1725 3.22205 15.6993 3.22205H10C8.89543 3.22205 8 4.11748 8 5.22205" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                        <path d="M16 4V7H19" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                        <path d="M4 8V20C4 21.1046 4.89543 22 6 22H14C15.1046 22 16 21.1046 16 20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                      </svg>
-                      <span className="text-sm">{copyMeetingSummaryText}</span>
-                    </button>
-                  </div>
-
-                  <div className="bg-black rounded-lg p-4 border border-zinc-800">
-                    <div className="prose text-zinc-300 lg:text-base text-sm bg-default markdown-body">
-                      {transcript.summary ? (
-                        <ReactMarkdown
-                          components={{
-                            h3: ({ node, ...props }) => <h3 className="mb-1 text-lg font-bold" {...props} />,
-                            p: ({ node, ...props }) => <p className="mb-2" {...props} />,
-                            ul: ({ node, ...props }) => <ul className="list-disc pl-5 mb-2" {...props} />,
-                            li: ({ node, ...props }) => <li className="mb-1 ml-4" {...props} />,
-                            strong: ({ node, ...props }) => <strong className="font-bold" {...props} />,
-                          }}
-                        >
-                          {transcript.summary}
-                        </ReactMarkdown>
-                      ) : (
-                        "No meeting notes available."
-                      )}
+                    <div className="bg-black rounded-lg p-4 border border-zinc-800">
+                      <div
+                        className={`text-zinc-300 lg:text-base text-sm ${styles.notesContent}`}
+                        style={{ whiteSpace: 'normal' }} // Ensure normal whitespace handling
+                        dangerouslySetInnerHTML={{ __html: transcript.actionItems }}
+                      />
                     </div>
                   </div>
-                </div>
-              )}
+                )}
+
+                {transcript.summary && (
+                  <div onClick={handleSummaryClick}>
+                    <div className="flex items-center justify-between mb-3">
+                      <h2 className="text-[#6D28D9] font-medium mb-3 lg:text-xl text-md">Meeting Summary</h2>
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigator.clipboard.writeText(transcript.summary);
+                          setCopyMeetingSummaryText("Copied!");
+                          setTimeout(() => setCopyMeetingSummaryText("Copy text"), 3000);
+                        }}
+                        className="px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-medium border border-white/10 bg-zinc-900 text-white transition-all duration-200 hover:border-[#6D28D9]"
+                      >
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M8 4V16C8 17.1046 8.89543 18 10 18H18C19.1046 18 20 17.1046 20 16V7.24853C20 6.77534 19.7893 6.32459 19.4142 6.00001L16.9983 3.75735C16.6232 3.43277 16.1725 3.22205 15.6993 3.22205H10C8.89543 3.22205 8 4.11748 8 5.22205" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                          <path d="M16 4V7H19" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                          <path d="M4 8V20C4 21.1046 4.89543 22 6 22H14C15.1046 22 16 21.1046 16 20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                        </svg>
+                        <span className="text-sm">{copyMeetingSummaryText}</span>
+                      </button>
+                    </div>
+
+                    <div className="bg-black rounded-lg p-4 border border-zinc-800">
+                      <div className="prose text-zinc-300 lg:text-base text-sm bg-default markdown-body">
+                        {transcript.summary ? (
+                          <ReactMarkdown
+                            components={{
+                              h3: ({ node, ...props }) => <h3 className="mb-1 text-lg font-bold" {...props} />,
+                              p: ({ node, ...props }) => <p className="mb-2" {...props} />,
+                              ul: ({ node, ...props }) => <ul className="list-disc pl-5 mb-2" {...props} />,
+                              li: ({ node, ...props }) => <li className="mb-1 ml-4" {...props} />,
+                              strong: ({ node, ...props }) => <strong className="font-bold" {...props} />,
+                            }}
+                          >
+                            {transcript.summary}
+                          </ReactMarkdown>
+                        ) : (
+                          "No meeting notes available."
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
