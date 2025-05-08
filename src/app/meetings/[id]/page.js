@@ -32,8 +32,8 @@ export default function TranscriptDetail({ params }) {
   const [chatInput, setChatInput] = useState("")
   const [isSending, setIsSending] = useState(false)
   const [copyButtonText, setCopyButtonText] = useState("Copy share link");
-  const [copyActionItemsText, setCopyActionItemsText] = useState("Copy text");
-  const [copyMeetingSummaryText, setCopyMeetingSummaryText] = useState("Copy text");
+  const [copyActionItemsText, setCopyActionItemsText] = useState("Copy");
+  const [copyMeetingSummaryText, setCopyMeetingSummaryText] = useState("Copy");
   const [emails, setEmails] = useState([]);
   const [emailInput, setEmailInput] = useState("");
   const [isMobile, setIsMobile] = useState(false);
@@ -583,7 +583,7 @@ Please help answer questions about this meeting.`;
           {/* Preview Modal Component */}
           {isPreviewModalOpen && (
             <div 
-              className="px-2 fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+              className="px-2 fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1000]"
               onClick={(e) => {
                 if (e.target === e.currentTarget) {
                   setIsPreviewModalOpen(false);
@@ -638,10 +638,19 @@ Please help answer questions about this meeting.`;
             <div className="flex flex-col h-full">
               {/* Chat Header */}
               <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
-                <h2 className="text-white text-lg font-medium">Chat about the meeting</h2>
+                <button
+                  className="px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-sm font-normal border border-white/10 bg-zinc-900 text-white transition-all duration-200 hover:border-[#6D28D9]"
+                  onClick={handleDownload}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                  <span>View transcript</span>
+                </button>
                 <button 
                   onClick={() => setIsChatOpen(false)}
-                  className="text-zinc-400 hover:text-white transition-colors"
+                  className="text-zinc-400 hover:bg-[#27272A] transition-colors"
                 >
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -650,17 +659,17 @@ Please help answer questions about this meeting.`;
               </div>
 
               {/* Chat Messages */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              <div className="flex-1 overflow-y-auto p-4 space-y-4 font-poppins">
                 {chatMessages.map((message, index) => (
                   <div 
                     key={index} 
                     className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
                     <div 
-                      className={`max-w-[80%] rounded-lg p-3 ${
+                      className={`max-w-[80%] rounded-3xl text-md ${
                         message.role === 'user' 
-                          ? 'bg-[#6D28D9] text-white' 
-                          : 'bg-[#27272A] text-zinc-300'
+                          ? 'bg-[#6D28D9] text-white px-4 py-2'
+                          : 'text-white'
                       }`}
                     >
                       {message.content}
@@ -680,26 +689,32 @@ Please help answer questions about this meeting.`;
 
 
               {/* Chat Input */}
-              <form onSubmit={handleChatSubmit} className="p-4 border-t border-zinc-800">
-                <div className="flex gap-2 pr-[70px]">
-                  <input
-                    type="text"
-                    value={chatInput}
-                    onChange={(e) => setChatInput(e.target.value)}
-                    placeholder="Type your message..."
-                    className="flex-1 px-3 py-2 rounded-lg bg-[#27272A] text-white border border-zinc-700 focus:border-[#6D28D9] focus:outline-none"
-                  />
+              <form onSubmit={handleChatSubmit} className="p-4 border-t border-zinc-800 mr-14">
+                <div className="flex items-center w-full">
+                  <div className="relative flex-1 flex items-center">
+                    <div className="absolute left-3 md:left-4 text-zinc-500">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                      </svg>
+                    </div>
+                    <input
+                      type="text"
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      placeholder="Type your message..."
+                      className="flex-1 p-3 md:p-4 pl-10 md:pl-12 text-md rounded-l-lg focus:outline-none bg-black border border-zinc-800 text-zinc-300 focus:border-[#6D28D9] transition-colors"
+                    />
+                  </div>
                   <button
                     type="submit"
                     disabled={!chatInput.trim() || isSending}
-                    className={`px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-sm font-normal border border-white/10 ${
-                      !chatInput.trim() || isSending
-                        ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
-                        : 'bg-[#6D28D9] text-white hover:bg-[#3c1671]'
-                    }`}
+                    className={`p-3 md:p-4 rounded-r-lg bg-black border-t border-r border-b border-zinc-800 text-zinc-300 ${
+                      !chatInput.trim() || isSending ? 'cursor-not-allowed' : 'hover:bg-[#3c1671]'
+                    } transition-colors`}
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M22 2L11 13M22 2L15 22L11 13L2 9L22 2Z"/>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 256 256" className="md:w-6 md:h-6">
+                      <path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm45.66-93.66a8,8,0,0,1,0,11.32l-32,32a8,8,0,0,1-11.32-11.32L148.69,136H88a8,8,0,0,1,0-16h60.69l-18.35-18.34a8,8,0,0,1,11.32-11.32Z"></path>
                     </svg>
                   </button>
                 </div>
@@ -719,7 +734,7 @@ Please help answer questions about this meeting.`;
               </Link>
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-4 text-zinc-400 text-sm">
-                  <div className="items-center gap-2 border-r border-zinc-800 pr-4 hidden lg:flex">
+                  <div className="hidden items-center gap-2 border-r border-zinc-800 pr-4 hidden">
                     <span className="text-zinc-400">Memory</span>
                     <Switch 
                       checked={memoryEnabled}
@@ -744,7 +759,7 @@ Please help answer questions about this meeting.`;
               <div className="p-6 border-b border-zinc-800 hidden lg:block">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="text-[#6D28D9]">
+                    <div className="hidden text-[#6D28D9]">
                       <FileText className="h-5 w-5" />
                     </div>
                     <h1 className="text-2xl font-medium text-white">
@@ -753,26 +768,13 @@ Please help answer questions about this meeting.`;
                   </div>
                   <div className="flex gap-2">
                     <button 
-                      className="hidden px-4 py-2 inline-flex items-center justify-center gap-2 rounded-[8px] text-md font-medium border border-white/10 bg-[#9334E9] text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:bg-[#3c1671] hover:border-[#6D28D9]"
-                      onClick={toggleModal}
+                      className={`${isChatOpen ? 'hidden' : ''} bg-[#6D28D9] lg:px-4 lg:py-2 px-2 py-2 inline-flex items-center justify-center gap-2 rounded-lg text-md font-normal border border-white/10 text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:bg-[#3c1671] hover:border-[#6D28D9]`}
+                      onClick={() => setIsChatOpen(true)}
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" strokeLinejoin="round">
-                        <path d="M4 12v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6"/>
-                        <polyline points="16 6 12 2 8 6"/>
-                        <line x1="12" y1="2" x2="12" y2="15"/>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
                       </svg>
-                      <span>Share link</span>
-                    </button>
-
-                    <button 
-                      className="px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-md font-normal border border-white/10 bg-zinc-900 text-white transition-all duration-200 hover:border-[#6D28D9]"
-                      onClick={handleDownload}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
-                        <circle cx="12" cy="12" r="3" />
-                      </svg>
-                      <span>View transcript</span>
+                      Chat with the meeting
                     </button>
                   </div>
                 </div>
@@ -818,24 +820,8 @@ Please help answer questions about this meeting.`;
               <div className="p-6 space-y-6">
                 {transcript.actionItems && (
                   <div onClick={handleActionItemClick}>
-                    <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center justify-between">
                       <h2 className="text-[#6D28D9] font-normal mb-3 lg:text-xl text-md">Action Items</h2>
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigator.clipboard.writeText(transcript.actionItems);
-                          setCopyActionItemsText("Copied!");
-                          setTimeout(() => setCopyActionItemsText("Copy text"), 3000);
-                        }}
-                        className="px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-medium border border-white/10 bg-zinc-900 text-white transition-all duration-200 hover:border-[#6D28D9]"
-                      >
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M8 4V16C8 17.1046 8.89543 18 10 18H18C19.1046 18 20 17.1046 20 16V7.24853C20 6.77534 19.7893 6.32459 19.4142 6.00001L16.9983 3.75735C16.6232 3.43277 16.1725 3.22205 15.6993 3.22205H10C8.89543 3.22205 8 4.11748 8 5.22205" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                          <path d="M16 4V7H19" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                          <path d="M4 8V20C4 21.1046 4.89543 22 6 22H14C15.1046 22 16 21.1046 16 20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                        </svg>
-                        <span className="text-sm">{copyActionItemsText}</span>
-                      </button>
                     </div>
 
                     <div className="bg-black rounded-lg p-4 border border-zinc-800">
@@ -845,29 +831,29 @@ Please help answer questions about this meeting.`;
                         dangerouslySetInnerHTML={{ __html: transcript.actionItems }}
                       />
                     </div>
-                  </div>
-                )}
-
-                {transcript.summary && (
-                  <div onClick={handleSummaryClick}>
-                    <div className="flex items-center justify-between mb-3">
-                      <h2 className="text-[#6D28D9] font-medium mb-3 lg:text-xl text-md">Meeting Summary</h2>
-                      <button 
+                    <button 
                         onClick={(e) => {
                           e.stopPropagation();
-                          navigator.clipboard.writeText(transcript.summary);
-                          setCopyMeetingSummaryText("Copied!");
-                          setTimeout(() => setCopyMeetingSummaryText("Copy text"), 3000);
+                          navigator.clipboard.writeText(transcript.actionItems);
+                          setCopyActionItemsText("Copied!");
+                          setTimeout(() => setCopyActionItemsText("Copy"), 3000);
                         }}
-                        className="px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-medium border border-white/10 bg-zinc-900 text-white transition-all duration-200 hover:border-[#6D28D9]"
+                        className="mt-4 px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-medium border border-white/10 bg-zinc-900 text-white transition-all duration-200 hover:border-[#6D28D9]"
                       >
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                           <path d="M8 4V16C8 17.1046 8.89543 18 10 18H18C19.1046 18 20 17.1046 20 16V7.24853C20 6.77534 19.7893 6.32459 19.4142 6.00001L16.9983 3.75735C16.6232 3.43277 16.1725 3.22205 15.6993 3.22205H10C8.89543 3.22205 8 4.11748 8 5.22205" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
                           <path d="M16 4V7H19" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
                           <path d="M4 8V20C4 21.1046 4.89543 22 6 22H14C15.1046 22 16 21.1046 16 20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
                         </svg>
-                        <span className="text-sm">{copyMeetingSummaryText}</span>
+                        <span className="text-sm">{copyActionItemsText}</span>
                       </button>
+                  </div>
+                )}
+
+                {transcript.summary && (
+                  <div onClick={handleSummaryClick}>
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-[#6D28D9] font-medium mb-3 lg:text-xl text-md">Meeting Summary</h2>
                     </div>
 
                     <div className="bg-black rounded-lg p-4 border border-zinc-800">
@@ -889,15 +875,25 @@ Please help answer questions about this meeting.`;
                         )}
                       </div>
                     </div>
+
+                    <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigator.clipboard.writeText(transcript.summary);
+                          setCopyMeetingSummaryText("Copied!");
+                          setTimeout(() => setCopyMeetingSummaryText("Copy"), 3000);
+                        }}
+                        className="mt-4 px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-medium border border-white/10 bg-zinc-900 text-white transition-all duration-200 hover:border-[#6D28D9]"
+                      >
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M8 4V16C8 17.1046 8.89543 18 10 18H18C19.1046 18 20 17.1046 20 16V7.24853C20 6.77534 19.7893 6.32459 19.4142 6.00001L16.9983 3.75735C16.6232 3.43277 16.1725 3.22205 15.6993 3.22205H10C8.89543 3.22205 8 4.11748 8 5.22205" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                          <path d="M16 4V7H19" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                          <path d="M4 8V20C4 21.1046 4.89543 22 6 22H14C15.1046 22 16 21.1046 16 20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                        </svg>
+                        <span className="text-sm">{copyMeetingSummaryText}</span>
+                      </button>
                   </div>
                 )}
-
-                <button 
-                  className="mt-2 lg:px-4 lg:py-2 px-2 py-2 inline-flex items-center justify-center gap-2 rounded-md text-sm font-normal border border-white/10 bg-[#6D28D9] text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:bg-[#3c1671] hover:border-[#6D28D9]"
-                  onClick={() => setIsChatOpen(true)}
-                >
-                  Chat about the meeting
-                </button>
               </div>
             </div>
           </div>
