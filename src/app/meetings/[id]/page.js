@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, FileText, Calendar, Clock, Download, Share2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -9,12 +9,17 @@ import { supabase } from "@/lib/supabaseClient";
 import styles from './TranscriptDetail.module.css';
 import { Plus, Minus } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-
+import { lineSpinner } from 'ldrs'
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const BASE_URL_BACKEND = "https://api.amurex.ai"
 
+// Initialize Gemini
+const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY);
 
 export default function TranscriptDetail({ params }) {
+  lineSpinner.register()
+  
   const router = useRouter()
   const [memoryEnabled, setMemoryEnabled] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -35,6 +40,9 @@ export default function TranscriptDetail({ params }) {
   const [sharedWith, setSharedWith] = useState([]);
   const [previewContent, setPreviewContent] = useState("");
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+  const messagesEndRef = useRef(null);
+  
+
 
   const [session, setSession] = useState(null);
 
@@ -357,21 +365,66 @@ export default function TranscriptDetail({ params }) {
     setIsSending(true);
 
     try {
-      // Here you would typically make an API call to your chat backend
-      // For now, we'll just simulate a response
-      setTimeout(() => {
-        const botResponse = {
-          role: 'assistant',
-          content: 'This is a simulated response. In a real implementation, this would come from your chat API.'
-        };
-        setChatMessages(prev => [...prev, botResponse]);
-        setIsSending(false);
-      }, 1000);
+      // Initialize the model
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+      const fullTranscript = await fetch(transcript.content);
+      if (!fullTranscript.ok) throw new Error('Network response was not ok');
+
+      const fullTranscriptText = await fullTranscript.text();
+
+      // Create chat context with meeting transcript
+      const chatContext = `You are an AI assistant "Amurex" helping with a meeting transcript. Here's the meeting summary and action items for context:
+
+Meeting Summary:
+${transcript.summary || 'No summary available'}
+
+Full Transcript:
+${fullTranscriptText}
+
+Please help answer questions about this meeting.`;
+
+      // Start a chat session
+      const chat = model.startChat({
+        history: chatMessages.map(msg => ({
+          role: msg.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: msg.content }],
+        })),
+        generationConfig: {
+          temperature: 0.7,
+        },
+      });
+
+      // Send message and get response
+      const result = await chat.sendMessage(chatContext + "\n\nMy question: " + chatInput.trim());
+      const response = await result.response;
+      const text = response.text();
+
+      const botResponse = {
+        role: 'assistant',
+        content: text
+      };
+
+      setChatMessages(prev => [...prev, botResponse]);
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error('Error in chat:', error);
+      const errorMessage = {
+        role: 'assistant',
+        content: 'Sorry, I encountered an error while processing your request. Please try again.'
+      };
+      setChatMessages(prev => [...prev, errorMessage]);
+    } finally {
       setIsSending(false);
     }
   };
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }
+
+  useEffect(() => {
+    scrollToBottom()
+  }, [chatMessages])
 
   if (loading) {
     return (
@@ -552,41 +605,33 @@ export default function TranscriptDetail({ params }) {
                   )}
                 </div>
 
-                <div className='flex justify-between'>
 
+
+                <div className="flex justify-end gap-4">
+                  <button 
+                    className="mr-2 mt-2 lg:px-4 lg:py-2 px-2 py-2 inline-flex items-center justify-center gap-2 rounded-md text-sm font-normal border border-white/10 bg-transparent text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:border-[#6D28D9]"
+                    onClick={() => setIsPreviewModalOpen(false)}
+                  >
+                    <span>Cancel</span>
+                  </button>
                   <button 
                     className="mt-2 lg:px-4 lg:py-2 px-2 py-2 inline-flex items-center justify-center gap-2 rounded-md text-sm font-normal border border-white/10 bg-[#6D28D9] text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:bg-[#3c1671] hover:border-[#6D28D9]"
-                    onClick={() => setIsChatOpen(true)}
+                    onClick={handleActualDownload}
                   >
-                    Chat about the meeting
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M21 15V16C21 18.2091 19.2091 20 17 20H7C4.79086 20 3 18.2091 3 16V15M12 3V16M12 16L16 11M12 16L8 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    <span>Download</span>
                   </button>
-
-                  <div className="flex justify-end gap-4">
-                    <button 
-                      className="mr-2 mt-2 lg:px-4 lg:py-2 px-2 py-2 inline-flex items-center justify-center gap-2 rounded-md text-sm font-normal border border-white/10 bg-transparent text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:border-[#6D28D9]"
-                      onClick={() => setIsPreviewModalOpen(false)}
-                    >
-                      <span>Cancel</span>
-                    </button>
-                    <button 
-                      className="mt-2 lg:px-4 lg:py-2 px-2 py-2 inline-flex items-center justify-center gap-2 rounded-md text-sm font-normal border border-white/10 bg-[#6D28D9] text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:bg-[#3c1671] hover:border-[#6D28D9]"
-                      onClick={handleActualDownload}
-                    >
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M21 15V16C21 18.2091 19.2091 20 17 20H7C4.79086 20 3 18.2091 3 16V15M12 3V16M12 16L16 11M12 16L8 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                      <span>Download</span>
-                    </button>
-                  </div>
                 </div>
-
               </div>
+
             </div>
           )}
 
           {/* Chat Sidebar */}
           <div 
-            className={`fixed top-0 right-0 h-full w-[400px] bg-black border-l border-zinc-800 transform transition-transform duration-300 ease-in-out z-50 ${
+            className={`fixed top-0 right-0 h-full w-[450px] bg-black border-l border-zinc-800 transform transition-transform duration-300 ease-in-out z-50 ${
               isChatOpen ? 'translate-x-0' : 'translate-x-full'
             }`}
           >
@@ -623,27 +668,26 @@ export default function TranscriptDetail({ params }) {
                   </div>
                 ))}
                 {isSending && (
-                  <div className="flex justify-start">
-                    <div className="bg-[#27272A] text-zinc-300 rounded-lg p-3">
-                      <div className="flex space-x-2">
-                        <div className="w-2 h-2 bg-zinc-400 rounded-full animate-bounce"></div>
-                        <div className="w-2 h-2 bg-zinc-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                        <div className="w-2 h-2 bg-zinc-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
-                      </div>
-                    </div>
-                  </div>
+                  <l-line-spinner
+                    size="30"
+                    stroke="2"
+                    speed="1" 
+                    color="white" 
+                  ></l-line-spinner>
                 )}
+                <div ref={messagesEndRef} />
               </div>
+
 
               {/* Chat Input */}
               <form onSubmit={handleChatSubmit} className="p-4 border-t border-zinc-800">
-                <div className="flex gap-2">
+                <div className="flex gap-2 pr-[70px]">
                   <input
                     type="text"
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
                     placeholder="Type your message..."
-                    className="flex-1 px-4 py-2 rounded-lg bg-[#27272A] text-white border border-zinc-700 focus:border-[#6D28D9] focus:outline-none"
+                    className="flex-1 px-3 py-2 rounded-lg bg-[#27272A] text-white border border-zinc-700 focus:border-[#6D28D9] focus:outline-none"
                   />
                   <button
                     type="submit"
@@ -664,7 +708,7 @@ export default function TranscriptDetail({ params }) {
           </div>
 
           {/* Main Content */}
-          <div className={`transition-all duration-300 ${isChatOpen ? 'mr-[400px]' : ''}`}>
+          <div className={`transition-all duration-300 ${isChatOpen ? 'mr-[450px]' : ''}`}>
             <div className="flex items-center justify-between mb-6">
               <Link 
                 href="/meetings"
@@ -847,6 +891,13 @@ export default function TranscriptDetail({ params }) {
                     </div>
                   </div>
                 )}
+
+                <button 
+                  className="mt-2 lg:px-4 lg:py-2 px-2 py-2 inline-flex items-center justify-center gap-2 rounded-md text-sm font-normal border border-white/10 bg-[#6D28D9] text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:bg-[#3c1671] hover:border-[#6D28D9]"
+                  onClick={() => setIsChatOpen(true)}
+                >
+                  Chat about the meeting
+                </button>
               </div>
             </div>
           </div>
