@@ -15,7 +15,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 const BASE_URL_BACKEND = "https://api.amurex.ai"
 
 // Initialize Gemini
-const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY);
+const genAI = new GoogleGenerativeAI(process.env.NEXT_GEMINI_API_KEY);
 
 export default function TranscriptDetail({ params }) {
   lineSpinner.register()
@@ -24,6 +24,7 @@ export default function TranscriptDetail({ params }) {
   const [memoryEnabled, setMemoryEnabled] = useState(false)
   const [loading, setLoading] = useState(true)
   const [transcript, setTranscript] = useState(null)
+  const [fullTranscriptText, setFullTranscriptText] = useState('')
   const [error, setError] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false)
@@ -319,6 +320,13 @@ export default function TranscriptDetail({ params }) {
         actionItems: data.action_items || ""
       })
 
+      // Fetch full transcript text
+      if (data.transcript) {
+        const transcriptResponse = await fetch(data.transcript);
+        const transcriptText = await transcriptResponse.text();
+        setFullTranscriptText(transcriptText);
+      }
+
       setSharedWith(data.shared_with || []);
     } catch (err) {
       console.error('Error fetching transcript:', err)
@@ -365,47 +373,55 @@ export default function TranscriptDetail({ params }) {
     setIsSending(true);
 
     try {
-      // Initialize the model
-      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-
-      const fullTranscript = await fetch(transcript.content);
-      if (!fullTranscript.ok) throw new Error('Network response was not ok');
-
-      const fullTranscriptText = await fullTranscript.text();
-
-      // Create chat context with meeting transcript
-      const chatContext = `You are an AI assistant "Amurex" helping with a meeting transcript. Here's the meeting summary and action items for context:
-
-Meeting Summary:
-${transcript.summary || 'No summary available'}
-
-Full Transcript:
-${fullTranscriptText}
-
-Please help answer questions about this meeting.`;
-
-      // Start a chat session
-      const chat = model.startChat({
-        history: chatMessages.map(msg => ({
-          role: msg.role === 'assistant' ? 'model' : 'user',
-          parts: [{ text: msg.content }],
-        })),
-        generationConfig: {
-          temperature: 0.7,
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+          messages: [...chatMessages, newMessage],
+          transcript: {
+            summary: transcript.summary,
+            actionItems: transcript.actionItems,
+            fullTranscript: fullTranscriptText
+          }
+        }),
       });
 
-      // Send message and get response
-      const result = await chat.sendMessage(chatContext + "\n\nMy question: " + chatInput.trim());
-      const response = await result.response;
-      const text = response.text();
+      if (!response.ok) {
+        throw new Error('Failed to get response');
+      }
 
-      const botResponse = {
+      // Create a temporary message for streaming
+      const tempMessage = {
         role: 'assistant',
-        content: text
+        content: ''
       };
+      setChatMessages(prev => [...prev, tempMessage]);
 
-      setChatMessages(prev => [...prev, botResponse]);
+      // Handle streaming response
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let accumulatedContent = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        accumulatedContent += chunk;
+
+        // Update the last message with accumulated content
+        setChatMessages(prev => {
+          const newMessages = [...prev];
+          newMessages[newMessages.length - 1] = {
+            role: 'assistant',
+            content: accumulatedContent
+          };
+          return newMessages;
+        });
+      }
+
     } catch (error) {
       console.error('Error in chat:', error);
       const errorMessage = {
@@ -660,6 +676,16 @@ Please help answer questions about this meeting.`;
 
               {/* Chat Messages */}
               <div className="flex-1 overflow-y-auto p-4 space-y-4 font-poppins">
+                <div 
+                  className={`flex justify-start`}
+                >
+                  <div 
+                    className={`max-w-[80%] rounded-3xl text-md text-white`}
+                  >
+                    Hey, I'm ready to help you with any questions you have about this meeting. What can I do for you?
+                  </div>
+                </div>
+
                 {chatMessages.map((message, index) => (
                   <div 
                     key={index} 
