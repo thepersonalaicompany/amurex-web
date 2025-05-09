@@ -9,7 +9,6 @@ import { supabase } from "@/lib/supabaseClient";
 import styles from './TranscriptDetail.module.css';
 import { Plus, Minus } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import { lineSpinner } from 'ldrs'
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const BASE_URL_BACKEND = "https://api.amurex.ai"
@@ -18,8 +17,14 @@ const BASE_URL_BACKEND = "https://api.amurex.ai"
 const genAI = new GoogleGenerativeAI(process.env.NEXT_GEMINI_API_KEY);
 
 export default function TranscriptDetail({ params }) {
-  lineSpinner.register()
-  
+  // Initialize ldrs in a useEffect
+  useEffect(() => {
+    // Dynamically import ldrs only on the client side
+    import('ldrs').then(({ ring }) => {
+      ring.register();
+    });
+  }, []);
+
   const router = useRouter()
   const [memoryEnabled, setMemoryEnabled] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -446,7 +451,15 @@ export default function TranscriptDetail({ params }) {
     return (
       <div className="min-h-screen bg-[#09090B]">
         <div className="p-6 mx-auto">
-          <h1 className="text-xl font-normal text-white">Loading...</h1>
+          <div className="flex items-center justify-center h-screen">
+            <l-ring
+              size="55"
+              stroke="5"
+              bg-opacity="0"
+              speed="2"
+              color="white"
+            ></l-ring>
+          </div>
         </div>
       </div>
     )
@@ -612,7 +625,13 @@ export default function TranscriptDetail({ params }) {
                 <div className="flex-grow overflow-auto bg-[#27272A] rounded-lg p-4 mb-4">
                   {isLoadingPreview ? (
                     <div className="flex items-center justify-center h-full">
-                      <div className="text-white">Loading transcript...</div>
+                      <l-ring
+                        size="40"
+                        stroke="5"
+                        bg-opacity="0"
+                        speed="2"
+                        color="white"
+                      ></l-ring>
                     </div>
                   ) : (
                     <pre className="text-white whitespace-pre-wrap font-mono text-sm">
@@ -664,7 +683,7 @@ export default function TranscriptDetail({ params }) {
                   </svg>
                   <span>View transcript</span>
                 </button>
-                <button 
+                <button
                   onClick={() => setIsChatOpen(false)}
                   className="text-zinc-400 hover:bg-[#27272A] transition-colors"
                 >
@@ -699,16 +718,18 @@ export default function TranscriptDetail({ params }) {
                       }`}
                     >
                       {message.content}
+                      {isSending && index === chatMessages.length - 1 && message.role === 'assistant' && (
+                        <span className="inline-block animate-pulse">▋</span>
+                      )}
                     </div>
                   </div>
                 ))}
-                {isSending && (
-                  <l-line-spinner
-                    size="30"
-                    stroke="2"
-                    speed="1" 
-                    color="white" 
-                  ></l-line-spinner>
+                {isSending && chatMessages.length === 0 && (
+                  <div className="flex justify-start">
+                    <div className="max-w-[80%] rounded-3xl text-md text-white">
+                      <span className="inline-block animate-pulse">▋</span>
+                    </div>
+                  </div>
                 )}
                 <div ref={messagesEndRef} />
               </div>
