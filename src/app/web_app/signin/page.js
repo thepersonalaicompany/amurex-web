@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/Input";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
+import { errorKeywords } from "@/lib/utils";
 
 export default function SignIn() {
   const [email, setEmail] = useState("");
@@ -118,7 +119,7 @@ export default function SignIn() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium font-semibold text-white mb-1">
+              <label className="block text-sm font-semibold text-white mb-1">
                 Password
               </label>
               <div className="relative">
@@ -173,7 +174,7 @@ export default function SignIn() {
             {message && (
               <p
                 className={`text-xs md:text-sm ${
-                  message.includes("error") ? "text-red-500" : "text-green-500"
+                  errorKeywords.some(keyword => message.toLowerCase().includes(keyword)) ? "text-red-500" : "text-green-500"
                 }`}
               >
                 {message}
