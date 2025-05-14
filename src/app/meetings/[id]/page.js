@@ -832,6 +832,33 @@ export default function TranscriptDetail({ params }) {
               </div>
             </div>
 
+            <div className="flex flex-col items-center justify-center mx-auto mb-4 hidden lg:flex">
+              <span className="text-white text-sm md:text-lg font-medium">Make this meeting public</span>
+              <div className="flex items-center justify-center gap-4 mx-auto w-[100%]">
+                <input
+                  type="text"
+                  value={`${window.location.host.includes('localhost') ? 'http://' : 'https://'}${window.location.host}/shared/${params.id}`}
+                  readOnly
+                  className="hidden md:block w-[30%] mt-2 px-4 py-2 border border-[#27272A] rounded-lg bg-transparent text-zinc-400 text-sm focus:outline-none"
+                  onClick={(e) => e.target.select()}
+                  style={{ 
+                    userSelect: "none", 
+                    outline: "none"
+                  }}
+                />
+                <button 
+                  className="mt-2 lg:px-4 lg:py-2 px-4 py-2 inline-flex items-center justify-center gap-2 rounded-lg text-xs md:text-md font-normal border border-white/10 bg-[#6D28D9] text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:bg-[#3c1671] hover:border-[#6D28D9]"
+                  onClick={handleCopyLink}
+                >
+                  <svg width="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M8 4V16C8 17.1046 8.89543 18 10 18H18C19.1046 18 20 17.1046 20 16V7.24853C20 6.77534 19.7893 6.32459 19.4142 6.00001L16.9983 3.75735C16.6232 3.43277 16.1725 3.22205 15.6993 3.22205H10C8.89543 3.22205 8 4.11748 8 5.22205" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M16 4V7H19" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M4 8V20C4 21.1046 4.89543 22 6 22H14C15.1046 22 16 21.1046 16 20" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <span>{copyButtonText}</span>
+                </button>
+              </div>
+            </div>
             <div className="bg-black rounded-xl border border-zinc-800">
               <div className="p-6 border-b border-zinc-800 hidden lg:block">
                 <div className="flex items-center justify-between">
@@ -869,29 +896,17 @@ export default function TranscriptDetail({ params }) {
                     </h1>
                   </div>
                 </div>
-                <div className="flex gap-2 mt-2">
-                  <button 
-                    className="px-2 py-2 inline-flex items-center justify-center gap-2 rounded-[8px] text-sm font-medium border border-white/10 bg-[#9334E9] text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:bg-[#3c1671] hover:border-[#6D28D9]"
-                    onClick={toggleModal}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" strokeLinejoin="round">
-                      <path d="M4 12v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6"/>
-                      <polyline points="16 6 12 2 8 6"/>
-                      <line x1="12" y1="2" x2="12" y2="15"/>
-                    </svg>
-                    <span>Share link</span>
-                  </button>
-
-                  <button 
-                    className="px-2 py-2 inline-flex items-center justify-center gap-2 rounded-[8px] text-sm font-medium border border-white/10 text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:bg-[#3c1671] hover:border-[#6D28D9]"
-                    onClick={handleDownload}
-                  >
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M21 15V16C21 18.2091 19.2091 20 17 20H7C4.79086 20 3 18.2091 3 16V15M12 3V16M12 16L16 11M12 16L8 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                    <span>Download transcript</span>
-                  </button>
-                </div>
+                <button 
+                  className="mt-2 lg:px-4 lg:py-2 px-4 py-2 inline-flex items-center justify-center gap-2 rounded-lg text-xs md:text-md font-normal border border-white/10 bg-[#6D28D9] text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:bg-[#3c1671] hover:border-[#6D28D9]"
+                  onClick={handleCopyLink}
+                >
+                  <svg width="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M8 4V16C8 17.1046 8.89543 18 10 18H18C19.1046 18 20 17.1046 20 16V7.24853C20 6.77534 19.7893 6.32459 19.4142 6.00001L16.9983 3.75735C16.6232 3.43277 16.1725 3.22205 15.6993 3.22205H10C8.89543 3.22205 8 4.11748 8 5.22205" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M16 4V7H19" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M4 8V20C4 21.1046 4.89543 22 6 22H14C15.1046 22 16 21.1046 16 20" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <span>{copyButtonText}</span>
+                </button>
               </div>
 
               <div className="p-6 space-y-6">
@@ -922,7 +937,7 @@ export default function TranscriptDetail({ params }) {
                           <path d="M16 4V7H19" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
                           <path d="M4 8V20C4 21.1046 4.89543 22 6 22H14C15.1046 22 16 21.1046 16 20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
                         </svg>
-                        <span className="text-sm">{copyActionItemsText}</span>
+                        <span className="text-xs lg:text-sm">{copyActionItemsText}</span>
                       </button>
                   </div>
                 )}
@@ -967,7 +982,7 @@ export default function TranscriptDetail({ params }) {
                           <path d="M16 4V7H19" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
                           <path d="M4 8V20C4 21.1046 4.89543 22 6 22H14C15.1046 22 16 21.1046 16 20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
                         </svg>
-                        <span className="text-sm">{copyMeetingSummaryText}</span>
+                        <span className="text-xs lg:text-sm">{copyMeetingSummaryText}</span>
                       </button>
                   </div>
                 )}
