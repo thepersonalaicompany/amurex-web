@@ -341,6 +341,41 @@ export default function TranscriptDetail({ params }) {
     }
   }
 
+  const deleteOpenTranscript = async () => {
+    console.log('this will delete the open transcript')
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        router.push('/web_app/signin')
+        return
+      }
+
+      if(!transcript){
+        console.log('Transcript not available')
+        router.push('/meetings')
+        return
+      }
+
+      const {data: deleteSuccess, error: deleteError} = await supabase
+        .from('late_meeting')
+          .delete().eq('id', param.id);
+
+      if(deleteError) throw deleteError
+
+      if(deleteSuccess){
+        setTranscript(null);
+        setSharedWith([]);
+        router.push('/meetings')
+      }
+    }
+    catch (err){
+      console.error('Error deleting transcript:',err)
+      setError(err.message)
+    }finally{
+      setLoading(true)
+    }
+  }
+
   const fetchMemoryStatus = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession()
@@ -687,6 +722,18 @@ export default function TranscriptDetail({ params }) {
                       <path d="M21 15V16C21 18.2091 19.2091 20 17 20H7C4.79086 20 3 18.2091 3 16V15M12 3V16M12 16L16 11M12 16L8 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
                     <span>Download</span>
+                  </button>
+                      
+                  <button 
+                    className="px-4 py-2 inline-flex items-center justify-center gap-2 rounded-[8px] text-md font-medium border border-white/10 text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:bg-[#3c1671] hover:border-[#6D28D9]"
+                    onClick={deleteOpenTranscript}
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M3 6H5H21" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M19 6V19C19 20.1046 18.1046 21 17 21H7C5.89543 21 5 20.1046 5 19V6M10 11V17M14 11V17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M9 6V4C9 2.89543 9.89543 2 11 2H13C14.1046 2 15 2.89543 15 4V6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span>Delete transcript</span>
                   </button>
                 </div>
               </div>
