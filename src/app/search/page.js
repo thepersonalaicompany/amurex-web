@@ -18,7 +18,7 @@ import "./search.css"
 import Popup from "@/components/Popup/Popup";
 
 // Add SpotlightSearch component after imports
-const SpotlightSearch = ({ isVisible, onClose, onSearch, suggestedPrompts = [], sourceFilters = {} }) => {
+const SpotlightSearch = ({ isVisible, onClose, onSearch, suggestedPrompts = [], sourceFilters = {}, customPlaceholder }) => {
   const [inputValue, setInputValue] = useState("");
   const [selectedSuggestion, setSelectedSuggestion] = useState(-1);
   const inputRef = useRef(null);
@@ -117,7 +117,7 @@ const SpotlightSearch = ({ isVisible, onClose, onSearch, suggestedPrompts = [], 
             type="text"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            placeholder="Search your knowledge..."
+            placeholder={customPlaceholder || "Search your knowledge..."}
             className="w-full py-4 px-12 bg-transparent text-white text-lg focus:outline-none"
           />
           <div className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 flex items-center gap-2">
@@ -399,8 +399,55 @@ export default function AISearch() {
   const [showBroaderAccessModal, setShowBroaderAccessModal] = useState(false);
   const [isGoogleAuthInProgress, setIsGoogleAuthInProgress] = useState(false);
 
+  // Add state for user name and random prompt
+  const [userName, setUserName] = useState('');
+  const [randomPrompt, setRandomPrompt] = useState('');
+
+  // Add array of predefined prompts
+  const personalizedPrompts = [
+    "What do you want to know, {name}?",
+    "Ask me anything, {name}.",
+    "Hey, {name}, what are you curious about?",
+    "Need help finding something, {name}?",
+    "Let's explore a topic, {name}.",
+    "Got a question in mind, {name}?",
+    "Looking for answers, {name}?",
+    "What should we search for, {name}?",
+    "Start with a question, {name}.",
+    "Ready to learn something new, {name}?"
+  ];
+
   // Add router
   const router = useRouter();
+
+  // Add useEffect to fetch user's name and select random prompt
+  useEffect(() => {
+    if (!session?.user?.id) return;
+
+    // Get user's name using RPC instead of directly querying the users table
+    supabase
+      .rpc('get_auth_user_by_public_id', { p_user_id: session.user.id })
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("Error fetching user data:", error);
+          return;
+        }
+
+        const first_name = data[0]?.first_name;
+        setUserName(first_name);
+        
+        // Select a random prompt and personalize it with the user's name
+        const randomIndex = Math.floor(Math.random() * personalizedPrompts.length);
+        let prompt = personalizedPrompts[randomIndex];
+        
+        // Replace {name} placeholder with actual name if the prompt has it
+        if (prompt.includes('{name}') && first_name) {
+          prompt = prompt.replace('{name}', first_name);
+        }
+        
+        setRandomPrompt(prompt);
+      });
+  }, [session?.user?.id]);
 
   // Add global hotkey for Spotlight search - PLACED AFTER ALL STATE DECLARATIONS
   useEffect(() => {
@@ -1278,6 +1325,7 @@ sources: ${JSON.stringify(item.sources)}`
           hasGoogleDocs, hasNotion, hasObsidian, hasMeetings, hasGmail,
           handleGoogleDocsClick, handleNotionClick, handleMeetingsClick, handleObsidianClick, handleGmailClick
         }}
+        customPlaceholder={randomPrompt || "Search your knowledge..."}
       />
       
       <div className="flex items-center justify-center gap-2">
@@ -1472,10 +1520,9 @@ sources: ${JSON.stringify(item.sources)}`
 
           <div className={`chat ${isSidebarOpened ? '' : "chatSidebarClosed"}`}>
             <div className="chatContent no-scrollbar">
-              <h2 className="hidden text-2xl font-medium text-white mb-4">Knowledge Search</h2>
-              
               {!isSearchInitiated ? (
                 <div className="h-full flex flex-col items-center justify-center">
+                  <h2 className="text-2xl font-medium text-white mb-4">{randomPrompt || "Search your knowledge"}</h2>
                   <div className="w-full max-w-2xl bg-black/80 border border-white/10 rounded-xl shadow-2xl overflow-hidden">
                     <form onSubmit={(e) => {
                       e.preventDefault();
@@ -1865,7 +1912,7 @@ export function InputArea({
   setInputValue,
   sendMessage,
   className = "",
-  placeholder = "Search anything...",
+  placeholder = "Search your knowledge...",
 }) {
   const inputRef = useRef(null);
   
