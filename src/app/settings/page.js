@@ -9,6 +9,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
+import IconToggle from "@/components/ui/IconToggle";
 import {
   MessageSquare,
   FileText,
@@ -22,9 +23,9 @@ import {
   UserPlus,
   Plus,
   Minus,
+  Clock,
 } from "lucide-react";
 import Cookies from "js-cookie";
-import { Navbar } from "@/components/Navbar";
 import { toast } from "react-hot-toast";
 import MobileWarningBanner from "@/components/MobileWarningBanner";
 
@@ -54,8 +55,7 @@ function SettingsContent() {
   const [importProgress, setImportProgress] = useState(0);
   const [memoryEnabled, setMemoryEnabled] = useState(false);
   const [createdAt, setCreatedAt] = useState("");
-  const [emailNotificationsEnabled, setEmailNotificationsEnabled] =
-    useState(false);
+  const [emailNotificationsEnabled, setEmailNotificationsEnabled] = useState(false);
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
   const [isProcessingEmails, setIsProcessingEmails] = useState(false);
   const [emailLabelingEnabled, setEmailLabelingEnabled] = useState(false);
@@ -88,6 +88,7 @@ function SettingsContent() {
   const [showBroaderAccessModal, setShowBroaderAccessModal] = useState(false);
   const [googleTokenVersion, setGoogleTokenVersion] = useState(null);
   const [gmailConnected, setGmailConnected] = useState(false);
+  const [showWarningModal, setShowWarningModal] = useState(false);
 
   // Define importGoogleDocs and other functions before using them in useEffect
   const importGoogleDocs = useCallback(async () => {
@@ -199,8 +200,7 @@ function SettingsContent() {
         },
         body: JSON.stringify({
           userId: session.user.id,
-          // Allow custom colors to be applied
-          useStandardColors: false,
+          maxEmails: 20
         }),
       });
 
@@ -292,7 +292,7 @@ function SettingsContent() {
         const { data: user, error } = await supabase
           .from("users")
           .select(
-            "notion_connected, google_docs_connected, calendar_connected, memory_enabled, email, created_at, email_tagging_enabled"
+            "notion_connected, google_docs_connected, calendar_connected, memory_enabled, email, created_at, email_tagging_enabled, emails_enabled"
           )
           .eq("id", session.user.id)
           .single();
@@ -316,6 +316,7 @@ function SettingsContent() {
           setCalendarConnected(user.calendar_connected);
           setMemoryEnabled(user.memory_enabled);
           setEmailLabelingEnabled(user.email_tagging_enabled || false);
+          setEmailNotificationsEnabled(user.emails_enabled || false);
         }
       }
       return true;
@@ -505,6 +506,7 @@ function SettingsContent() {
 
         if (error) throw error;
         setEmailNotificationsEnabled(checked);
+        toast.success(checked ? "Email notifications enabled" : "Email notifications disabled");
       }
     } catch (error) {
       console.error("Error updating email notification settings:", error);
@@ -1033,11 +1035,6 @@ function SettingsContent() {
     <div className="flex min-h-screen bg-black text-white">
       <MobileWarningBanner />
       
-      {/* Left App Navbar - the thin one */}
-      <div className="w-16 flex-shrink-0 bg-black border-r border-zinc-800">
-        <Navbar />
-      </div>
-
       {/* Main Settings Area */}
       <div className="flex flex-1 overflow-hidden">
         {/* Settings Sidebar */}
@@ -1086,6 +1083,41 @@ function SettingsContent() {
             </button>
           </div>
         </div>
+
+        {/* Warning Modal */}
+        {showWarningModal && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
+          <div className="bg-zinc-900 rounded-lg p-6 max-w-md w-full border border-zinc-700">
+            <h3 className="text-xl font-medium text-white mb-4">Your data is safe</h3>
+            <p className="text-zinc-300 mb-6">
+                Since the app is still in Google&apos;s review process, you will be warned that the app is unsafe.
+                <br /><br />
+                You can safely proceed by clicking on &quot;Advanced&quot; and then &quot;Go to Amurex
+                (unsafe)&quot;.
+            </p>
+            <p className="text-zinc-300 mb-6">
+              We ensure that the app is safe to use and your data <span className="font-bold underline"><a href="https://github.com/thepersonalaicompany/amurex-web" target="_blank" rel="noopener noreferrer">is secure</a></span>.
+            </p>
+            <div className="flex justify-end gap-4">
+              <button
+                onClick={() => setShowWarningModal(false)}
+                className="px-4 py-2 rounded-lg bg-zinc-800 text-white hover:bg-zinc-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setShowWarningModal(false);
+                  handleGoogleDocsConnect();
+                }}
+                className="px-4 py-2 rounded-lg bg-[#9334E9] text-white hover:bg-[#7928CA] transition-colors"
+              >
+                Proceed
+              </button>
+            </div>
+          </div>
+        </div>
+        )}
 
         {/* Main Content */}
         <div className="flex-1 p-8 bg-black overflow-y-auto">
@@ -1163,11 +1195,12 @@ function SettingsContent() {
                         have intelligent conversations about your past meetings, emails, documents, and more
                       </p>
                     </div>
-                    <Switch
-                      checked={memoryEnabled}
-                      onCheckedChange={handleMemoryToggle}
-                      className={memoryEnabled ? "bg-[#9334E9]" : ""}
-                    />
+                    <div className="flex items-center gap-2">
+                      <IconToggle
+                        checked={memoryEnabled}
+                        onChange={handleMemoryToggle}
+                      />
+                    </div>
                   </div>
 
                   <div className="flex gap-4">
@@ -1200,7 +1233,9 @@ function SettingsContent() {
                                 ? "bg-green-900 hover:bg-green-800"
                                 : ""
                             } min-w-[100px]`}
-                            onClick={handleGoogleDocsConnect}
+                            onClick={() => {
+                              setShowWarningModal(true);
+                            }}
                             disabled={
                               isImporting && importSource === "Google Docs"
                             }
@@ -1434,15 +1469,18 @@ function SettingsContent() {
                           <p className="text-white">{userEmail}</p>
                         </div>
                         <div>
-                          <h3 className="text-md text-zinc-400">
+                          <div className="inline-flex items-center px-2.5 py-1 rounded-full text-md font-medium bg-gradient-to-r from-[#9334E9]/60 to-[#9334E9]/40 text-[#e0c5f9] border border-[#9334E9]/50 shadow-[0_0_12px_rgba(147,52,233,0.45)] animate-pulse-slow relative overflow-hidden group">
+                            <span className="absolute inset-0 bg-gradient-to-r from-transparent via-[#9334E9]/40 to-transparent animate-shimmer"></span>
+                            <div className="absolute -inset-1 bg-gradient-to-r from-[#9334E9]/20 via-[#9334E9]/50 to-[#9334E9]/20 opacity-0 group-hover:opacity-100 transition-opacity duration-700 rounded-full blur-sm"></div>
+                            <Clock className="w-3 h-3 mr-1" />
                             With us since
-                          </h3>
-                          <p className="text-white">{createdAt}</p>
+                          </div>
+                          <p className="text-white mt-1">{createdAt}</p>
                         </div>
                       </div>
 
                       <div className="pt-2 border-t border-zinc-800">
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between hidden">
                           <div>
                             <h3 className="text-md font-medium text-white">
                               Email Notifications
@@ -1451,12 +1489,9 @@ function SettingsContent() {
                               Receive meeting summaries after each call
                             </p>
                           </div>
-                          <Switch
+                          <IconToggle 
                             checked={emailNotificationsEnabled}
-                            onCheckedChange={handleEmailNotificationsToggle}
-                            className={
-                              emailNotificationsEnabled ? "bg-[#9334E9]" : ""
-                            }
+                            onChange={handleEmailNotificationsToggle}
                           />
                         </div>
                       </div>

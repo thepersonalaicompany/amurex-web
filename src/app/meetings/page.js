@@ -1,13 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FileText, Search, Calendar, Clock, Video } from "lucide-react";
+import { FileText, Search, Calendar, Clock, Video, BellRing } from "lucide-react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
-import { Navbar } from "@/components/Navbar";
 import { Card } from "@/components/ui/card";
 import { CardContent } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import IconToggle from "@/components/ui/IconToggle";
+import { toast } from "react-hot-toast";
 
 export default function TranscriptList() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -17,10 +19,12 @@ export default function TranscriptList() {
   const [filter, setFilter] = useState("personal");
   const router = useRouter();
   const [userTeams, setUserTeams] = useState([]);
+  const [emailNotificationsEnabled, setEmailNotificationsEnabled] = useState(false);
 
   useEffect(() => {
     fetchTranscripts();
     fetchUserTeams();
+    fetchUserSettings();
   }, [filter]);
 
   const fetchTranscripts = async () => {
@@ -149,6 +153,49 @@ export default function TranscriptList() {
     }
   };
 
+  const fetchUserSettings = async () => {
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const { data: user, error } = await supabase
+        .from("users")
+        .select("emails_enabled")
+        .eq("id", session.user.id)
+        .single();
+
+      if (error) throw error;
+      if (user) {
+        setEmailNotificationsEnabled(user.emails_enabled || false);
+      }
+    } catch (err) {
+      console.error("Error fetching user settings:", err);
+    }
+  };
+
+  const handleEmailNotificationsToggle = async (checked) => {
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (session) {
+        const { error } = await supabase
+          .from("users")
+          .update({ emails_enabled: checked })
+          .eq("id", session.user.id);
+
+        if (error) throw error;
+        setEmailNotificationsEnabled(checked);
+        toast.success(checked ? "Email notifications enabled" : "Email notifications disabled");
+      }
+    } catch (error) {
+      console.error("Error updating email notification settings:", error);
+      toast.error("Failed to update email settings");
+    }
+  };
+
   const formatTranscripts = (data) => {
     return data.map((meeting) => ({
       id: meeting.id,
@@ -173,8 +220,8 @@ export default function TranscriptList() {
   if (loading) {
     return (
       <div className="min-h-screen bg-black">
-        <div className="p-6 max-w-7xl mx-auto">
-          <h1 className="text-3xl font-bold mb-6 text-white">Loading...</h1>
+        <div className="p-8 mx-auto">
+          <h1 className="text-2xl font-medium mb-6 text-white">Loading...</h1>
         </div>
       </div>
     );
@@ -182,10 +229,21 @@ export default function TranscriptList() {
 
   return (
     <>
-      <Navbar />
       <div className="min-h-screen bg-black">
-        <div className="p-6 max-w-7xl mx-auto">
-        <h2 className="text-2xl font-medium text-white mb-4">Meetings</h2>
+        <div className="p-8 mx-auto">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-medium text-white">Meetings</h2>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <BellRing className="w-5 h-5 text-white" />
+                <div className="text-white hidden sm:block">Email notes after meetings</div>
+                <IconToggle 
+                  checked={emailNotificationsEnabled}
+                  onChange={handleEmailNotificationsToggle}
+                />
+              </div>
+            </div>
+          </div>
 
           <div className="flex items-center gap-2 mb-6 flex-wrap bg-[#1C1C1E] p-1 rounded-lg w-fit hidden">
             <label
@@ -241,6 +299,18 @@ export default function TranscriptList() {
             />
           </div>
 
+          <a href="/search" rel="noopener noreferrer">
+            <div 
+              className="hidden my-2 bg-zinc-800/80 rounded-xl flex items-center px-3 py-2 cursor-text hover:bg-zinc-700 transition-colors border border-white/10"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-400 mr-2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <div className="text-zinc-400 text-md">Search in meetings...</div>
+            </div>
+          </a>
+
           {error && <div className="text-red-500 mb-4">{error}</div>}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -277,7 +347,7 @@ export default function TranscriptList() {
             ))}
           </div>
 
-          {filteredTranscripts.length === 0 && (
+          {transcripts.length === 0 && (
             <>
               {/* Email categorization card */}
               <div className="mt-8 mx-auto max-w-4xl">
@@ -316,6 +386,48 @@ export default function TranscriptList() {
               {/* Google Meet preview */}
               <div className="mt-8 mx-auto max-w-4xl">
                 <MeetPreview />
+              </div>
+            </>
+          )}
+
+          {filteredTranscripts.length === 0 && (
+            <>
+              {/* No meetings found card */}
+              <div className="mt-8 mx-auto text-center">
+                <h3 className="font-medium text-white text-2xl">
+                  No meetings found for <b>{searchTerm}</b>
+                </h3>
+                <p className="text-lg text-zinc-400">
+                  Please try a different search query, or
+                </p>
+                <div className="relative w-[50%] mx-auto mt-6">
+                  <div className="absolute -inset-0.5 bg-gradient-to-r from-[#9334E9] to-[#9334E9] rounded-lg blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-gradient-x"></div>
+                  <Card className="bg-black border-zinc-500 relative overflow-hidden">
+                    <div className="absolute inset-0 bg-[#9334E9]/20 animate-pulse"></div>
+                    <div className="absolute inset-0 bg-gradient-to-r from-[#9334E9]/30 via-[#9334E9]/20 to-[#9334E9]/30"></div>
+                    <CardContent className="p-4 relative text-center">
+                      <div className="flex items-center gap-4 justify-center">
+                        <Video className="w-6 h-6 text-[#9334E9] hidden" />
+                        <div className="w-[80%]">
+                          <h3 className="font-medium text-white text-2xl mb-2">
+                            Try a smarter search
+                          </h3>
+                          <p className="text-md font-light text-white">
+                            Knowledge Search - our new feature that allows you to <br></br><span className="italic">search your meetings, emails, and documents</span>
+                          </p>
+                        </div>
+                      </div>
+                      <div className="mt-4">
+                        <a
+                          href="/search"
+                          className="inline-flex items-center px-4 py-2 rounded-md text-sm font-medium border border-white/10 bg-[#9334E9] text-[#FAFAFA] hover:bg-[#3c1671] hover:border-[#6D28D9] transition-colors duration-200"
+                        >
+                          Try Knowledge Search
+                        </a>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
               </div>
             </>
           )}

@@ -122,3 +122,14 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+/* Global text selection styles */
+::selection {
+  background-color: #3c1671;
+  color: white;
+}
+
+::-moz-selection {
+  background-color: #3c1671;
+  color: white;
+}

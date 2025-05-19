@@ -11,37 +11,380 @@ import {
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { supabase } from "@/lib/supabaseClient";
-import { Navbar } from "@/components/Navbar";
 import StarButton from "@/components/star-button";
 import { useRouter } from "next/navigation";
 import MobileWarningBanner from "@/components/MobileWarningBanner";
+import "./search.css"
+import Popup from "@/components/Popup/Popup";
+
+// Add SpotlightSearch component after imports
+const SpotlightSearch = ({ isVisible, onClose, onSearch, suggestedPrompts = [], sourceFilters = {}, customPlaceholder }) => {
+  const [inputValue, setInputValue] = useState("");
+  const [selectedSuggestion, setSelectedSuggestion] = useState(-1);
+  const inputRef = useRef(null);
+  
+  // Reset selected suggestion when input changes
+  useEffect(() => {
+    setSelectedSuggestion(-1);
+  }, [inputValue]);
+
+  // Reset state when popup visibility changes
+  useEffect(() => {
+    if (isVisible) {
+      setInputValue("");
+      setSelectedSuggestion(-1);
+    }
+  }, [isVisible]);
+  
+  useEffect(() => {
+    // Focus input when popup becomes visible
+    if (isVisible && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [isVisible]);
+  
+  // Handle keyboard navigation and escape key
+  useEffect(() => {
+    if (!isVisible) return;
+    
+    const handleKeyDown = (e) => {
+      const filteredPrompts = suggestedPrompts.filter(item => item.type === "prompt").slice(0, 3);
+      
+      if (e.key === 'Escape') {
+        onClose();
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSelectedSuggestion(prev => 
+          prev < filteredPrompts.length - 1 ? prev + 1 : prev
+        );
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSelectedSuggestion(prev => prev > -1 ? prev - 1 : -1);
+      } else if (e.key === 'Enter') {
+        if (selectedSuggestion >= 0 && selectedSuggestion < filteredPrompts.length) {
+          e.preventDefault();
+          onSearch(filteredPrompts[selectedSuggestion].text);
+        }
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isVisible, onClose, selectedSuggestion, suggestedPrompts, onSearch]);
+  
+  // Close when clicking outside
+  const handleOutsideClick = (e) => {
+    if (e.target.classList.contains('spotlight-overlay')) {
+      onClose();
+    }
+  };
+  
+  // Handle search submission
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (inputValue.trim()) {
+      onSearch(inputValue);
+    }
+  };
+  
+  if (!isVisible) return null;
+  
+  const filteredPrompts = suggestedPrompts.filter(item => item.type === "prompt").slice(0, 3);
+  
+  const { 
+    showGoogleDocs, setShowGoogleDocs,
+    showNotion, setShowNotion,
+    showMeetings, setShowMeetings,
+    showObsidian, setShowObsidian,
+    showGmail, setShowGmail,
+    hasGoogleDocs, hasNotion, hasObsidian, hasMeetings, hasGmail,
+    handleGoogleDocsClick, handleNotionClick, handleMeetingsClick, handleObsidianClick, handleGmailClick
+  } = sourceFilters;
+  
+  return (
+    <div className="spotlight-overlay fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" 
+         onClick={handleOutsideClick}>
+      <div className="spotlight-container w-full max-w-2xl bg-black/80 border border-white/10 rounded-xl shadow-2xl overflow-hidden">
+        <form onSubmit={handleSubmit} className="relative">
+          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+          </div>
+          <input
+            ref={inputRef}
+            type="text"
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            placeholder={customPlaceholder || "Search your knowledge..."}
+            className="w-full py-4 px-12 bg-transparent text-white text-lg focus:outline-none"
+          />
+          <div className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 flex items-center gap-2">
+            <span className="text-xs">ESC to close</span>
+          </div>
+        </form>
+        
+        {/* Source selection buttons */}
+        <div className="p-4 border-t border-white/10">
+          <div className="text-xs text-zinc-500 mb-2">Search across</div>
+          <div className="flex flex-wrap gap-2">
+            {/* Google Docs button */}
+            {hasGoogleDocs ? (
+              <button
+                onClick={() => setShowGoogleDocs(!showGoogleDocs)}
+                className={`px-3 py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-xs font-medium border border-white/10 ${showGoogleDocs
+                  ? "bg-[#3c1671] text-white border-[#6D28D9]"
+                  : "bg-zinc-900 text-white"
+                  } transition-all duration-200 hover:border-[#6D28D9]`}
+              >
+                <img
+                  src="https://upload.wikimedia.org/wikipedia/commons/0/01/Google_Docs_logo_%282014-2020%29.svg"
+                  alt="Google Docs"
+                  className="w-3.5 h-3.5"
+                />
+                <span>Docs</span>
+              </button>
+            ) : (
+              <button
+                onClick={handleGoogleDocsClick}
+                className="px-3 py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-xs font-medium border border-white/10 bg-zinc-900 text-white hover:bg-[#3c1671] transition-all duration-200 relative group"
+              >
+                <img
+                  src="https://upload.wikimedia.org/wikipedia/commons/0/01/Google_Docs_logo_%282014-2020%29.svg"
+                  alt="Google Docs"
+                  className="w-3.5 h-3.5"
+                />
+                <span>Docs</span>
+              </button>
+            )}
+
+            {/* Notion button */}
+            {hasNotion ? (
+              <button
+                onClick={() => setShowNotion(!showNotion)}
+                className={`px-3 py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-xs font-medium border border-white/10 ${showNotion
+                  ? "bg-[#3c1671] text-white border-[#6D28D9]"
+                  : "bg-zinc-900 text-white"
+                  } transition-all duration-200 hover:border-[#6D28D9]`}
+              >
+                <img
+                  src="https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png"
+                  alt="Notion"
+                  className="w-3.5"
+                />
+                <span>Notion</span>
+              </button>
+            ) : (
+              <button
+                onClick={handleNotionClick}
+                className="px-3 py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-xs font-medium border border-white/10 bg-zinc-900 text-white hover:bg-[#3c1671] transition-all duration-200 relative group"
+              >
+                <img
+                  src="https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png"
+                  alt="Notion"
+                  className="w-3.5"
+                />
+                <span>Notion</span>
+              </button>
+            )}
+
+            {/* Obsidian button */}
+            {hasObsidian ? (
+              <button
+                onClick={() => setShowObsidian(!showObsidian)}
+                className={`px-3 py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-xs font-medium border border-white/10 ${showObsidian
+                  ? "bg-[#3c1671] text-white border-[#6D28D9]"
+                  : "bg-zinc-900 text-white"
+                  } transition-all duration-200 hover:border-[#6D28D9]`}
+              >
+                <img
+                  src="https://obsidian.md/images/obsidian-logo-gradient.svg"
+                  alt="Obsidian"
+                  className="w-3.5"
+                />
+                <span>Obsidian</span>
+              </button>
+            ) : (
+              <button
+                onClick={handleObsidianClick}
+                className="px-3 py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-xs font-medium border border-white/10 bg-zinc-900 text-white hover:bg-[#3c1671] transition-all duration-200 relative group"
+              >
+                <img
+                  src="https://obsidian.md/images/obsidian-logo-gradient.svg"
+                  alt="Obsidian"
+                  className="w-3.5"
+                />
+                <span>Obsidian</span>
+              </button>
+            )}
+
+            {/* Meetings button */}
+            <button
+              onClick={() => setShowMeetings(!showMeetings)}
+              className={`px-3 py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-xs font-medium border border-white/10 ${showMeetings && hasMeetings
+                ? "bg-[#3c1671] text-white border-[#6D28D9]"
+                : "bg-zinc-900 text-white"
+                } transition-all duration-200 hover:border-[#6D28D9] ${!hasMeetings ? "opacity-50 cursor-not-allowed" : ""
+                }`}
+              disabled={!hasMeetings}
+            >
+              <ChatCenteredDots className="w-3.5 h-3.5" />
+              <span>Meetings</span>
+            </button>
+
+            {/* Gmail button */}
+            {hasGmail ? (
+              <button
+                onClick={() => setShowGmail(!showGmail)}
+                className={`px-3 py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-xs font-medium border border-white/10 ${showGmail
+                  ? "bg-[#3c1671] text-white border-[#6D28D9]"
+                  : "bg-zinc-900 text-white"
+                  } transition-all duration-200 hover:border-[#6D28D9]`}
+              >
+                <img
+                  src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/2560px-Gmail_icon_%282020%29.svg.png"
+                  alt="Gmail"
+                  className="w-3.5"
+                />
+                <span>Gmail</span>
+              </button>
+            ) : (
+              <button
+                onClick={handleGmailClick}
+                className="px-3 py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-xs font-medium border border-white/10 bg-zinc-900 text-white hover:bg-[#3c1671] transition-all duration-200 relative"
+              >
+                <img
+                  src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/2560px-Gmail_icon_%282020%29.svg.png"
+                  alt="Gmail"
+                  className="w-3.5"
+                />
+                <span>Gmail</span>
+              </button>
+            )}
+          </div>
+        </div>
+        
+        {/* Suggested prompts */}
+        {filteredPrompts.length > 0 && (
+          <div className="p-3 border-t border-white/10">
+            <div className="text-xs text-zinc-500 mb-2 px-2">Suggested searches</div>
+            <div className="space-y-1">
+              {filteredPrompts.map((prompt, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => {
+                    setInputValue(prompt.text);
+                    // Don't immediately call onSearch here
+                  }}
+                  className={`w-full text-left px-3 py-2 text-zinc-300 rounded transition-colors text-sm flex items-center ${selectedSuggestion === idx ? 'bg-white/10' : 'hover:bg-white/5'}`}
+                  onMouseEnter={() => setSelectedSuggestion(idx)}
+                  onMouseLeave={() => setSelectedSuggestion(-1)}
+                >
+                  <svg className="h-4 w-4 min-w-4 flex-shrink-0 mr-2 text-zinc-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {prompt.text}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+SpotlightSearch.displayName = 'SpotlightSearch';
 
 const BASE_URL_BACKEND = "https://api.amurex.ai";
 
 // 3. Home component
 export default function AISearch() {
+  // Initialize ldrs in a useEffect instead
+  useEffect(() => {
+    // Dynamically import ldrs only on the client side
+    import('ldrs').then(({ ring }) => {
+      ring.register();
+    });
+  }, []);
+
   // 4. Initialize states and refs
   const messagesEndRef = useRef(null);
   const [inputValue, setInputValue] = useState("");
   const [messageHistory, setMessageHistory] = useState([]);
   const [session, setSession] = useState(null);
-  const [searchResults, setSearchResults] = useState(null);
+  const [searchResults, setSearchResults] = useState({
+    /* query: "asdfasdfasdf query",
+    sources: [
+      {
+        "source": "email",
+        "id": 102349,
+        "title": "Вы пропустили сообщения на сервере 11 \"Б\"",
+        "content": "У вас 3 новых сообщений 11 &quot;Б&quot; Показать сообщения Нужна помощь? Свяжитесь с командой поддержки или напишите нам в X @discord. Хотите оставить отзыв? Дайте нам знать, что вы думаете на сайте",
+        "url": "https://mail.google.com/mail/u/0/#inbox/196787ba0976d5ad",
+        "similarity": 0.6216198342952016,
+        "text_rank": null,
+        "hybrid_score": null,
+        "type": "gmail"
+      },
+      {
+        "source": "email",
+        "id": 102345,
+        "title": "srhoe упомянул вас в OwlSec",
+        "content": "У вас 5+ новых сообщений 📢・announcement Показать сообщения 11 &quot;Б&quot; Показать сообщения Нужна помощь? Свяжитесь с командой поддержки или напишите нам в X @discord. Хотите оставить отзыв? Дайте",
+        "url": "https://mail.google.com/mail/u/0/#inbox/1967da9efd1abc0e",
+        "similarity": 0.612551144375464,
+        "text_rank": null,
+        "hybrid_score": null,
+        "type": "gmail"
+      },
+      {
+        "source": "email",
+        "id": 102342,
+        "title": "srhoe упомянул вас в OwlSec",
+        "content": "У вас 1 новое сообщение #💬・chat (OwlSec) Показать сообщения Нужна помощь? Свяжитесь с командой поддержки или напишите нам в X @discord. Хотите оставить отзыв? Дайте нам знать, что вы думаете на сайте",
+        "url": "https://mail.google.com/mail/u/0/#inbox/19682fadd97163bc",
+        "similarity": 0.612551144375464,
+        "text_rank": null,
+        "hybrid_score": null,
+        "type": "gmail"
+      }
+    ],
+    vectorResults: [],
+    answer: "Ваще хз как помочь тебе", */
+  });
   const [isSearching, setIsSearching] = useState(false);
-  const [isSearchInitiated, setIsSearchInitiated] = useState(false);
+  const [isSearchInitiated, setIsSearchInitiated] = useState(false); // gotta be false
   const [suggestedPrompts, setSuggestedPrompts] = useState([]);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [hasSeenOnboarding, setHasSeenOnboarding] = useState(false);
   const [searchStartTime, setSearchStartTime] = useState(null);
   const [sourcesTime, setSourcesTime] = useState(null);
   const [completionTime, setCompletionTime] = useState(null);
-  
+  const [isSidebarOpened, setIsSidebarOpened] = useState(false);
+  const [sidebarSessions, setSidebarSessions] = useState([]);
+  const [groupedSidebarSessions, setGroupedSidebarSessions] = useState({});
+  const [collapsedDays, setCollapsedDays] = useState({});
+  const [isWaitingSessions, setIsWaitingSessions] = useState(true);
+  const [currentThread, setCurrentThread] = useState([]);  // Initialize as empty array
+  const [currentThreadId, setCurrentThreadId] = useState("")
+  const [isDeletionConfirmationPopupOpened, setIsDeletionConfirmationPopupOpened] = useState(false);
+  const [deletionConfirmation, setDeletionConfirmation] = useState({
+    deletingThread: {
+      title: "None"
+    },
+    isWaiting: false,
+    error: ""
+  })
+  const [showSpotlight, setShowSpotlight] = useState(false);
+
   // Add source filter states - these are only for frontend filtering
   const [showGoogleDocs, setShowGoogleDocs] = useState(true);
   const [showNotion, setShowNotion] = useState(true);
   const [showMeetings, setShowMeetings] = useState(true);
   const [showObsidian, setShowObsidian] = useState(true);
   const [showGmail, setShowGmail] = useState(true);
-  
+
   // Connection status states
   const [hasGoogleDocs, setHasGoogleDocs] = useState(false);
   const [hasMeetings, setHasMeetings] = useState(false);
@@ -49,15 +392,121 @@ export default function AISearch() {
   const [hasObsidian, setHasObsidian] = useState(false);
   const [hasGmail, setHasGmail] = useState(false);
   const [googleTokenVersion, setGoogleTokenVersion] = useState(null);
-  
+
   // Modal states
   const [showGoogleDocsModal, setShowGoogleDocsModal] = useState(false);
   const [showGmailModal, setShowGmailModal] = useState(false);
   const [showBroaderAccessModal, setShowBroaderAccessModal] = useState(false);
   const [isGoogleAuthInProgress, setIsGoogleAuthInProgress] = useState(false);
 
-  // Add useRouter
+  // Add state for user name and random prompt
+  const [userName, setUserName] = useState('');
+  const [randomPrompt, setRandomPrompt] = useState('');
+
+  // Add array of predefined prompts
+  const personalizedPrompts = [
+    "What do you want to know, {name}?",
+    "Ask me anything, {name}.",
+    "Hey, {name}, what are you curious about?",
+    "Need help finding something, {name}?",
+    "Let's explore a topic, {name}.",
+    "Got a question in mind, {name}?",
+    "Looking for answers, {name}?",
+    "What should we search for, {name}?",
+    "Start with a question, {name}.",
+    "Ready to learn something new, {name}?"
+  ];
+
+  // Add router
   const router = useRouter();
+
+  // Add useEffect to fetch user's name and select random prompt
+  useEffect(() => {
+    if (!session?.user?.id) return;
+
+    // Get user's name using RPC instead of directly querying the users table
+    supabase
+      .rpc('get_auth_user_by_public_id', { p_user_id: session.user.id })
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("Error fetching user data:", error);
+          return;
+        }
+
+        const first_name = data[0]?.first_name;
+        setUserName(first_name);
+        
+        // Select a random prompt and personalize it with the user's name
+        const randomIndex = Math.floor(Math.random() * personalizedPrompts.length);
+        let prompt = personalizedPrompts[randomIndex];
+        
+        // Replace {name} placeholder with actual name if the prompt has it
+        if (prompt.includes('{name}') && first_name) {
+          prompt = prompt.replace('{name}', first_name);
+        }
+        
+        setRandomPrompt(prompt);
+      });
+  }, [session?.user?.id]);
+
+  // Add global hotkey for Spotlight search - PLACED AFTER ALL STATE DECLARATIONS
+  useEffect(() => {
+    const handleHotkey = (e) => {
+      // Check for Cmd+K or Ctrl+K
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        // Just show spotlight without resetting thread
+        setShowSpotlight(true);
+      }
+    };
+
+    window.addEventListener('keydown', handleHotkey);
+    return () => window.removeEventListener('keydown', handleHotkey);
+  }, []);
+
+  // Update SpotlightSearch component integration to handle new searches
+  const handleSpotlightSearch = (query) => {
+    setShowSpotlight(false);
+    setInputValue(query);
+    // Reset thread and start a new one
+    setCurrentThread([]);
+    setCurrentThreadId("");
+    setIsSearchInitiated(true);
+    sendMessage(query);
+  };
+
+  // Modify the button handler to use the same logic
+  const handleNewSearch = () => {
+    setShowSpotlight(true); // Show the spotlight search
+  };
+
+  // Add auto-focus on input when typing - PLACED AFTER ALL STATE DECLARATIONS
+  useEffect(() => {
+    // Only add this listener when a thread is active and not when spotlight is open
+    if (isSearchInitiated && !showSpotlight) {
+      const handleKeyPress = (e) => {
+        // Ignore if user is typing in an input or pressing modifier keys
+        if (
+          e.target.tagName === 'INPUT' || 
+          e.target.tagName === 'TEXTAREA' || 
+          e.metaKey || 
+          e.ctrlKey || 
+          e.altKey
+        ) {
+          return;
+        }
+        
+        // Focus the input field when user starts typing
+        const input = document.querySelector('.followUpInputArea input');
+        if (input) {
+          input.focus();
+        }
+      };
+      
+      window.addEventListener('keydown', handleKeyPress);
+      return () => window.removeEventListener('keydown', handleKeyPress);
+    }
+  }, [isSearchInitiated, showSpotlight]);
 
   // Auto scroll to the end of the messages
   useEffect(() => {
@@ -145,6 +594,56 @@ export default function AISearch() {
         error ? console.log("error", error) : setMessageHistory(message_history)
       );
 
+    // fetching user's sessions
+    const fetchUserThreads = async () => {
+      if (!session?.user?.id) return;
+
+      try {
+        const { data, error } = await supabase
+          .from('threads')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Error fetching threads:', error);
+          return;
+        }
+
+        console.log(data)
+
+        // Group threads by day
+        const groupedThreads = {};
+        const initialCollapsedState = {};
+        
+        data.forEach(thread => {
+          const date = new Date(thread.created_at);
+          const dateString = date.toLocaleDateString('en-US', { 
+            weekday: 'long', 
+            month: 'short', 
+            day: 'numeric' 
+          });
+          
+          if (!groupedThreads[dateString]) {
+            groupedThreads[dateString] = [];
+            // Initialize all days as expanded by default
+            initialCollapsedState[dateString] = false;
+          }
+          groupedThreads[dateString].push(thread);
+        });
+
+        setSidebarSessions(data);
+        setGroupedSidebarSessions(groupedThreads);
+        // Initialize collapsed state for all days
+        setCollapsedDays(initialCollapsedState);
+        setIsWaitingSessions(false);
+      } catch (err) {
+        setIsWaitingSessions(false);
+        console.error('Unexpected error:', err);
+      }
+    };
+    fetchUserThreads();
+
     // Cleanup function
     return () => {
       if (channel) {
@@ -170,18 +669,18 @@ export default function AISearch() {
       .then(({ data }) => {
         // Check if google_token_version exists (not null)
         googleConnected = !!data?.google_token_version;
-        
+
         // Set the token version
         setGoogleTokenVersion(data?.google_token_version);
-        
+
         // Set availability based on token version
         // Google Docs is only available with "full" access
         setHasGoogleDocs(googleConnected && data?.google_token_version === "full");
-        
+
         // Gmail is available with either "full" or "gmail_only" access
-        setHasGmail(googleConnected && 
+        setHasGmail(googleConnected &&
           (data?.google_token_version === "full" || data?.google_token_version === "gmail_only"));
-        
+
         connectionsChecked++;
         if (connectionsChecked === 2) {
           checkOnboarding(googleConnected, notionConnected);
@@ -251,33 +750,114 @@ export default function AISearch() {
         }
 
         // Send the documents to the backend
-        const response = await fetch("/api/search", {
-          method: "POST",
-          body: JSON.stringify({
-            documents: data,
-            user_id: session.user.id,
-            type: "prompts", // Add type to differentiate the request
-          }),
-          headers: {
-            "Content-Type": "application/json",
-          },
-        });
+        // const apiResponse = await fetch("/api/search", {
+        //   method: "POST",
+        //   body: JSON.stringify({
+        //     documents: data,
+        //     user_id: session.user.id,
+        //     type: "prompts", // Add type to differentiate the request
+        //   }),
+        //   headers: {
+        //     "Content-Type": "application/json",
+        //   },
+        // });
+
+        // hardcoded prompts
+        const response = {
+          prompts: [
+            { type: 'prompt', text: 'What is the most important thing I need to do today?' },
+            { type: 'prompt', text: 'What was my last purchase?' },
+            { type: 'prompt', text: 'Draft an email to person X about ' }
+          ],
+          ok: true
+        }
 
         if (!response.ok) {
           console.error("Error generating prompts");
           return;
         }
 
-        const { prompts } = await response.json();
-        setSuggestedPrompts(prompts.prompts); // Access the nested prompts array
+        const { prompts } = response;
+        setSuggestedPrompts(prompts); // Access the nested prompts array
       });
   }, [session?.user?.id]);
 
   // Update sendMessage to use search_new directly
-  const sendMessage = (messageToSend) => {
+  const sendMessage = async (messageToSend) => {
     if (!session?.user?.id) return;
 
     const message = messageToSend || inputValue;
+
+    // Reset current thread if this is a new search from spotlight
+    if (showSpotlight) {
+      setCurrentThread([]);
+      setCurrentThreadId("");
+    }
+
+    setCurrentThread(prev => [
+      ...prev,
+      {
+        query: message,
+        sources: [],
+        vectorResults: [],
+        answer: "",
+      }
+    ])
+
+    if (!message.trim()) return
+
+    let threadId = ""
+
+    try {
+      console.log(sidebarSessions.some(session => {
+        console.log(session)
+        console.log(session.id)
+        console.log(currentThreadId)
+      }))
+      if (!sidebarSessions.some(session => session.id === currentThreadId)) {
+        console.log("creating new thread")
+        // creating a new thread
+        const { data: threadData, error: threadError } = await supabase
+          .from('threads')
+          .insert([{
+            user_id: session.user.id,
+            title: message.slice(0, 50) // use first 50 chars as title
+          }])
+          .select()
+          .single();
+
+        if (threadError) {
+          console.error('Error creating thread:', threadError);
+          return;
+        }
+
+        threadId = threadData.id;
+        setCurrentThreadId(threadData.id)  // Fix: Set the ID to currentThreadId instead of currentThread
+      } else {
+        threadId = currentThreadId;
+      }
+
+      /* // adding user's message
+      const { error: messageError } = await supabase
+        .from('messages')
+        .insert([{
+          thread_id: threadId,
+          role: 'user',
+          content: message
+        }]);
+
+
+      if (messageError) {
+        console.error('Error adding message:', messageError);
+        return;
+      } */
+
+      console.log('✅ Message sent & thread created!');
+    } catch (err) {
+      console.error('Unexpected error:', err);
+    }
+
+
     setInputValue("");
     setIsSearching(true);
     setIsSearchInitiated(true);
@@ -295,9 +875,27 @@ export default function AISearch() {
       answer: "",
     });
 
+    const transformedMessages = currentThread.flatMap(item => {
+      const result = [];
+      if (item.query) {
+        result.push({ role: 'user', content: item.query });
+      }
+      if (item.reply) {
+        result.push({
+          role: 'assistant', content: `${item.reply}
+          
+sources: ${JSON.stringify(item.sources)}`
+        });
+      }
+      return result;
+    });
+
+    console.log(transformedMessages)
+
     fetch("/api/search", {
       method: "POST",
       body: JSON.stringify({
+        context: transformedMessages,
         message,
         user_id: session.user.id,
       }),
@@ -314,15 +912,108 @@ export default function AISearch() {
         let sourcesReceived = false;
         let firstChunkReceived = false;
 
+
+        let finalAnswer = "";
+        let finalSources = [];
+
+        // Update thread in real-time during streaming 
+        const updateThreadWithStreamingContent = (chunk) => {
+          setCurrentThread(prev => {
+            const updatedThread = [...prev];
+            // Only update the last item in the thread array
+            if (updatedThread.length > 0) {
+              const lastIndex = updatedThread.length - 1;
+              updatedThread[lastIndex] = {
+                ...updatedThread[lastIndex],
+                reply: (updatedThread[lastIndex].reply || "") + chunk
+              };
+            }
+            return updatedThread;
+          });
+        };
+
         function readStream() {
           reader
             .read()
-            .then(({ done, value }) => {
+            .then(async ({ done, value }) => {
               if (done) {
                 // Record final completion time when stream ends
                 const endTime = performance.now();
+                let completionTimeLocal = ((endTime - startTime) / 1000).toFixed(1) // added "local" just to avoid collision with another var (gotta delete another var in the future)
                 setCompletionTime(((endTime - startTime) / 1000).toFixed(1));
+
                 setIsSearching(false);
+                console.log("done")
+
+                // writing results as the last element of currentThread
+                // This is now just a safety measure as the thread is updated in real-time
+                setCurrentThread(prev => {
+                  console.log("Finalizing thread update, thread length:", prev.length);
+                  // Just in case the array is empty (shouldn't happen)
+                  if (prev.length === 0) return prev;
+                  
+                  return prev.map((item, index) => {
+                    if (index === prev.length - 1) {
+                      console.log("Updating last message with final content");
+                      return {
+                        ...item,
+                        sources: finalSources,
+                        reply: finalAnswer,
+                        completionTime: completionTimeLocal
+                      };
+                    }
+                    return item;
+                  });
+                });
+
+
+                if (!sidebarSessions.some(session => session.id === currentThreadId)) {
+                  setSidebarSessions(prev => [{ title: message, id: threadId }, ...prev])
+                  
+                  // Add the new thread to groupedSidebarSessions
+                  const today = new Date().toLocaleDateString('en-US', { 
+                    weekday: 'long', 
+                    month: 'short', 
+                    day: 'numeric' 
+                  });
+                  
+                  setGroupedSidebarSessions(prev => {
+                    const newGrouped = {...prev};
+                    if (!newGrouped[today]) {
+                      newGrouped[today] = [];
+                    }
+                    newGrouped[today] = [{ title: message, id: threadId }, ...newGrouped[today]];
+                    return newGrouped;
+                  });
+                }
+
+                try {
+                  console.log(message)
+                  console.log({
+                    thread_id: threadId,
+                    query: message,
+                    reply: finalAnswer,
+                    sources: JSON.stringify(finalSources),
+                    completion_time: parseFloat(completionTimeLocal)
+                  })
+                  const { error: messageError } = await supabase
+                    .from('messages')
+                    .insert([{
+                      thread_id: threadId,
+                      query: message,
+                      reply: finalAnswer,
+                      sources: JSON.stringify(finalSources),
+                      completion_time: parseFloat(completionTimeLocal)
+                    }]);
+                  if (messageError) {
+                    console.error('Error adding message:', messageError);
+                    return;
+                  }
+                } catch (e) {
+                  console.error("Failed to upload assistant response:", e)
+                }
+
+
                 return;
               }
 
@@ -362,17 +1053,29 @@ export default function AISearch() {
                         }
                       }
 
+                      if (data.chunk) {
+                        finalAnswer += data.chunk;
+                        // Update thread in real-time with each chunk
+                        updateThreadWithStreamingContent(data.chunk);
+                      }
+
+                      if (data.sources && data.sources.length > 0) {
+                        finalSources = data.sources;
+                      }
+
                       setSearchResults((prev) => ({
                         ...prev,
                         sources: data.sources || prev.sources,
                         answer: prev.answer + (data.chunk || ""),
                         done: data.done || false,
                       }));
+                      console.log(data.sources || prev.sources)
                     }
                   } catch (e) {
                     console.error("Error parsing JSON:", e, "Line:", lines[i]);
                   }
                 }
+
 
                 // Keep only the incomplete line in the buffer
                 const lastNewlineIndex = buffer.lastIndexOf("\n");
@@ -397,13 +1100,120 @@ export default function AISearch() {
         console.error("Error:", err);
         setIsSearching(false);
       });
+
   };
+
+  const openThread = async (threadId) => {
+    console.log("opening thread" + threadId)
+    setShowSpotlight(false); // Close spotlight if open
+    if (!threadId) return;
+    try {
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('thread_id', threadId)
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching threads:', error);
+        return;
+      }
+
+      const transformedData = data.map(({ completion_time, sources, ...rest }) => ({
+        ...rest,
+        completionTime: completion_time,
+        sources: JSON.parse(sources)
+      }));
+      console.log(transformedData)
+
+      setCurrentThreadId(threadId)
+      setCurrentThread(transformedData)
+      setIsSearchInitiated(true)
+
+    } catch (err) {
+      setIsWaitingSessions(false);
+      console.error('Unexpected error:', err);
+    }
+  }
+
+  const deleteThread = async () => {
+    console.log(`Deleting: ${deletionConfirmation?.deletingThread}`)
+    console.log(deletionConfirmation?.deletingThread)
+    try {
+      
+      if (deletionConfirmation?.deletingThread) {
+        const threadId = deletionConfirmation?.deletingThread?.id 
+        setDeletionConfirmation(prev => ({
+          ...prev,
+          isWaiting: true,
+          error: ""
+        }))
+
+        // Delete thread from DB
+        const { error } = await supabase
+          .from("threads")
+          .delete()
+          .eq("id", threadId);
+
+        if (error) {
+          console.error("Error deleting thread:", error.message);
+          setDeletionConfirmation(prev => ({
+            ...prev,
+            isWaiting: false,
+            error: "Failed to delete thread from server"
+          }));
+          return;
+        }
+
+        // Remove from client-side list
+        setSidebarSessions(prev =>
+          prev.filter(session => session.id !== threadId)
+        );
+
+        // Also update the grouped sessions
+        setGroupedSidebarSessions(prev => {
+          const newGrouped = {...prev};
+          // Loop through each day group
+          Object.keys(newGrouped).forEach(date => {
+            // Filter out the deleted thread from this day's threads
+            newGrouped[date] = newGrouped[date].filter(session => session.id !== threadId);
+            // If this day now has no threads, remove the day entirely
+            if (newGrouped[date].length === 0) {
+              delete newGrouped[date];
+            }
+          });
+          return newGrouped;
+        });
+
+        setIsDeletionConfirmationPopupOpened(false)
+        setTimeout(() => {
+          setDeletionConfirmation({
+            deletingThread: {
+              title: "None"
+            },
+            isWaiting: false,
+            error: ""
+          })
+        }, 400);
+
+
+
+      }
+    } catch (e) {
+      console.log(e)
+      setDeletionConfirmation(prev => ({
+        ...prev,
+        isWaiting: false,
+        error: "Something went wrong, please try again later"
+      }))
+    }
+  }
 
   // Add function to initiate Google auth
   const initiateGoogleAuth = async () => {
     try {
       setIsGoogleAuthInProgress(true);
-      
+
       // Call the Google auth API directly
       const response = await fetch('/api/google/auth', {
         method: 'POST',
@@ -416,9 +1226,9 @@ export default function AISearch() {
           upgradeToFull: true
         }),
       });
-      
+
       const data = await response.json();
-      
+
       if (data.url) {
         // Redirect to Google auth URL
         window.location.href = data.url;
@@ -430,12 +1240,12 @@ export default function AISearch() {
       setIsGoogleAuthInProgress(false);
     }
   };
-  
+
   // Function to handle Google Docs button click
   const handleGoogleDocsClick = () => {
     // Toggle visibility regardless of connection status
     setShowGoogleDocs(!showGoogleDocs);
-    
+
     // If not connected, show the appropriate modal
     if (!hasGoogleDocs) {
       if (googleTokenVersion === "old" || googleTokenVersion === null) {
@@ -447,12 +1257,12 @@ export default function AISearch() {
       }
     }
   };
-  
+
   // Function to handle Gmail button click
   const handleGmailClick = () => {
     // Toggle visibility regardless of connection status
     setShowGmail(!showGmail);
-    
+
     // If not connected, show the appropriate modal
     if (!hasGmail) {
       if (googleTokenVersion === "old" || googleTokenVersion === null) {
@@ -462,29 +1272,29 @@ export default function AISearch() {
       }
     }
   };
-  
+
   // Function to handle Notion button click
   const handleNotionClick = () => {
     // Toggle visibility regardless of connection status
     setShowNotion(!showNotion);
-    
+
     // If not connected, redirect to settings
     if (!hasNotion) {
       window.location.href = "/settings?tab=personalization";
     }
   };
-  
+
   // Function to handle Obsidian button click
   const handleObsidianClick = () => {
     // Toggle visibility regardless of connection status
     setShowObsidian(!showObsidian);
-    
+
     // If not connected, redirect to settings
     if (!hasObsidian) {
       window.location.href = "/settings?tab=personalization";
     }
   };
-  
+
   // Function to handle Meetings button click
   const handleMeetingsClick = () => {
     // Toggle visibility (no connection needed)
@@ -495,12 +1305,67 @@ export default function AISearch() {
   return (
     <>
       <MobileWarningBanner />
-      <Navbar />
       <div
-        className={`min-h-screen bg-black lg:ml-[4rem] ${
-          isSearchInitiated ? "pt-6" : "flex items-center justify-center"
-        }`}
+        className={`min-h-screen bg-black ${isSearchInitiated ? "" : ""
+          }`}
       >
+      <SpotlightSearch 
+        isVisible={showSpotlight} 
+        onClose={() => setShowSpotlight(false)} 
+        onSearch={(query) => {
+          handleSpotlightSearch(query);
+        }}
+        suggestedPrompts={suggestedPrompts}
+        sourceFilters={{
+          showGoogleDocs, setShowGoogleDocs,
+          showNotion, setShowNotion,
+          showMeetings, setShowMeetings,
+          showObsidian, setShowObsidian,
+          showGmail, setShowGmail,
+          hasGoogleDocs, hasNotion, hasObsidian, hasMeetings, hasGmail,
+          handleGoogleDocsClick, handleNotionClick, handleMeetingsClick, handleObsidianClick, handleGmailClick
+        }}
+        customPlaceholder={randomPrompt || "Search your knowledge..."}
+      />
+      
+      <div className="flex items-center justify-center gap-2">
+        <button
+          className={`fixed top-4 z-50 px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-medium border border-white/10 bg-zinc-900 text-white transition-all duration-200 hover:border-[#6D28D9]`}
+          onClick={handleNewSearch}
+        >
+          <img src="/plus.png" alt="New session" className="w-2 h-2 inline-block" />
+          <span>New search</span>
+          <div className="ml-2 px-1.5 py-0.5 bg-zinc-800 rounded text-[10px] text-zinc-400">⌘K</div>
+        </button>
+      </div>
+
+        <Popup isPopupOpened={isDeletionConfirmationPopupOpened} setIsPopupOpened={setIsDeletionConfirmationPopupOpened} forbidClosing={deletionConfirmation?.isWaiting}>
+          <h3 className="popupTitle">Deleting thread?</h3>
+          <p className="popupSubtitle">
+            Are you sure you want to delete thread with name &quot;{deletionConfirmation?.deletingThread?.title}&quot;?
+          </p>
+
+          <p className="errorMessage">{deletionConfirmation?.error}</p>
+
+          <div className="popupConfirmationButtons">
+            <button className="mr-2 mt-2 lg:px-4 lg:py-2 px-2 py-2 inline-flex items-center justify-center gap-2 rounded-md text-sm font-normal border border-white/10 bg-transparent text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:border-[#6D28D9]" onClick={() => setIsDeletionConfirmationPopupOpened(false)} disabled={deletionConfirmation?.isWaiting}>
+              Cancel
+            </button>
+            <button className="mt-2 lg:px-4 lg:py-2 px-2 py-2 inline-flex items-center justify-center gap-2 rounded-md text-sm font-normal border border-white/10 bg-[#6D28D9] text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:bg-[#3c1671] hover:border-[#6D28D9]" onClick={deleteThread} disabled={deletionConfirmation?.isWaiting}>
+              {deletionConfirmation?.isWaiting ? (
+                <>
+                  <span>Deleting...</span>
+                  <l-tail-chase
+                    size="26"
+                    speed="1.75"
+                    color="white"
+                  ></l-tail-chase>
+                </>
+              ) : "Delete"}
+            </button>
+          </div>
+        </Popup>
+
         <div className="fixed top-4 right-4 z-50 hidden">
           <StarButton />
         </div>
@@ -510,7 +1375,8 @@ export default function AISearch() {
             setHasSeenOnboarding={setHasSeenOnboarding}
           />
         )}
-        <div className="p-4 md:p-6 max-w-7xl mx-auto w-full">
+        <div className="content">
+
           {!showOnboarding && (
             <div className="hidden bg-[#1E1E24] rounded-lg border border-zinc-800 p-4 mb-4 flex flex-col md:flex-row items-center justify-between">
               <div className="flex items-center gap-3 mb-3 md:mb-0">
@@ -545,343 +1411,411 @@ export default function AISearch() {
             </div>
           )}
 
-          <h2 className="text-2xl font-medium text-white mb-4">Knowledge Search</h2>
-          <div className="bg-zinc-900/70 rounded-lg border border-zinc-800 relative">
-            <div className="p-4 md:p-6 border-b border-zinc-800">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="text-[#9334E9]">
-                    <ChatCenteredDots className="h-5 w-5" />
-                  </div>
-                  <h1 className="text-xl md:text-2xl font-medium text-white">
-                    Hi! I&apos;m Amurex - your AI assistant for work and life
-                  </h1>
-                </div>
-                <div className="flex flex-col gap-2 w-full md:w-auto">
-                  <div className="grid grid-cols-2 md:grid-cols-3 items-center gap-2">
-                    {/* Google Docs button */}
-                    {hasGoogleDocs ? (
-                      <button
-                        onClick={handleGoogleDocsClick}
-                        className={`px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-medium border border-white/10 ${
-                          showGoogleDocs
-                            ? "bg-[#3c1671] text-white border-[#6D28D9]"
-                            : "bg-zinc-900 text-white"
-                        } transition-all duration-200 hover:border-[#6D28D9]`}
-                      >
-                        <img
-                          src="https://upload.wikimedia.org/wikipedia/commons/0/01/Google_Docs_logo_%282014-2020%29.svg"
-                          alt="Google Docs"
-                          className="w-4 h-4"
-                        />
-                        <span>Google Docs</span>
-                      </button>
-                    ) : (
-                      <button
-                        onClick={handleGoogleDocsClick}
-                        className="px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-medium border border-white/10 bg-zinc-900 text-white hover:bg-[#3c1671] transition-all duration-200 relative group"
-                      >
-                        <img
-                          src="https://upload.wikimedia.org/wikipedia/commons/0/01/Google_Docs_logo_%282014-2020%29.svg"
-                          alt="Google Docs"
-                          className="w-4 h-4"
-                        />
-                        <span>Google Docs</span>
-                        <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-white text-black px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
-                          Connect Google Docs
-                        </span>
-                      </button>
-                    )}
 
-                    {/* Notion button */}
-                    {hasNotion ? (
-                      <button
-                        onClick={handleNotionClick}
-                        className={`px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-medium border border-white/10 ${
-                          showNotion
-                            ? "bg-[#3c1671] text-white border-[#6D28D9]"
-                            : "bg-zinc-900 text-white"
-                        } transition-all duration-200 hover:border-[#6D28D9]`}
-                      >
-                        <img
-                          src="https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png"
-                          alt="Notion"
-                          className="w-4"
-                        />
-                        <span>Notion</span>
-                      </button>
-                    ) : (
-                      <button
-                        onClick={handleNotionClick}
-                        className="px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-medium border border-white/10 bg-zinc-900 text-white hover:bg-[#3c1671] transition-all duration-200 relative group"
-                      >
-                        <img
-                          src="https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png"
-                          alt="Notion"
-                          className="w-4"
-                        />
-                        <span>Notion</span>
-                        <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-white text-black px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
-                          Connect Notion
-                        </span>
-                      </button>
-                    )}
-
-                    {/* Obsidian button */}
-                    {hasObsidian ? (
-                      <button
-                        onClick={handleObsidianClick}
-                        className={`px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-medium border border-white/10 ${
-                          showObsidian
-                            ? "bg-[#3c1671] text-white border-[#6D28D9]"
-                            : "bg-zinc-900 text-white"
-                        } transition-all duration-200 hover:border-[#6D28D9]`}
-                      >
-                        <img
-                          src="https://obsidian.md/images/obsidian-logo-gradient.svg"
-                          alt="Obsidian"
-                          className="w-4"
-                        />
-                        <span>Obsidian</span>
-                      </button>
-                    ) : (
-                      <button
-                        onClick={handleObsidianClick}
-                        className="px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-medium border border-white/10 bg-zinc-900 text-white hover:bg-[#3c1671] transition-all duration-200 relative group"
-                      >
-                        <img
-                          src="https://obsidian.md/images/obsidian-logo-gradient.svg"
-                          alt="Obsidian"
-                          className="w-4"
-                        />
-                        <span>Obsidian</span>
-                        <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-white text-black px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
-                          Upload Obsidian Files
-                        </span>
-                      </button>
-                    )}
-                  
-                    {/* Meetings button */}
-                    <button
-                      onClick={handleMeetingsClick}
-                      className={`px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-medium border border-white/10 ${
-                        showMeetings && hasMeetings
-                          ? "bg-[#3c1671] text-white border-[#6D28D9]"
-                          : "bg-zinc-900 text-white"
-                      } transition-all duration-200 hover:border-[#6D28D9] ${
-                        !hasMeetings ? "opacity-50 cursor-not-allowed" : ""
-                      }`}
-                      disabled={!hasMeetings}
-                    >
-                      <ChatCenteredDots className="w-4 h-4" />
-                      <span>Meetings</span>
-                      {!hasMeetings && (
-                        <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-white text-black px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
-                          No meetings found
-                        </span>
-                      )}
-                    </button>
-
-                    {/* Gmail button */}
-                    {hasGmail ? (
-                      <button
-                        onClick={handleGmailClick}
-                        className={`px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-medium border border-white/10 ${
-                          showGmail
-                            ? "bg-[#3c1671] text-white border-[#6D28D9]"
-                            : "bg-zinc-900 text-white"
-                        } transition-all duration-200 hover:border-[#6D28D9]`}
-                      >
-                        <img
-                          src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/2560px-Gmail_icon_%282020%29.svg.png"
-                          alt="Gmail"
-                          className="w-4"
-                        />
-                        <span>Gmail</span>
-                      </button>
-                    ) : (
-                      <button
-                        onClick={handleGmailClick}
-                        className="px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-medium border border-white/10 bg-zinc-900 text-white hover:bg-[#3c1671] transition-all duration-200 relative"
-                      >
-                        <img
-                          src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/2560px-Gmail_icon_%282020%29.svg.png"
-                          alt="Gmail"
-                          className="w-4"
-                        />
-                        <span>Gmail</span>
-                        <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-white text-black px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
-                          Connect Gmail
-                        </span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
+          <div className={`sidebar ${isSidebarOpened ? 'sidebarActive' : ''}`}>
+            <div
+              className={`sidebarIcon ${isSidebarOpened ? 'sidebarIconActive' : ''}`}
+              onClick={() => setIsSidebarOpened(prev => !prev)}
+            >
+              <img 
+                src={isSidebarOpened ? "/sidebar-left.svg" : "/sidebar-right.svg"} 
+                alt={isSidebarOpened ? "Close sidebar" : "Open sidebar"}
+                className="w-6 h-6"
+              />
             </div>
-
-            <div className="p-4 md:p-6 space-y-6">
-              <div className="w-full">
-                <InputArea
-                  inputValue={inputValue}
-                  setInputValue={setInputValue}
-                  sendMessage={sendMessage}
-                  className="w-full"
-                />
-              </div>
-
-              {(isSearching || searchResults?.query) && (
-                <div className="space-y-6">
-                  <Query
-                    content={searchResults?.query || ""}
-                    sourcesTime={sourcesTime}
-                    completionTime={completionTime}
-                  />
-
-                  <div className="grid grid-cols-1 lg:grid-cols-[2fr,1fr] gap-6">
-                    <div>
-                      <div className="flex justify-between items-center mb-3">
-                        {/* <Heading content="Answer" /> */}
-                        {!isSearching && searchResults?.query && (
-                          <button
-                            onClick={() => sendMessage(searchResults.query)}
-                            className="flex items-center gap-1 text-sm text-zinc-300 hover:text-white bg-black border border-zinc-800 hover:border-[#6D28D9] px-3 py-1.5 rounded-md transition-colors"
+            {/* <h3 className="sidebarTitle">Your sessions:</h3> */}
+            <h2 className="hidden text-2xl font-medium text-white mb-6">Knowledge Search</h2>
+            <div className="sidebarItems no-scrollbar">
+              {isWaitingSessions && (
+                <div className="sidebarLoader">
+                  <l-ring
+                    size="55"
+                    stroke="5"
+                    bg-opacity="0"
+                    speed="2"
+                    color="white"
+                  ></l-ring>
+                </div>
+              )}
+              {!!sidebarSessions.length && (
+                <>
+                  <div className="sidebarItem" onClick={handleNewSearch}>
+                    <img src="/plus.png" alt="New session" className="w-3 h-3 mr-2 inline-block" />
+                    <span>New search</span>
+                    <span className="ml-2 px-1.5 py-0.5 bg-zinc-800 rounded text-[10px] text-zinc-400">⌘K</span>
+                  </div>
+                  <div className="divider">
+                    <div className="h-px bg-zinc-800 my-4"></div>
+                  </div>
+                  
+                  {/* Display grouped sessions by date */}
+                  {Object.entries(groupedSidebarSessions).map(([date, threads]) => (
+                    <div key={date}>
+                      <div 
+                        className="sidebarDateHeader"
+                        onClick={() => {
+                          setCollapsedDays(prev => ({
+                            ...prev,
+                            [date]: !prev[date]
+                          }));
+                        }}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span>{date.toUpperCase()}</span>
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className={`transition-transform duration-200 ${collapsedDays[date] ? '-rotate-90' : ''}`}
                           >
-                            <svg
-                              width="16"
-                              height="16"
-                              viewBox="0 0 489.645 489.645"
-                              fill="currentColor"
-                              xmlns="http://www.w3.org/2000/svg"
-                            >
-                              <path
-                                d="M460.656,132.911c-58.7-122.1-212.2-166.5-331.8-104.1c-9.4,5.2-13.5,16.6-8.3,27c5.2,9.4,16.6,13.5,27,8.3
-                                c99.9-52,227.4-14.9,276.7,86.3c65.4,134.3-19,236.7-87.4,274.6c-93.1,51.7-211.2,17.4-267.6-70.7l69.3,14.5
-                                c10.4,2.1,21.8-4.2,23.9-15.6c2.1-10.4-4.2-21.8-15.6-23.9l-122.8-25c-20.6-2-25,16.6-23.9,22.9l15.6,123.8
-                                c1,10.4,9.4,17.7,19.8,17.7c12.8,0,20.8-12.5,19.8-23.9l-6-50.5c57.4,70.8,170.3,131.2,307.4,68.2
-                                C414.856,432.511,548.256,314.811,460.656,132.911z"
-                              />
-                            </svg>
-                            Regenerate
-                          </button>
-                        )}
+                            <path d="m6 9 6 6 6-6"/>
+                          </svg>
+                        </div>
                       </div>
-                      <div className="bg-black rounded-lg p-4 border border-zinc-800 text-zinc-300">
-                        <GPT content={searchResults?.answer || ""} />
-                        {isSearching && (
-                          <span className="inline-block animate-pulse">▋</span>
-                        )}
+                      <div className={`sidebarThreads ${collapsedDays[date] ? 'collapsed' : 'expanded'}`}>
+                        {threads.map((session, index) => (
+                          <div 
+                            className={`sidebarItem ${session.id === currentThreadId ? "sidebarItemActive" : ""}`} 
+                            key={session.id + index} 
+                            onClick={() => openThread(session.id)}
+                          >
+                            {session.title}
+                            <img 
+                              src="/delete.png" 
+                              alt="" 
+                              className="deleteIcon" 
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setIsDeletionConfirmationPopupOpened(true);
+                                setDeletionConfirmation(prev => ({
+                                  ...prev,
+                                  deletingThread: session
+                                }))
+                              }} 
+                            />
+                          </div>
+                        ))}
                       </div>
                     </div>
+                  ))}
+                </>
+              )}
 
-                    {searchResults?.sources?.length > 0 && (
-                      <div>
-                        <Sources content={searchResults.sources} filters={{ showGoogleDocs, showNotion, showMeetings, showObsidian, showGmail }} />
-                      </div>
-                    )}
-                  </div>
-                </div>
+
+              {!isWaitingSessions && !sidebarSessions?.length && (
+                <p className="absolute inset-0 flex items-center justify-center text-sm text-gray-300 tracking-wide">
+                  No sessions so far...
+                </p>
               )}
             </div>
           </div>
 
-          {/* Suggested prompts moved outside the main box */}
-          {!isSearchInitiated && (
-            <div className="mt-6 space-y-2">
-              <div className="text-zinc-500 text-md">Personalized prompt suggestions</div>
-              <div className="flex flex-col gap-3">
-                {suggestedPrompts.length === 0 ? (
-                  <>
-                    {[1, 2, 3].map((_, index) => (
-                      <div
-                        key={index}
-                        className="transition-all duration-500 w-[70%] px-4 py-4 pr-16 rounded-lg bg-zinc-900/70 border border-zinc-800 text-zinc-300 hover:bg-[#3c1671] hover:border-[#6D28D9] transition-colors text-lg text-left relative group animated pulse"
-                      >
-                        <div className="h-4 bg-zinc-800 rounded w-3/4 m-4"></div>
+
+          <div className={`chat ${isSidebarOpened ? '' : "chatSidebarClosed"}`}>
+            <div className="chatContent no-scrollbar">
+              {!isSearchInitiated ? (
+                <div className="h-full flex flex-col items-center justify-center">
+                  <h2 className="text-2xl font-medium text-white mb-4">{randomPrompt || "Search your knowledge"}</h2>
+                  <div className="w-full max-w-2xl bg-black/80 border border-white/10 rounded-xl shadow-2xl overflow-hidden">
+                    <form onSubmit={(e) => {
+                      e.preventDefault();
+                      if (inputValue.trim()) {
+                        sendMessage(inputValue);
+                      }
+                    }} className="relative">
+                      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="11" cy="11" r="8"></circle>
+                          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
                       </div>
-                    ))}
-                  </>
-                ) : (
-                  <>
-                    {/* Regular prompts */}
-                    {suggestedPrompts
-                      .filter((item) => item.type === "prompt")
-                      .map((item, index) => (
+                      <input
+                        type="text"
+                        value={inputValue}
+                        onChange={(e) => setInputValue(e.target.value)}
+                        placeholder="Search your knowledge..."
+                        className="w-full py-4 px-12 bg-transparent text-white text-lg focus:outline-none"
+                        autoFocus
+                      />
+                      <div className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 flex items-center gap-2">
+                        <span className="text-xs">ESC to close</span>
+                      </div>
+                    </form>
+                    
+                    {/* Source selection buttons */}
+                    <div className="p-4 border-t border-white/10">
+                      <div className="text-xs text-zinc-500 mb-2">Search across</div>
+                      <div className="flex flex-wrap gap-2">
+                        {/* Google Docs button */}
+                        {hasGoogleDocs ? (
+                          <button
+                            onClick={() => setShowGoogleDocs(!showGoogleDocs)}
+                            className={`px-3 py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-xs font-medium border border-white/10 ${showGoogleDocs
+                              ? "bg-[#3c1671] text-white border-[#6D28D9]"
+                              : "bg-zinc-900 text-white"
+                              } transition-all duration-200 hover:border-[#6D28D9]`}
+                          >
+                            <img
+                              src="https://upload.wikimedia.org/wikipedia/commons/0/01/Google_Docs_logo_%282014-2020%29.svg"
+                              alt="Google Docs"
+                              className="w-3.5 h-3.5"
+                            />
+                            <span>Docs</span>
+                          </button>
+                        ) : (
+                          <button
+                            onClick={handleGoogleDocsClick}
+                            className="px-3 py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-xs font-medium border border-white/10 bg-zinc-900 text-white hover:bg-[#3c1671] transition-all duration-200 relative group"
+                          >
+                            <img
+                              src="https://upload.wikimedia.org/wikipedia/commons/0/01/Google_Docs_logo_%282014-2020%29.svg"
+                              alt="Google Docs"
+                              className="w-3.5 h-3.5"
+                            />
+                            <span>Docs</span>
+                          </button>
+                        )}
+
+                        {/* Notion button */}
+                        {hasNotion ? (
+                          <button
+                            onClick={() => setShowNotion(!showNotion)}
+                            className={`px-3 py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-xs font-medium border border-white/10 ${showNotion
+                              ? "bg-[#3c1671] text-white border-[#6D28D9]"
+                              : "bg-zinc-900 text-white"
+                              } transition-all duration-200 hover:border-[#6D28D9]`}
+                          >
+                            <img
+                              src="https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png"
+                              alt="Notion"
+                              className="w-3.5"
+                            />
+                            <span>Notion</span>
+                          </button>
+                        ) : (
+                          <button
+                            onClick={handleNotionClick}
+                            className="px-3 py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-xs font-medium border border-white/10 bg-zinc-900 text-white hover:bg-[#3c1671] transition-all duration-200 relative group"
+                          >
+                            <img
+                              src="https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png"
+                              alt="Notion"
+                              className="w-3.5"
+                            />
+                            <span>Notion</span>
+                          </button>
+                        )}
+
+                        {/* Obsidian button */}
+                        {hasObsidian ? (
+                          <button
+                            onClick={() => setShowObsidian(!showObsidian)}
+                            className={`px-3 py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-xs font-medium border border-white/10 ${showObsidian
+                              ? "bg-[#3c1671] text-white border-[#6D28D9]"
+                              : "bg-zinc-900 text-white"
+                              } transition-all duration-200 hover:border-[#6D28D9]`}
+                          >
+                            <img
+                              src="https://obsidian.md/images/obsidian-logo-gradient.svg"
+                              alt="Obsidian"
+                              className="w-3.5"
+                            />
+                            <span>Obsidian</span>
+                          </button>
+                        ) : (
+                          <button
+                            onClick={handleObsidianClick}
+                            className="px-3 py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-xs font-medium border border-white/10 bg-zinc-900 text-white hover:bg-[#3c1671] transition-all duration-200 relative group"
+                          >
+                            <img
+                              src="https://obsidian.md/images/obsidian-logo-gradient.svg"
+                              alt="Obsidian"
+                              className="w-3.5"
+                            />
+                            <span>Obsidian</span>
+                          </button>
+                        )}
+
+                        {/* Meetings button */}
                         <button
-                          key={index}
-                          onClick={() => {
-                            setInputValue(item.text);
-                            sendMessage(item.text);
-                          }}
-                          className="transition-all duration-500 w-[70%] px-4 py-4 pr-16 rounded-lg bg-zinc-900/70 border border-zinc-800 text-zinc-300 hover:bg-[#3c1671] hover:border-[#6D28D9] transition-colors text-lg text-left relative group"
+                          onClick={() => setShowMeetings(!showMeetings)}
+                          className={`px-3 py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-xs font-medium border border-white/10 ${showMeetings && hasMeetings
+                            ? "bg-[#3c1671] text-white border-[#6D28D9]"
+                            : "bg-zinc-900 text-white"
+                            } transition-all duration-200 hover:border-[#6D28D9] ${!hasMeetings ? "opacity-50 cursor-not-allowed" : ""
+                            }`}
+                          disabled={!hasMeetings}
                         >
-                          {item.text}
-                          <div className="absolute right-4 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              width="24"
-                              height="20"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              className="text-white"
-                            >
-                              <path d="M3 12h18"></path>
-                              <path d="m16 5 7 7-7 7"></path>
-                            </svg>
-                          </div>
+                          <ChatCenteredDots className="w-3.5 h-3.5" />
+                          <span>Meetings</span>
                         </button>
-                      ))}
-                    {/* Email actions */}
-                    {suggestedPrompts
-                      .filter((item) => item.type === "email")
-                      .map((item, index) => (
-                        <button
-                          key={index}
-                          onClick={() => {
-                            setInputValue(item.text);
-                            sendMessage(item.text);
-                          }}
-                          className="transition-all duration-500 w-[70%] px-4 py-4 pr-16 rounded-lg bg-zinc-900/70 border border-zinc-800 text-zinc-300 hover:bg-[#3c1671] hover:border-[#6D28D9] transition-colors text-lg text-left relative group"
-                        >
-                          <span>{item.text}</span>
-                          <div className="absolute right-4 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              width="24"
-                              height="20"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              className="text-white"
+
+                        {/* Gmail button */}
+                        {hasGmail ? (
+                          <button
+                            onClick={() => setShowGmail(!showGmail)}
+                            className={`px-3 py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-xs font-medium border border-white/10 ${showGmail
+                              ? "bg-[#3c1671] text-white border-[#6D28D9]"
+                              : "bg-zinc-900 text-white"
+                              } transition-all duration-200 hover:border-[#6D28D9]`}
+                          >
+                            <img
+                              src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/2560px-Gmail_icon_%282020%29.svg.png"
+                              alt="Gmail"
+                              className="w-3.5"
+                            />
+                            <span>Gmail</span>
+                          </button>
+                        ) : (
+                          <button
+                            onClick={handleGmailClick}
+                            className="px-3 py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-xs font-medium border border-white/10 bg-zinc-900 text-white hover:bg-[#3c1671] transition-all duration-200 relative"
+                          >
+                            <img
+                              src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/2560px-Gmail_icon_%282020%29.svg.png"
+                              alt="Gmail"
+                              className="w-3.5"
+                            />
+                            <span>Gmail</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* Suggested prompts */}
+                    {suggestedPrompts.filter(item => item.type === "prompt").length > 0 && (
+                      <div className="p-3 border-t border-white/10">
+                        <div className="text-xs text-zinc-500 mb-2 px-2">Suggested searches</div>
+                        <div className="space-y-1">
+                          {suggestedPrompts.filter(item => item.type === "prompt").slice(0, 3).map((prompt, idx) => (
+                            <button
+                              key={idx}
+                              onClick={() => {
+                                setInputValue(prompt.text);
+                                // Don't immediately call sendMessage here
+                              }}
+                              className="w-full text-left px-3 py-2 text-zinc-300 rounded transition-colors text-sm flex items-center hover:bg-white/5"
                             >
-                              <path d="M3 12h18"></path>
-                              <path d="m16 5 7 7-7 7"></path>
-                            </svg>
+                              <svg className="h-4 w-4 min-w-4 flex-shrink-0 mr-2 text-zinc-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              {prompt.text}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="rounded-lg border border-zinc-800 relative">
+                    <div className="p-4 md:p-6 space-y-6">
+                      <div className="w-full">
+                        <InputArea
+                          inputValue={inputValue}
+                          setInputValue={setInputValue}
+                          sendMessage={sendMessage}
+                          className={`w-full ${isSearchInitiated && "hidden"}`}
+                        />
+                      </div>
+
+                      <div>
+                        {currentThread?.map((question, index) => (
+                          <div key={`thread-item-${index}`}>
+                          <div className="space-y-6 threadItem">
+                            <Query
+                              content={question?.query || ""}
+                              sourcesTime={sourcesTime}
+                              completionTime={question.completionTime}
+                            />
+
+                            <div className="answer">
+                              <div>
+                                <div className="flex justify-between items-center mb-1">
+                                </div>
+                                <div className="text-zinc-300 text-left w-[80%] font-poppins tracking-wide">
+                                  <GPT content={question?.reply || ""} className="text-sm"/>
+                                  {isSearching && index === currentThread.length - 1 && (
+                                    <span className="inline-block animate-pulse">▋</span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {question?.sources?.length > 0 && (
+                                <div>
+                                  <Sources content={question.sources} filters={{ showGoogleDocs, showNotion, showMeetings, showObsidian, showGmail }} />
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        </button>
-                      ))}
-                  </>
-                )}
-              </div>
+                          <div className="divider">
+                            {index < currentThread.length - 1 && (
+                              <div className="border-t border-zinc-800 my-10"></div>
+                            )}
+                          </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {!isSearchInitiated && (
+                <div className="mt-6 space-y-2 hidden">
+                  <div className="text-zinc-500 text-sm">Personalized prompt suggestions</div>
+                  <div className="flex flex-col gap-3">
+                    {suggestedPrompts.length === 0 ? (
+                      <>
+                        {[1, 2, 3].map((_, index) => (
+                          <div
+                            key={index}
+                            className="transition-all duration-500 w-[70%] px-4 py-4 pr-16 rounded-lg bg-zinc-900/70 border border-zinc-800 text-zinc-300 hover:bg-[#3c1671] hover:border-[#6D28D9] transition-colors text-lg text-left relative group animated pulse"
+                          >
+                            <div className="h-4 bg-zinc-800 rounded w-3/4 m-4"></div>
+                          </div>
+                        ))}
+                      </>
+                    ) : (
+                      <>
+                        {/* Suggested prompts section hidden now */}
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+
             </div>
-          )}
+
+            <div className="followUpInputArea">
+              <InputArea
+                inputValue={inputValue}
+                setInputValue={setInputValue}
+                sendMessage={sendMessage}
+                className={`w-full ${!isSearchInitiated && "hidden"}`}
+                placeholder="Ask a follow-up question..."
+              />
+            </div>
+          </div>
+
         </div>
       </div>
-      
+
       {/* Google Docs Modal */}
       {showGoogleDocsModal && (
         <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
           <div className="bg-zinc-900 rounded-lg p-6 max-w-md w-full border border-zinc-700">
             <h3 className="text-xl font-medium text-white mb-4">Google Access Required</h3>
             <p className="text-zinc-300 mb-6">
-              {googleTokenVersion === "old" 
+              {googleTokenVersion === "old"
                 ? "Your Google access token is old and you'll have to reconnect Google to continue using it."
                 : "You need to connect your Google account to access Google Docs. Please visit the settings page to connect."}
             </p>
@@ -947,7 +1881,7 @@ export default function AISearch() {
           <div className="bg-zinc-900 rounded-lg p-6 max-w-md w-full border border-zinc-700">
             <h3 className="text-xl font-medium text-white mb-4">Google Access Required</h3>
             <p className="text-zinc-300 mb-6">
-              {googleTokenVersion === "old" 
+              {googleTokenVersion === "old"
                 ? "Your Google access token is old and you'll have to reconnect Google to continue using it."
                 : "You need to connect your Google account to access Gmail. Please visit the settings page to connect."}
             </p>
@@ -971,13 +1905,27 @@ export default function AISearch() {
     </>
   );
 }
+
 /* 17. Export InputArea component */
 export function InputArea({
   inputValue,
   setInputValue,
   sendMessage,
   className = "",
+  placeholder = "Search your knowledge...",
 }) {
+  const inputRef = useRef(null);
+  
+  // Expose the focus method to parent components
+  useEffect(() => {
+    // Add focus method to the DOM element for external access
+    if (inputRef.current) {
+      inputRef.current.focusInput = () => {
+        inputRef.current.focus();
+      };
+    }
+  }, []);
+  
   return (
     <div className={`flex items-center ${className}`}>
       <div className="relative flex-1 flex items-center">
@@ -998,9 +1946,10 @@ export function InputArea({
           </svg>
         </div>
         <input
+          ref={inputRef}
           type="text"
-          placeholder="Search anything..."
-          className="flex-1 p-3 md:p-4 pl-10 md:pl-12 text-sm md:text-base rounded-l-lg focus:outline-none bg-black border border-zinc-800 text-zinc-300 focus:border-[#6D28D9] transition-colors"
+          placeholder={placeholder}
+          className="flex-1 p-3 md:p-4 pl-10 md:pl-12 text-md rounded-l-lg focus:outline-none bg-black border border-zinc-800 text-zinc-300 focus:border-[#6D28D9] transition-colors"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && sendMessage()}
@@ -1015,29 +1964,33 @@ export function InputArea({
     </div>
   );
 }
+InputArea.displayName = 'InputArea';
+
 /* 21. Query component for displaying content */
 export const Query = ({ content = "", sourcesTime, completionTime }) => {
   return (
     <div className="flex flex-col md:flex-row md:items-center justify-between">
-      <div className="text-xl md:text-3xl font-medium text-white">
+      <div className="text-xl md:text-3xl font-semibold text-zinc-500">
         {content}
       </div>
       <div className="text-sm text-zinc-500 mt-1 md:mt-0 flex flex-col md:items-end">
-        {sourcesTime && (
-          <div className="px-2 py-1 rounded-md bg-[#9334E9] text-white w-fit">
-            Searched in {sourcesTime} seconds
+        {completionTime && (
+          <div className="px-2 rounded-md text-zinc-400 w-fit">
+            Searched in {completionTime} seconds
           </div>
         )}
       </div>
     </div>
   );
 };
+Query.displayName = 'Query';
+
 /* 22. Sources component for displaying list of sources */
 export const Sources = ({ content = [], filters = {} }) => {
   // Filter sources based on filter settings
   const filteredSources = useMemo(() => {
     if (!content || !Array.isArray(content)) return [];
-    
+
     return content.filter(source => {
       const sourceType = source.type;
 
@@ -1047,7 +2000,7 @@ export const Sources = ({ content = [], filters = {} }) => {
       if ((sourceType === 'msteams' || sourceType === 'google_meet') && !filters.showMeetings) return false;
       if (sourceType === 'obsidian' && !filters.showObsidian) return false;
       if ((sourceType === 'gmail' || sourceType === 'email') && !filters.showGmail) return false;
-      
+
       // Include sources with unknown types
       return true;
     });
@@ -1055,70 +2008,70 @@ export const Sources = ({ content = [], filters = {} }) => {
 
   // Helper function to determine source icon based on 'type' directly
   const getSourceIcon = (type) => {
-    switch(type) {
+    switch (type) {
       case "gmail":
         return (
           <img
             src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/2560px-Gmail_icon_%282020%29.svg.png"
             alt="Gmail"
-            className="w-6 flex-shrink-0"
+            className="w-4 flex-shrink-0"
           />
         );
-        
+
       case "msteams":
         return (
           <img
             src="https://www.svgrepo.com/show/303180/microsoft-teams-logo.svg"
             alt="Microsoft Teams"
-            className="w-8"
+            className="w-4"
           />
         );
-        
+
       case "google_meet":
         return (
           <img
             src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Google_Meet_icon_%282020%29.svg/1024px-Google_Meet_icon_%282020%29.svg.png?20221213135236"
             alt="Google Meet"
-            className="w-8"
+            className="w-4"
           />
         );
-        
+
       case "google_docs":
         return (
           <img
             src="https://upload.wikimedia.org/wikipedia/commons/0/01/Google_Docs_logo_%282014-2020%29.svg"
             alt="Google Docs"
-            className="w-6 h-6"
+            className="w-3"
           />
         );
-        
+
       case "notion":
         return (
           <img
             src="https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png"
             alt="Notion"
-            className="w-6 h-6"
+            className="w-4"
           />
         );
-        
+
       case "obsidian":
         return (
           <img
             src="https://obsidian.md/images/obsidian-logo-gradient.svg"
             alt="Obsidian"
-            className="w-6 h-6"
+            className="w-4"
           />
         );
-      
+
       case "email":
         return (
           <img
             src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/2560px-Gmail_icon_%282020%29.svg.png"
             alt="Gmail"
-            className="w-6 flex-shrink-0"
+            className="w-4 flex-shrink-0"
           />
         );
-      
+
       default:
         return (
           <svg
@@ -1131,7 +2084,7 @@ export const Sources = ({ content = [], filters = {} }) => {
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
-            className="w-6 h-6 text-zinc-400"
+            className="w-4 h-4 text-zinc-400"
           >
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
             <polyline points="14 2 14 8 20 8"></polyline>
@@ -1143,7 +2096,7 @@ export const Sources = ({ content = [], filters = {} }) => {
     }
   };
 
-  if (!content || content.length === 0) {
+  if (!content || content?.length === 0) {
     return (
       <div>
         <div className="text-[#9334E9] font-medium mb-3 text-md md:text-xl flex items-center gap-2">
@@ -1166,7 +2119,7 @@ export const Sources = ({ content = [], filters = {} }) => {
   }
 
   // Show message when all sources are filtered out
-  if (filteredSources.length === 0 && content.length > 0) {
+  /* if (filteredSources.length === 0 && content.length > 0) {
     return (
       <div>
         <div className="text-[#9334E9] font-medium mb-3 text-md md:text-xl flex items-center gap-2">
@@ -1178,44 +2131,64 @@ export const Sources = ({ content = [], filters = {} }) => {
         </div>
       </div>
     );
-  }
+  } */
 
   return (
-    <div>
+    <div>{/*  */}
       <div className="text-[#9334E9] font-medium mb-3 text-md md:text-xl flex items-center gap-2">
         {/* <GitBranch size={20} className="md:w-6 md:h-6" /> */}
         {/* <span>Sources</span> */}
       </div>
-      <div className="grid grid-cols-1 gap-2 pt-8">
+      <div className="sourceItems no-scrollbar">
         {Array.isArray(filteredSources) &&
           filteredSources.map((source, index) => {
             return (
               <a
                 key={index}
                 href={source.url || "#"}
-                className="block"
+                className="block sourceItem"
                 target="_blank"
                 rel="noopener noreferrer"
-              >
-                <div className="bg-black rounded-lg p-4 border border-zinc-800 hover:border-[#6D28D9] transition-colors h-[160px] relative">
-                  <Link className="absolute top-4 right-4 w-4 h-4 text-zinc-500" />
+              >{/* bg-black rounded-lg p-4 border border-zinc-800 hover:border-[#6D28D9] transition-colors h-[160px] relative */}
+                <div className="">
+                  <svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    className="absolute top-4 right-4 w-4 h-4 text-zinc-500" 
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    stroke="currentColor"
+                  >
+                    <path 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round" 
+                      strokeWidth={2} 
+                      d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" 
+                    />
+                  </svg>
                   <div className="text-zinc-300 text-sm font-medium mb-2 flex items-center gap-2">
                     {getSourceIcon(source.type)}
                     <div className="flex flex-col overflow-hidden">
-                      <span className="truncate font-medium max-w-full">
-                        {source.title || "Document"}
+                      <span className="truncate font-normal max-w-full text-zinc-400 text-xs">
+                        {
+                          source.type === "gmail" || source.type === "email" ? "Gmail" :
+                          source.type === "google_docs" ? "Docs" :
+                          source.type === "notion" ? "Notion" :
+                          source.type === "obsidian" ? "Obsidian" :
+                          source.type === "msteams" || source.type === "google_meet" ? "Meeting" :
+                          "Note"
+                        }
                       </span>
-                      
+
                       {/* Show sender if available (for email types) */}
-                      {source.sender && (
+                      {source.from && (
                         <span className="text-xs text-zinc-400 truncate max-w-full">
-                          {source.sender}
+                          {source.from}
                         </span>
                       )}
                     </div>
                   </div>
-                  <div className="text-zinc-500 text-xs overflow-hidden line-clamp-4">
-                    <ReactMarkdown>{source.content || ""}</ReactMarkdown>
+                  <div className="text-zinc-300 font-medium text-xs overflow-hidden line-clamp-2">
+                    <p>{source.title || "Document"}</p>
                   </div>
                 </div>
               </a>
@@ -1225,6 +2198,8 @@ export const Sources = ({ content = [], filters = {} }) => {
     </div>
   );
 };
+Sources.displayName = 'Sources';
+
 // 27. VectorCreation component for displaying a brief message
 export const VectorCreation = ({ content = "" }) => {
   const [visible, setVisible] = useState(true);
@@ -1242,6 +2217,8 @@ export const VectorCreation = ({ content = "" }) => {
     </div>
   ) : null;
 };
+VectorCreation.displayName = 'VectorCreation';
+
 // 28. Heading component for displaying various headings
 export const Heading = ({ content = "" }) => {
   return (
@@ -1251,6 +2228,7 @@ export const Heading = ({ content = "" }) => {
     </div>
   );
 };
+Heading.displayName = 'Heading';
 
 // Move these utility functions outside of any component
 const fetchSession = async () => {
@@ -1358,18 +2336,32 @@ const GPT = ({ content = "" }) => {
   return (
     <div ref={contentRef}>
       <ReactMarkdown
-        className="prose text-base md:text-xl mt-1 w-full break-words prose-p:leading-relaxed prose-p:mb-4"
+        className="prose text-md leading-8 font mt-1 w-full break-words prose-p:mb-4 text-white"
         remarkPlugins={[remarkGfm]}
         components={{
-          a: ({ node, ...props }) => (
-            <a 
-              {...props} 
-              className="text-[#9334E9] font-medium hover:text-[#7928CA] underline transition-colors" 
-              target="_blank"
-              rel="noopener noreferrer"
-            />
-          ),
-          p: ({ node, ...props }) => <p className="mb-4" {...props} />,
+          a: (() => {
+            let linkCounter = 0;
+            const LinkComponent = ({ node, ...props }) => {
+              linkCounter += 1;
+              return (
+                <a
+                  {...props}
+                  className="text-[#9334E9] font-normal hover:text-[#7928CA] transition-colors"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  (Link {linkCounter})
+                </a>
+              );
+            };
+            LinkComponent.displayName = 'MarkdownLink';
+            return LinkComponent;
+          })(),
+          p: (() => {
+            const ParagraphComponent = ({ node, ...props }) => <p className="mb-4" {...props} />;
+            ParagraphComponent.displayName = 'MarkdownParagraph';
+            return ParagraphComponent;
+          })(),
         }}
       >
         {content}
@@ -1391,8 +2383,10 @@ const GPT = ({ content = "" }) => {
     </div>
   );
 };
+GPT.displayName = 'GPT';
+
 // 31. FollowUp component for displaying follow-up options
-export const FollowUp = ({ content = "", sendMessage = () => {} }) => {
+export const FollowUp = ({ content = "", sendMessage = () => { } }) => {
   const [followUp, setFollowUp] = useState([]);
   const messagesEndReff = useRef(null);
 
@@ -1444,9 +2438,11 @@ export const FollowUp = ({ content = "", sendMessage = () => {} }) => {
     </>
   );
 };
+FollowUp.displayName = 'FollowUp';
+
 // 40. MessageHandler component for dynamically rendering message components
 const MessageHandler = memo(
-  ({ message = { type: "", content: "" }, sendMessage = () => {} }) => {
+  ({ message = { type: "", content: "" }, sendMessage = () => { } }) => {
     const COMPONENT_MAP = {
       Query,
       Sources,
@@ -1462,9 +2458,7 @@ const MessageHandler = memo(
     ) : null;
   }
 );
-
-// Add this line after the component definition
-MessageHandler.displayName = "MessageHandler";
+MessageHandler.displayName = 'MessageHandler';
 
 // Onboarding component to guide users to connect their accounts
 const OnboardingFlow = ({ onClose, setHasSeenOnboarding }) => {
@@ -1499,16 +2493,9 @@ const OnboardingFlow = ({ onClose, setHasSeenOnboarding }) => {
 
   return (
     <div className="fixed inset-0 flex items-center justify-center z-40 pointer-events-none">
-      {/* Overlay with click-through for navbar */}
-      <div
-        className="absolute inset-0 bg-zinc-800 bg-opacity-40 pointer-events-auto"
-        style={{ marginLeft: "64px" }}
-      ></div>
-
       {/* Main content positioned to avoid navbar */}
       <div
         className="bg-black bg-opacity-90 rounded-lg border border-zinc-700 max-w-4xl w-full p-6 relative pointer-events-auto"
-        style={{ marginLeft: "64px" }}
       >
         <div className="absolute -top-2 -left-2 bg-zinc-700 p-2 rounded-full shadow-lg">
           <svg
@@ -1602,3 +2589,4 @@ const OnboardingFlow = ({ onClose, setHasSeenOnboarding }) => {
     </div>
   );
 };
+OnboardingFlow.displayName = 'OnboardingFlow';

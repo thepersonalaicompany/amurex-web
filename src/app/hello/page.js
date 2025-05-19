@@ -1,13 +1,8 @@
 import Link from 'next/link';
-import { Navbar } from "@/components/Navbar";
 
 export default function HelloPage() {
   return (
     <div className="flex min-h-screen bg-black text-white">
-      {/* Left App Navbar - the thin one */}
-      <div className="w-16 flex-shrink-0 bg-black border-r border-zinc-800">
-        <Navbar />
-      </div>
 
       {/* Main Content Area */}
       <div className="flex-1 overflow-hidden">

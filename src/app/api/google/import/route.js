@@ -130,7 +130,7 @@ export async function POST(req) {
           },
           body: JSON.stringify({
             userId: userId,
-            useStandardColors: false,
+            maxEmails: 20
           }),
         }
       );
@@ -333,10 +333,13 @@ async function processGoogleDocs(session, supabase, providedTokens = null) {
     // Print fetched results
     console.log("Fetched Google Docs:", JSON.stringify(response.data.files, null, 2));
     
+    // Commented out text splitter initialization
+    /*
     const textSplitter = new RecursiveCharacterTextSplitter({
       chunkSize: 200,
       chunkOverlap: 50,
     });
+    */
 
     const results = [];
     for (const file of response.data.files) {
@@ -402,7 +405,7 @@ async function processGoogleDocs(session, supabase, providedTokens = null) {
           .from("documents")
           .select("id")
           .eq("user_id", session.id)
-          .eq("checksum", checksum)
+          .eq("url", `https://docs.google.com/document/d/${file.id}`)
           .single();
 
         console.log("existing doc?", existingDoc);
@@ -418,8 +421,11 @@ async function processGoogleDocs(session, supabase, providedTokens = null) {
           continue;
         }
 
-        // Generate tags and chunks
+        // Generate tags
         const tags = await generateTags(content);
+        
+        // Commented out chunking and embedding generation
+        /*
         const chunks = await textSplitter.createDocuments([content]);
         const chunkTexts = chunks.map((chunk) => chunk.pageContent);
 
@@ -497,8 +503,14 @@ async function processGoogleDocs(session, supabase, providedTokens = null) {
             return item.embedding;
           })
         ).join(",")}]`;
+        */
+        
+        // Using empty arrays for chunks and embeddings
+        const chunkTexts = [];
+        const embeddings = [];
+        const centroid = null;
 
-        // Insert document with properly formatted vectors
+        // Insert document with empty chunks and embeddings
         const { data: newDoc, error: newDocError } = await adminSupabase
           .from("documents")
           .insert({
@@ -549,6 +561,8 @@ async function processGoogleDocs(session, supabase, providedTokens = null) {
   }
 }
 
+// Commenting out the centroid calculation function since it's not being used
+/*
 function calculateCentroid(embeddings) {
   if (!embeddings || embeddings.length === 0) {
     throw new Error("No embeddings provided to calculate centroid");
@@ -569,3 +583,4 @@ function calculateCentroid(embeddings) {
 
   return centroid;
 }
+*/

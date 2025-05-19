@@ -122,7 +122,7 @@ export async function GET(request) {
           },
           body: JSON.stringify({
             userId: userId,
-            useStandardColors: false,
+            maxEmails: 20
           }),
         });
         

@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@intercom/messenger-js-sdk": "^0.0.14",
     "@langchain/community": "^0.3.9",
     "@mistralai/mistralai": "^1.5.0",
@@ -29,6 +30,7 @@
     "http-server": "^14.1.1",
     "js-cookie": "^3.0.5",
     "langchain": "^0.3.4",
+    "ldrs": "^1.1.7",
     "lucide-react": "^0.453.0",
     "next": "14.2.15",
     "novel": "^0.5.0",

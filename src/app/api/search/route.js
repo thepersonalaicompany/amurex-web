@@ -121,7 +121,13 @@ export async function POST(req) {
       const promptsStartTime = performance.now();
       const prompts = await generatePrompts(body.documents);
       console.log(`[${performance.now() - promptsStartTime}ms] Prompts generated`);
-      return Response.json({ prompts });
+      // hardcoded prompts
+      // return Response.json({ prompts: [
+      //   { type: 'prompt', text: 'What is the most important thing I need to do today?' },
+      //   { type: 'prompt', text: 'What was my last purchase?' },
+      //   { type: 'email', text: 'Draft an email to person X about...' }
+      // ] });
+      return Response.json({ apiPrompts: prompts });
     } catch (error) {
       console.error('Error generating prompts:', error);
       return Response.json({ error: 'Failed to generate prompts' }, { status: 500 });
@@ -129,7 +135,7 @@ export async function POST(req) {
   }
   
   // Original chat functionality continues here...
-  const { message, user_id } = body;
+  const { message, context, user_id } = body;
   
   if (!user_id) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
@@ -141,8 +147,7 @@ export async function POST(req) {
     console.log("Starting search at:", new Date().toISOString());
     
     // Call search_new endpoint directly
-    const response = await fetch('https://brain.amurex.ai/search_new', {
-    // const response = await fetch('http://localhost:8080/search_new', {
+    const response = await fetch('https://brain.amurex.ai/search_unified', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${process.env.BRAIN_API_KEY}`,
@@ -150,7 +155,10 @@ export async function POST(req) {
       },
       body: JSON.stringify({
         user_id: user_id,
-        query: message,
+        query: [
+          ...context,
+          {role: "user", content: message}
+        ], // messages, without sources, without system prompt
         ai_enabled: false,
         limit: 3
       })
@@ -261,6 +269,7 @@ export async function POST(req) {
 
                     Always aim to be helpful, aware, and resourceful — even if you have to fake it a bit.`,
               },
+              ...context,
               {
                 role: "user",
                 content: `Query: ${message}
