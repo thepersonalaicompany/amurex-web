@@ -84,17 +84,52 @@ export async function GET(request) {
       throw tokenError;
     }
 
+    // Get user's email from Gmail profile to store in user_gmails
+    oauth2Client.setCredentials(tokens);
+    const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
+    
+    try {
+      const profile = await gmail.users.getProfile({
+        userId: 'me'
+      });
+      
+      const primaryEmail = profile.data.emailAddress;
+      
+      if (primaryEmail) {
+        // Store the email and tokens in user_gmails table
+        const { error: gmailError } = await supabase
+          .from('user_gmails')
+          .insert({
+            user_id: userId,
+            email_address: primaryEmail,
+            access_token: tokens.access_token,
+            refresh_token: tokens.refresh_token,
+            type: null  // google_token_version set to null as requested
+          });
+        
+        if (gmailError) {
+          console.error('Error storing user Gmail record:', gmailError);
+          // Continue anyway since main user record was updated
+        } else {
+          console.log('User Gmail record created successfully for email:', primaryEmail);
+        }
+      }
+    } catch (profileError) {
+      console.error('Error fetching Gmail profile:', profileError);
+      // Continue execution as this is not critical
+    }
+
     // Increment the user_count for this client after successful token exchange and assignment
     // This ensures we only count users who complete the full OAuth flow
-    console.log('Incrementing client user count for client:', clientId);
-    const { error: countError } = await supabase.rpc('increment_google_client_user_count', {
-      client_id_param: clientId
-    });
+    // console.log('Incrementing client user count for client:', clientId);
+    // const { error: countError } = await supabase.rpc('increment_google_client_user_count', {
+    //   client_id_param: clientId
+    // });
     
-    if (countError) {
-      console.error('Error incrementing client user count:', countError);
-      // Continue anyway since this is not critical
-    }
+    // if (countError) {
+    //   console.error('Error incrementing client user count:', countError);
+    //   // Continue anyway since this is not critical
+    // }
 
     console.log('Google connection successful for user:', userId, 'with client:', clientId, 'of type:', clientType);
 
@@ -108,61 +143,7 @@ export async function GET(request) {
       redirectUrl = `${process.env.NEXT_PUBLIC_APP_URL}/settings?connection=success&source=google`;
     }
 
-    // Start background processes - no need to wait for these to complete
-    // Process Gmail labels for all token versions
-    (async () => {
-      try {
-        console.log('Starting Gmail label processing for user:', userId);
-        
-        // Call the existing Gmail process-labels API endpoint
-        const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/gmail/process-labels`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            userId: userId,
-            maxEmails: 20
-          }),
-        });
-        
-        const result = await response.json();
-        console.log('Gmail label processing result:', result);
-      } catch (error) {
-        console.error('Error in Gmail label processing:', error);
-      }
-    })();
-
-    // Import Google Docs only if token version is "full"
-    if (clientType === 'full') {
-      (async () => {
-        try {
-          console.log('Starting Google Docs import for user:', userId);
-          
-          // Call the existing Google import API endpoint with POST method
-          // Pass the Google tokens directly in the request body
-          const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/google/import`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              userId: userId,
-              googleAccessToken: tokens.access_token,
-              googleRefreshToken: tokens.refresh_token,
-              googleTokenExpiry: tokens.expiry_date
-            }),
-          });
-          
-          const result = await response.json();
-          console.log('Google Docs import result:', result);
-        } catch (error) {
-          console.error('Error in Google Docs import:', error);
-        }
-      })();
-    }
-
-    // Redirect the user immediately, while background processes continue
+    // Redirect the user immediately
     return NextResponse.redirect(redirectUrl);
   } catch (error) {
     console.error('Error in Google callback:', error);

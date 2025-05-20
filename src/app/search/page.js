@@ -18,10 +18,14 @@ import "./search.css"
 import Popup from "@/components/Popup/Popup";
 
 // Add SpotlightSearch component after imports
-const SpotlightSearch = ({ isVisible, onClose, onSearch, suggestedPrompts = [], sourceFilters = {} }) => {
+const SpotlightSearch = ({ isVisible, onClose, onSearch, suggestedPrompts = [], sourceFilters = {}, customPlaceholder }) => {
   const [inputValue, setInputValue] = useState("");
   const [selectedSuggestion, setSelectedSuggestion] = useState(-1);
   const inputRef = useRef(null);
+  
+  // Add state for Gmail dropdown in SpotlightSearch
+  const [isGmailDropdownVisible, setIsGmailDropdownVisible] = useState(false);
+  const [dropdownTimeout, setDropdownTimeout] = useState(null);
   
   // Reset selected suggestion when input changes
   useEffect(() => {
@@ -98,7 +102,8 @@ const SpotlightSearch = ({ isVisible, onClose, onSearch, suggestedPrompts = [], 
     showObsidian, setShowObsidian,
     showGmail, setShowGmail,
     hasGoogleDocs, hasNotion, hasObsidian, hasMeetings, hasGmail,
-    handleGoogleDocsClick, handleNotionClick, handleMeetingsClick, handleObsidianClick, handleGmailClick
+    handleGoogleDocsClick, handleNotionClick, handleMeetingsClick, handleObsidianClick, handleGmailClick,
+    gmailProfiles // Now getting gmailProfiles from sourceFilters
   } = sourceFilters;
   
   return (
@@ -117,7 +122,7 @@ const SpotlightSearch = ({ isVisible, onClose, onSearch, suggestedPrompts = [], 
             type="text"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            placeholder="Search your knowledge..."
+            placeholder={customPlaceholder || "Search your knowledge..."}
             className="w-full py-4 px-12 bg-transparent text-white text-lg focus:outline-none"
           />
           <div className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 flex items-center gap-2">
@@ -129,11 +134,128 @@ const SpotlightSearch = ({ isVisible, onClose, onSearch, suggestedPrompts = [], 
         <div className="p-4 border-t border-white/10">
           <div className="text-xs text-zinc-500 mb-2">Search across</div>
           <div className="flex flex-wrap gap-2">
+            {/* Gmail button - implemented with dropdown similar to AISearch component */}
+            {hasGmail ? (
+              <div 
+                className="relative"
+                onMouseEnter={() => {
+                  // Clear any existing timeout when mouse enters
+                  if (dropdownTimeout) {
+                    clearTimeout(dropdownTimeout);
+                    setDropdownTimeout(null);
+                  }
+                  setIsGmailDropdownVisible(true);
+                }}
+                onMouseLeave={() => {
+                  // Set a timeout to hide the dropdown after 300ms
+                  const timeout = setTimeout(() => {
+                    setIsGmailDropdownVisible(false);
+                  }, 300);
+                  setDropdownTimeout(timeout);
+                }}
+              >
+                <button
+                  onClick={() => setShowGmail(!showGmail)}
+                  className={`px-3 py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-xs font-medium border border-white/10 ${showGmail
+                    ? "bg-[#3c1671] text-white border-[#6D28D9]"
+                    : "bg-zinc-900 text-white"
+                    } transition-all duration-200 hover:border-[#6D28D9]`}
+                >
+                  <img
+                    src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/2560px-Gmail_icon_%282020%29.svg.png"
+                    alt="Gmail"
+                    className="w-3.5"
+                  />
+                  <span>Gmail</span>
+                </button>
+                {isGmailDropdownVisible && (
+                  <div 
+                    className="absolute top-full left-0 mt-1 bg-zinc-900 border border-zinc-800 rounded-lg shadow-lg text-xs text-zinc-400 min-w-[200px]"
+                    onMouseEnter={() => {
+                      // Clear timeout when mouse enters dropdown
+                      if (dropdownTimeout) {
+                        clearTimeout(dropdownTimeout);
+                        setDropdownTimeout(null);
+                      }
+                    }}
+                    onMouseLeave={() => {
+                      // Set timeout to hide dropdown when mouse leaves
+                      const timeout = setTimeout(() => {
+                        setIsGmailDropdownVisible(false);
+                      }, 300);
+                      setDropdownTimeout(timeout);
+                    }}
+                  >
+                    {gmailProfiles && gmailProfiles.length > 0 ? (
+                      <>
+                        {gmailProfiles.map((profile) => (
+                          <div 
+                            key={profile.email} 
+                            className="px-3 py-2 border-b border-zinc-800"
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="truncate">{profile.email}</span>
+                              <span className="ml-2 px-1.5 py-0.5 bg-zinc-800 rounded text-[10px]">
+                                {profile.type === 'full' ? 'Full' : 'Gmail'}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                        <div className="p-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              initiateGmailAuth(); // Use the new direct auth function
+                            }}
+                            className="w-full px-2 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 flex items-center justify-center gap-1.5 transition-colors"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <line x1="12" y1="5" x2="12" y2="19"></line>
+                              <line x1="5" y1="12" x2="19" y2="12"></line>
+                            </svg>
+                            Add account
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="p-3 text-center">
+                        <p className="text-zinc-500 mb-2">No Gmail accounts connected</p>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            initiateGmailAuth(); // Use the new direct auth function
+                          }}
+                          className="w-full px-2 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 flex items-center justify-center gap-1.5 transition-colors"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                          </svg>
+                          Add account
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <button
+                onClick={handleGmailClick}
+                className="px-3 py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-xs font-medium border border-white/10 bg-zinc-900 text-white hover:bg-[#3c1671] transition-all duration-200 relative"
+              >
+                <img
+                  src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/2560px-Gmail_icon_%282020%29.svg.png"
+                  alt="Gmail"
+                  className="w-3.5"
+                />
+                <span>Gmail</span>
+              </button>
+            )}
             {/* Google Docs button */}
             {hasGoogleDocs ? (
               <button
                 onClick={() => setShowGoogleDocs(!showGoogleDocs)}
-                className={`px-3 py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-xs font-medium border border-white/10 ${showGoogleDocs
+                className={`hidden px-3 py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-xs font-medium border border-white/10 ${showGoogleDocs
                   ? "bg-[#3c1671] text-white border-[#6D28D9]"
                   : "bg-zinc-900 text-white"
                   } transition-all duration-200 hover:border-[#6D28D9]`}
@@ -148,7 +270,7 @@ const SpotlightSearch = ({ isVisible, onClose, onSearch, suggestedPrompts = [], 
             ) : (
               <button
                 onClick={handleGoogleDocsClick}
-                className="px-3 py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-xs font-medium border border-white/10 bg-zinc-900 text-white hover:bg-[#3c1671] transition-all duration-200 relative group"
+                className="hidden px-3 py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-xs font-medium border border-white/10 bg-zinc-900 text-white hover:bg-[#3c1671] transition-all duration-200 relative group"
               >
                 <img
                   src="https://upload.wikimedia.org/wikipedia/commons/0/01/Google_Docs_logo_%282014-2020%29.svg"
@@ -232,36 +354,6 @@ const SpotlightSearch = ({ isVisible, onClose, onSearch, suggestedPrompts = [], 
               <ChatCenteredDots className="w-3.5 h-3.5" />
               <span>Meetings</span>
             </button>
-
-            {/* Gmail button */}
-            {hasGmail ? (
-              <button
-                onClick={() => setShowGmail(!showGmail)}
-                className={`px-3 py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-xs font-medium border border-white/10 ${showGmail
-                  ? "bg-[#3c1671] text-white border-[#6D28D9]"
-                  : "bg-zinc-900 text-white"
-                  } transition-all duration-200 hover:border-[#6D28D9]`}
-              >
-                <img
-                  src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/2560px-Gmail_icon_%282020%29.svg.png"
-                  alt="Gmail"
-                  className="w-3.5"
-                />
-                <span>Gmail</span>
-              </button>
-            ) : (
-              <button
-                onClick={handleGmailClick}
-                className="px-3 py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-xs font-medium border border-white/10 bg-zinc-900 text-white hover:bg-[#3c1671] transition-all duration-200 relative"
-              >
-                <img
-                  src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/2560px-Gmail_icon_%282020%29.svg.png"
-                  alt="Gmail"
-                  className="w-3.5"
-                />
-                <span>Gmail</span>
-              </button>
-            )}
           </div>
         </div>
         
@@ -399,8 +491,55 @@ export default function AISearch() {
   const [showBroaderAccessModal, setShowBroaderAccessModal] = useState(false);
   const [isGoogleAuthInProgress, setIsGoogleAuthInProgress] = useState(false);
 
+  // Add state for user name and random prompt
+  const [userName, setUserName] = useState('');
+  const [randomPrompt, setRandomPrompt] = useState('');
+
+  // Add array of predefined prompts
+  const personalizedPrompts = [
+    "What do you want to know, {name}?",
+    "Ask me anything, {name}.",
+    "Hey, {name}, what are you curious about?",
+    "Need help finding something, {name}?",
+    "Let's explore a topic, {name}.",
+    "Got a question in mind, {name}?",
+    "Looking for answers, {name}?",
+    "What should we search for, {name}?",
+    "Start with a question, {name}.",
+    "Ready to learn something new, {name}?"
+  ];
+
   // Add router
   const router = useRouter();
+
+  // Add useEffect to fetch user's name and select random prompt
+  useEffect(() => {
+    if (!session?.user?.id) return;
+
+    // Get user's name using RPC instead of directly querying the users table
+    supabase
+      .rpc('get_auth_user_by_public_id', { p_user_id: session.user.id })
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("Error fetching user data:", error);
+          return;
+        }
+
+        const first_name = data[0]?.first_name;
+        setUserName(first_name);
+        
+        // Select a random prompt and personalize it with the user's name
+        const randomIndex = Math.floor(Math.random() * personalizedPrompts.length);
+        let prompt = personalizedPrompts[randomIndex];
+        
+        // Replace {name} placeholder with actual name if the prompt has it
+        if (prompt.includes('{name}') && first_name) {
+          prompt = prompt.replace('{name}', first_name);
+        }
+        
+        setRandomPrompt(prompt);
+      });
+  }, [session?.user?.id]);
 
   // Add global hotkey for Spotlight search - PLACED AFTER ALL STATE DECLARATIONS
   useEffect(() => {
@@ -421,14 +560,12 @@ export default function AISearch() {
   const handleSpotlightSearch = (query) => {
     setShowSpotlight(false);
     setInputValue(query);
-    // Reset thread and start a new one
-    setCurrentThread([]);
-    setCurrentThreadId("");
     setIsSearchInitiated(true);
-    sendMessage(query);
+    // Call sendMessage with isNewSearch=true
+    sendMessage(query, true);
   };
 
-  // Modify the button handler to use the same logic
+  // Update handleNewSearch to reset and show spotlight
   const handleNewSearch = () => {
     setShowSpotlight(true); // Show the spotlight search
   };
@@ -678,12 +815,13 @@ export default function AISearch() {
         setHasObsidian(hasObsidianData);
       });
 
-    // Helper function to check if onboarding should be shown
-    const checkOnboarding = (google, notion) => {
-      if (!google && !notion && !hasSeenOnboarding) {
-        setShowOnboarding(true);
-      }
-    };
+      // Helper function to check if onboarding should be shown
+  const checkOnboarding = (google, notion) => {
+    // Disabled onboarding modal completely as requested
+    // if (!google && !notion && !hasSeenOnboarding) {
+    //   setShowOnboarding(true);
+    // }
+  };
   }, [session?.user?.id, hasSeenOnboarding]);
 
   // Add new useEffect to fetch documents and generate prompts
@@ -735,14 +873,14 @@ export default function AISearch() {
       });
   }, [session?.user?.id]);
 
-  // Update sendMessage to use search_new directly
-  const sendMessage = async (messageToSend) => {
+  // Update sendMessage to immediately update sidebar when new thread is created
+  const sendMessage = async (messageToSend, isNewSearch = false) => {
     if (!session?.user?.id) return;
 
     const message = messageToSend || inputValue;
 
-    // Reset current thread if this is a new search from spotlight
-    if (showSpotlight) {
+    // Reset current thread if this is a new search from spotlight or explicitly marked as new search
+    if (showSpotlight || isNewSearch) {
       setCurrentThread([]);
       setCurrentThreadId("");
     }
@@ -762,12 +900,8 @@ export default function AISearch() {
     let threadId = ""
 
     try {
-      console.log(sidebarSessions.some(session => {
-        console.log(session)
-        console.log(session.id)
-        console.log(currentThreadId)
-      }))
-      if (!sidebarSessions.some(session => session.id === currentThreadId)) {
+      // Create a new thread if we don't have a current thread ID or this is explicitly a new search
+      if (!currentThreadId || isNewSearch) {
         console.log("creating new thread")
         // creating a new thread
         const { data: threadData, error: threadError } = await supabase
@@ -785,31 +919,47 @@ export default function AISearch() {
         }
 
         threadId = threadData.id;
-        setCurrentThreadId(threadData.id)  // Fix: Set the ID to currentThreadId instead of currentThread
+        setCurrentThreadId(threadData.id);
+        
+        // IMMEDIATELY update the sidebar with the new thread
+        // Update sidebarSessions state
+        setSidebarSessions(prev => [{ 
+          id: threadData.id, 
+          title: message.slice(0, 50),
+          created_at: new Date().toISOString(),
+          user_id: session.user.id
+        }, ...prev]);
+        
+        // Add the new thread to groupedSidebarSessions
+        const today = new Date().toLocaleDateString('en-US', { 
+          weekday: 'long', 
+          month: 'short', 
+          day: 'numeric' 
+        });
+        
+        setGroupedSidebarSessions(prev => {
+          const newGrouped = {...prev};
+          if (!newGrouped[today]) {
+            newGrouped[today] = [];
+          }
+          newGrouped[today] = [{ 
+            id: threadData.id, 
+            title: message.slice(0, 50),
+            created_at: new Date().toISOString(),
+            user_id: session.user.id
+          }, ...newGrouped[today]];
+          return newGrouped;
+        });
       } else {
         threadId = currentThreadId;
       }
-
-      /* // adding user's message
-      const { error: messageError } = await supabase
-        .from('messages')
-        .insert([{
-          thread_id: threadId,
-          role: 'user',
-          content: message
-        }]);
-
-
-      if (messageError) {
-        console.error('Error adding message:', messageError);
-        return;
-      } */
 
       console.log('✅ Message sent & thread created!');
     } catch (err) {
       console.error('Unexpected error:', err);
     }
 
+    // ... rest of the function remains the same
 
     setInputValue("");
     setIsSearching(true);
@@ -919,27 +1069,6 @@ sources: ${JSON.stringify(item.sources)}`
                   });
                 });
 
-
-                if (!sidebarSessions.some(session => session.id === currentThreadId)) {
-                  setSidebarSessions(prev => [{ title: message, id: threadId }, ...prev])
-                  
-                  // Add the new thread to groupedSidebarSessions
-                  const today = new Date().toLocaleDateString('en-US', { 
-                    weekday: 'long', 
-                    month: 'short', 
-                    day: 'numeric' 
-                  });
-                  
-                  setGroupedSidebarSessions(prev => {
-                    const newGrouped = {...prev};
-                    if (!newGrouped[today]) {
-                      newGrouped[today] = [];
-                    }
-                    newGrouped[today] = [{ title: message, id: threadId }, ...newGrouped[today]];
-                    return newGrouped;
-                  });
-                }
-
                 try {
                   console.log(message)
                   console.log({
@@ -965,7 +1094,6 @@ sources: ${JSON.stringify(item.sources)}`
                 } catch (e) {
                   console.error("Failed to upload assistant response:", e)
                 }
-
 
                 return;
               }
@@ -1193,6 +1321,38 @@ sources: ${JSON.stringify(item.sources)}`
       setIsGoogleAuthInProgress(false);
     }
   };
+  
+  // Add a new function for Gmail-only auth directly from search page
+  const initiateGmailAuth = async () => {
+    try {
+      // Create a loading indicator or state if needed
+      
+      // Call the Google auth API directly with gmail_only type
+      const response = await fetch('/api/google/auth', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: session.user.id,
+          source: 'search', // Current page
+          upgradeToFull: false, // Gmail only
+          returnTo: '/search' // Return to search page after auth
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.url) {
+        // Redirect to Google auth URL
+        window.location.href = data.url;
+      } else {
+        throw new Error('Failed to get Google auth URL');
+      }
+    } catch (error) {
+      console.error('Error initiating Gmail auth:', error);
+    }
+  };
 
   // Function to handle Google Docs button click
   const handleGoogleDocsClick = () => {
@@ -1254,6 +1414,32 @@ sources: ${JSON.stringify(item.sources)}`
     setShowMeetings(!showMeetings);
   };
 
+  // Add new state for Gmail profiles
+  const [gmailProfiles, setGmailProfiles] = useState([]);
+  const [isGmailDropdownVisible, setIsGmailDropdownVisible] = useState(false);
+
+  // Update useEffect to fetch Gmail profiles
+  useEffect(() => {
+    const fetchGmailProfiles = async () => {
+      if (hasGmail && session?.user?.id) {
+        try {
+          const response = await fetch(`/api/google/profile?userId=${session.user.id}`);
+          const data = await response.json();
+          if (data.success) {
+            setGmailProfiles(data.emails);
+          }
+        } catch (error) {
+          console.error('Error fetching Gmail profiles:', error);
+        }
+      }
+    };
+
+    fetchGmailProfiles();
+  }, [hasGmail, session?.user?.id]);
+
+  // Add new state for dropdown timeout
+  const [dropdownTimeout, setDropdownTimeout] = useState(null);
+
   // 12. Render home component
   return (
     <>
@@ -1276,8 +1462,10 @@ sources: ${JSON.stringify(item.sources)}`
           showObsidian, setShowObsidian,
           showGmail, setShowGmail,
           hasGoogleDocs, hasNotion, hasObsidian, hasMeetings, hasGmail,
-          handleGoogleDocsClick, handleNotionClick, handleMeetingsClick, handleObsidianClick, handleGmailClick
+          handleGoogleDocsClick, handleNotionClick, handleMeetingsClick, handleObsidianClick, handleGmailClick,
+          gmailProfiles // Pass gmailProfiles to SpotlightSearch
         }}
+        customPlaceholder={randomPrompt || "Search your knowledge..."}
       />
       
       <div className="flex items-center justify-center gap-2">
@@ -1321,12 +1509,14 @@ sources: ${JSON.stringify(item.sources)}`
         <div className="fixed top-4 right-4 z-50 hidden">
           <StarButton />
         </div>
+        {/* Onboarding modal disabled as requested
         {showOnboarding && (
           <OnboardingFlow
             onClose={() => setShowOnboarding(false)}
             setHasSeenOnboarding={setHasSeenOnboarding}
           />
         )}
+        */}
         <div className="content">
 
           {!showOnboarding && (
@@ -1472,15 +1662,15 @@ sources: ${JSON.stringify(item.sources)}`
 
           <div className={`chat ${isSidebarOpened ? '' : "chatSidebarClosed"}`}>
             <div className="chatContent no-scrollbar">
-              <h2 className="hidden text-2xl font-medium text-white mb-4">Knowledge Search</h2>
-              
               {!isSearchInitiated ? (
                 <div className="h-full flex flex-col items-center justify-center">
+                  <h2 className="text-2xl font-medium text-white mb-4">{randomPrompt || "Search your knowledge"}</h2>
                   <div className="w-full max-w-2xl bg-black/80 border border-white/10 rounded-xl shadow-2xl overflow-hidden">
                     <form onSubmit={(e) => {
                       e.preventDefault();
                       if (inputValue.trim()) {
-                        sendMessage(inputValue);
+                        // This is a new search from the main UI search box
+                        sendMessage(inputValue, true);
                       }
                     }} className="relative">
                       <div className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400">
@@ -1506,11 +1696,129 @@ sources: ${JSON.stringify(item.sources)}`
                     <div className="p-4 border-t border-white/10">
                       <div className="text-xs text-zinc-500 mb-2">Search across</div>
                       <div className="flex flex-wrap gap-2">
+                        {/* Gmail button - implemented with dropdown similar to AISearch component */}
+                        {hasGmail ? (
+                          <div 
+                            className="relative"
+                            onMouseEnter={() => {
+                              // Clear any existing timeout when mouse enters
+                              if (dropdownTimeout) {
+                                clearTimeout(dropdownTimeout);
+                                setDropdownTimeout(null);
+                              }
+                              setIsGmailDropdownVisible(true);
+                            }}
+                            onMouseLeave={() => {
+                              // Set a timeout to hide the dropdown after 300ms
+                              const timeout = setTimeout(() => {
+                                setIsGmailDropdownVisible(false);
+                              }, 300);
+                              setDropdownTimeout(timeout);
+                            }}
+                          >
+                            <button
+                              onClick={() => setShowGmail(!showGmail)}
+                              className={`px-3 py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-xs font-medium border border-white/10 ${showGmail
+                                ? "bg-[#3c1671] text-white border-[#6D28D9]"
+                                : "bg-zinc-900 text-white"
+                                } transition-all duration-200 hover:border-[#6D28D9]`}
+                            >
+                              <img
+                                src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/2560px-Gmail_icon_%282020%29.svg.png"
+                                alt="Gmail"
+                                className="w-3.5"
+                              />
+                              <span>Gmail</span>
+                            </button>
+                            {isGmailDropdownVisible && (
+                              <div 
+                                className="absolute top-full left-0 mt-1 bg-zinc-900 border border-zinc-800 rounded-lg shadow-lg text-xs text-zinc-400 min-w-[200px]"
+                                onMouseEnter={() => {
+                                  // Clear timeout when mouse enters dropdown
+                                  if (dropdownTimeout) {
+                                    clearTimeout(dropdownTimeout);
+                                    setDropdownTimeout(null);
+                                  }
+                                }}
+                                onMouseLeave={() => {
+                                  // Set timeout to hide dropdown when mouse leaves
+                                  const timeout = setTimeout(() => {
+                                    setIsGmailDropdownVisible(false);
+                                  }, 300);
+                                  setDropdownTimeout(timeout);
+                                }}
+                              >
+                                {gmailProfiles && gmailProfiles.length > 0 ? (
+                                  <>
+                                    {gmailProfiles.map((profile) => (
+                                      <div 
+                                        key={profile.email} 
+                                        className="px-3 py-2 border-b border-zinc-800"
+                                      >
+                                        <div className="flex items-center justify-between">
+                                          <span className="truncate">{profile.email}</span>
+                                          <span className="ml-2 px-1.5 py-0.5 bg-zinc-800 rounded text-[10px]">
+                                            {profile.type === 'full' ? 'Full' : 'Gmail'}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    ))}
+                                    <div className="p-2">
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          initiateGmailAuth(); // Use the new direct auth function
+                                        }}
+                                        className="w-full px-2 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 flex items-center justify-center gap-1.5 transition-colors"
+                                      >
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                          <line x1="12" y1="5" x2="12" y2="19"></line>
+                                          <line x1="5" y1="12" x2="19" y2="12"></line>
+                                        </svg>
+                                        Add account
+                                      </button>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <div className="p-3 text-center">
+                                    <p className="text-zinc-500 mb-2">No Gmail accounts connected</p>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        initiateGmailAuth(); // Use the new direct auth function
+                                      }}
+                                      className="w-full px-2 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 flex items-center justify-center gap-1.5 transition-colors"
+                                    >
+                                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                                      </svg>
+                                      Add account
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <button
+                            onClick={handleGmailClick}
+                            className="px-3 py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-xs font-medium border border-white/10 bg-zinc-900 text-white hover:bg-[#3c1671] transition-all duration-200 relative"
+                          >
+                            <img
+                              src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/2560px-Gmail_icon_%282020%29.svg.png"
+                              alt="Gmail"
+                              className="w-3.5"
+                            />
+                            <span>Gmail</span>
+                          </button>
+                        )}
+                        
                         {/* Google Docs button */}
                         {hasGoogleDocs ? (
                           <button
                             onClick={() => setShowGoogleDocs(!showGoogleDocs)}
-                            className={`px-3 py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-xs font-medium border border-white/10 ${showGoogleDocs
+                            className={`hidden px-3 py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-xs font-medium border border-white/10 ${showGoogleDocs
                               ? "bg-[#3c1671] text-white border-[#6D28D9]"
                               : "bg-zinc-900 text-white"
                               } transition-all duration-200 hover:border-[#6D28D9]`}
@@ -1525,7 +1833,7 @@ sources: ${JSON.stringify(item.sources)}`
                         ) : (
                           <button
                             onClick={handleGoogleDocsClick}
-                            className="px-3 py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-xs font-medium border border-white/10 bg-zinc-900 text-white hover:bg-[#3c1671] transition-all duration-200 relative group"
+                            className="hidden px-3 py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-xs font-medium border border-white/10 bg-zinc-900 text-white hover:bg-[#3c1671] transition-all duration-200 relative group"
                           >
                             <img
                               src="https://upload.wikimedia.org/wikipedia/commons/0/01/Google_Docs_logo_%282014-2020%29.svg"
@@ -1609,36 +1917,6 @@ sources: ${JSON.stringify(item.sources)}`
                           <ChatCenteredDots className="w-3.5 h-3.5" />
                           <span>Meetings</span>
                         </button>
-
-                        {/* Gmail button */}
-                        {hasGmail ? (
-                          <button
-                            onClick={() => setShowGmail(!showGmail)}
-                            className={`px-3 py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-xs font-medium border border-white/10 ${showGmail
-                              ? "bg-[#3c1671] text-white border-[#6D28D9]"
-                              : "bg-zinc-900 text-white"
-                              } transition-all duration-200 hover:border-[#6D28D9]`}
-                          >
-                            <img
-                              src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/2560px-Gmail_icon_%282020%29.svg.png"
-                              alt="Gmail"
-                              className="w-3.5"
-                            />
-                            <span>Gmail</span>
-                          </button>
-                        ) : (
-                          <button
-                            onClick={handleGmailClick}
-                            className="px-3 py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-xs font-medium border border-white/10 bg-zinc-900 text-white hover:bg-[#3c1671] transition-all duration-200 relative"
-                          >
-                            <img
-                              src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/2560px-Gmail_icon_%282020%29.svg.png"
-                              alt="Gmail"
-                              className="w-3.5"
-                            />
-                            <span>Gmail</span>
-                          </button>
-                        )}
                       </div>
                     </div>
                     
@@ -1752,7 +2030,7 @@ sources: ${JSON.stringify(item.sources)}`
               <InputArea
                 inputValue={inputValue}
                 setInputValue={setInputValue}
-                sendMessage={sendMessage}
+                sendMessage={(message) => sendMessage(message, false)} // Explicitly set isNewSearch=false for follow-up questions
                 className={`w-full ${!isSearchInitiated && "hidden"}`}
                 placeholder="Ask a follow-up question..."
               />
@@ -1865,7 +2143,7 @@ export function InputArea({
   setInputValue,
   sendMessage,
   className = "",
-  placeholder = "Search anything...",
+  placeholder = "Search your knowledge...",
 }) {
   const inputRef = useRef(null);
   
@@ -1905,11 +2183,11 @@ export function InputArea({
           className="flex-1 p-3 md:p-4 pl-10 md:pl-12 text-md rounded-l-lg focus:outline-none bg-black border border-zinc-800 text-zinc-300 focus:border-[#6D28D9] transition-colors"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+          onKeyDown={(e) => e.key === "Enter" && sendMessage(inputValue)}
         />
       </div>
       <button
-        onClick={() => sendMessage()}
+        onClick={() => sendMessage(inputValue)}
         className="p-3 md:p-4 rounded-r-lg bg-black border-t border-r border-b border-zinc-800 text-zinc-300 hover:bg-[#3c1671] transition-colors"
       >
         <ArrowCircleRight size={20} className="md:w-6 md:h-6" />
@@ -1956,7 +2234,7 @@ export const Sources = ({ content = [], filters = {} }) => {
 
       // Include sources with unknown types
       return true;
-    });
+    }).slice(0, 3); // Limit to top 3 sources
   }, [content, filters]);
 
   // Helper function to determine source icon based on 'type' directly

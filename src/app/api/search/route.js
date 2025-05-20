@@ -160,7 +160,7 @@ export async function POST(req) {
           {role: "user", content: message}
         ], // messages, without sources, without system prompt
         ai_enabled: false,
-        limit: 3
+        max_results_per_source: 3
       })
     });
 
