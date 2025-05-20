@@ -4,7 +4,7 @@ import { google } from "googleapis";
 
 // Configure Vercel Cron
 export const dynamic = 'force-dynamic';
-export const maxDuration = 300; // 5 minutes in seconds
+export const maxDuration = 800; // 13 minutes in seconds
 export const revalidate = 0;
 export const runtime = 'nodejs';
 
