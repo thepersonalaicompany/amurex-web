@@ -11,7 +11,7 @@ export default function HelloPage() {
           <div className="flex justify-between items-center mb-6">
             <div className="text-center w-full">
               <p className="text-white mt-2 text-lg">Amurex is an AI Personal Assistant that shapes itself around you and the tools you use. It structures a memory layer about what you do and how you do it.</p>
-              <h1 className="mt-6 text-2xl text-white">Here's what Amurex can do:</h1>
+              <h1 className="mt-6 text-2xl text-white">Here&apos;s what Amurex can do:</h1>
             </div>
             
             <Link 
