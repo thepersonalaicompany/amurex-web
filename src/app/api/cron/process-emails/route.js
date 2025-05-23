@@ -107,46 +107,54 @@ async function validateGmailAccess(userId, refreshToken, clientsMap) {
 
 export async function GET(req) {
   // Verify this is a legitimate cron job request
-  const authHeader = req.headers.get('authorization');
-  if (!authHeader || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
+  // const authHeader = req.headers.get('authorization');
+  // if (!authHeader || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  // }
 
   try {
-    // Get all users with email tagging enabled using the admin client
-    const { data: users, error: usersError } = await supabaseAdmin
-      .from("users")
-      .select("id, email_tagging_enabled, google_refresh_token, google_cohort")
-      .eq("email_tagging_enabled", true)
-      .not("google_refresh_token", "is", null)
+    // Get the latest email record for each unique email address
+    const { data: userGmails, error: userGmailsError } = await supabaseAdmin
+      .from("user_gmails")
+      .select("id, user_id, email_address, refresh_token, google_cohort")
+      .not("refresh_token", "is", null)
       .order("created_at", { ascending: false });
 
-    if (usersError) {
-      console.error("Error fetching users:", usersError);
+    if (userGmailsError) {
+      console.error("Error fetching user_gmails:", userGmailsError);
       return NextResponse.json({ 
         success: false, 
-        error: "Error fetching users" 
+        error: "Error fetching user_gmails" 
       }, { status: 500 });
     }
 
-    if (!users || users.length === 0) {
+    // Filter to keep only the latest record for each email_address
+    const emailMap = new Map();
+    const uniqueUserGmails = userGmails.filter(record => {
+      if (!emailMap.has(record.email_address)) {
+        emailMap.set(record.email_address, true);
+        return true;
+      }
+      return false;
+    });
+
+    if (!uniqueUserGmails || uniqueUserGmails.length === 0) {
       return NextResponse.json({ 
         success: true, 
-        message: "No users with email tagging enabled" 
+        message: "No user gmail records found" 
       });
     }
 
-    console.log(`Processing emails for ${users.length} users via cron job`);
+    console.log(`Processing emails for ${uniqueUserGmails.length} gmail accounts via cron job`);
     
-    // Get unique cohort IDs from all users
-    const cohortIds = [...new Set(users.map(user => user.google_cohort))].filter(id => id !== null);
+    // Get unique cohort IDs directly from the user_gmails records
+    const cohortIds = [...new Set(uniqueUserGmails.map(record => record.google_cohort))].filter(id => id !== null);
     
     // Fetch all client credentials in a single query
     const { data: clientsData, error: clientsError } = await supabaseAdmin
       .from('google_clients')
       .select('id, client_id, client_secret')
-      .in('id', cohortIds.length > 0 ? cohortIds : [0]); // Use a dummy ID if empty to avoid query error
+      .in('id', cohortIds.length > 0 ? cohortIds : [0]); // Use dummy ID if empty
       
     if (clientsError) {
       console.error("Error fetching client credentials:", clientsError);
@@ -164,29 +172,33 @@ export async function GET(req) {
     
     // Create a user map that includes client credentials
     const userClientMap = {};
-    for (const user of users) {
-      if (clientsMap[user.google_cohort]) {
-        userClientMap[user.id] = {
-          client_id: clientsMap[user.google_cohort].client_id,
-          client_secret: clientsMap[user.google_cohort].client_secret,
-          refresh_token: user.google_refresh_token
+    for (const record of uniqueUserGmails) {
+      const userId = record.user_id;
+      const cohortId = record.google_cohort;
+      
+      if (cohortId && clientsMap[cohortId]) {
+        userClientMap[userId] = {
+          client_id: clientsMap[cohortId].client_id,
+          client_secret: clientsMap[cohortId].client_secret,
+          refresh_token: record.refresh_token
         };
       }
     }
     
     const results = [];
     
-    // Process emails for each user by calling the process-labels endpoint
-    for (const user of users) {
+    // Process emails for each unique gmail record
+    for (const record of uniqueUserGmails) {
       try {
-        const userId = user.id;
-        const refreshToken = user.google_refresh_token;
+        const userId = record.user_id;
+        const refreshToken = record.refresh_token;
         
-        // Skip users without client credentials
+        // Skip records without client credentials
         if (!userClientMap[userId]) {
           console.log(`Skipping user ${userId} - client credentials not found`);
           results.push({
             userId,
+            email: record.email_address,
             success: false,
             error: "Client credentials not found",
             reason: "configuration_error"
@@ -198,18 +210,22 @@ export async function GET(req) {
         const validation = await validateGmailAccess(userId, refreshToken, userClientMap);
         
         if (!validation.valid) {
-          console.log(`Skipping user ${userId} - invalid token: ${validation.reason}`);
+          console.log(`Skipping user ${userId} (${record.email_address}) - invalid token: ${validation.reason}`);
           results.push({
             userId,
+            email: record.email_address,
             success: false,
             error: validation.message || "Token validation failed",
             reason: validation.reason
           });
-          continue; // Skip to the next user
+          continue; // Skip to the next record
         }
         
         // Token is valid, proceed with processing
-        console.log(`Token validated for user ${userId}, proceeding to process emails`);
+        console.log(`Token validated for user ${userId} (${record.email_address}), proceeding to process emails`);
+
+        // Get client credentials for this user
+        const clientCredentials = userClientMap[userId];
 
         // Call the process-labels endpoint for this user with useGroq flag
         const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/gmail/process-labels`, {
@@ -219,8 +235,10 @@ export async function GET(req) {
           },
           body: JSON.stringify({
             userId: userId,
-            useGroq: true,  // Add flag to use Groq instead of OpenAI
-            maxEmails: 2  // Fetch 2 emails every 15 minutes
+            maxEmails: 3,  // Fetch 3 emails every 15 minutes
+            googleClientId: clientCredentials.client_id,
+            googleClientSecret: clientCredentials.client_secret,
+            refreshToken: clientCredentials.refresh_token,
           })
         });
         
@@ -229,6 +247,7 @@ export async function GET(req) {
         if (response.ok) {
           results.push({
             userId,
+            email: record.email_address,
             processed: responseData.processed || 0,
             total_stored: responseData.total_stored || 0,
             message: responseData.message || "Processed successfully"
@@ -236,15 +255,17 @@ export async function GET(req) {
         } else {
           results.push({
             userId,
+            email: record.email_address,
             error: responseData.error || "Unknown error",
             success: false
           });
         }
         
       } catch (userError) {
-        console.error(`Error processing emails for user ${user.id}:`, userError);
+        console.error(`Error processing emails for user ${record.user_id} (${record.email_address}):`, userError);
         results.push({
-          userId: user.id,
+          userId: record.user_id,
+          email: record.email_address,
           error: userError.message || "Unknown error",
           success: false
         });

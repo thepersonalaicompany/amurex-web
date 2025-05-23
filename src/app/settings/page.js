@@ -1226,7 +1226,7 @@ function SettingsContent() {
                               </p> */}
                             </div>
                           </div>
-                          <Button
+                          {/* <Button
                             variant="outline"
                             className={`bg-zinc-900 text-zinc-300 hover:bg-zinc-800 border-zinc-800 ${
                               googleDocsConnected
@@ -1250,6 +1250,19 @@ function SettingsContent() {
                             ) : (
                               "Connect"
                             )}
+                          </Button> */}
+                          <Button
+                            variant="outline"
+                            className={`bg-zinc-900 text-zinc-300 hover:bg-zinc-800 border-zinc-800 ${
+                              googleDocsConnected
+                                ? "bg-green-900 hover:bg-green-800"
+                                : ""
+                            } min-w-[100px]`}
+                            onClick={() => {
+                              router.push('/emails');
+                            }}
+                          >
+                            Connect
                           </Button>
                         </div>
                       </CardContent>

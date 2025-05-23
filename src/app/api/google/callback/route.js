@@ -140,6 +140,8 @@ export async function GET(request) {
       redirectUrl = `${process.env.NEXT_PUBLIC_APP_URL}/onboarding/complete`;
     } else if (source === 'search') {
       redirectUrl = `${process.env.NEXT_PUBLIC_APP_URL}/search?connection=success&source=google`;
+    } else if (source === 'emails') {
+      redirectUrl = `${process.env.NEXT_PUBLIC_APP_URL}/emails?connection=success&source=google`;
     } else {
       redirectUrl = `${process.env.NEXT_PUBLIC_APP_URL}/settings?connection=success&source=google`;
     }
