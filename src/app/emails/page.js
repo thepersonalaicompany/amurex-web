@@ -781,7 +781,7 @@ function EmailsContent() {
                                     Ready to categorize your emails!
                                   </h3>
                                   <p className="text-sm text-zinc-400">
-                                    Click "Categorize new emails" above to get started, or go to Settings to connect more Gmail accounts
+                                    Click &quot;Categorize new emails&quot; above to get started, or go to Settings to connect more Gmail accounts
                                   </p>
                                 </div>
                               </div>
@@ -834,97 +834,6 @@ function EmailsContent() {
           </div>
 
           
-        </div>
-
-        {/* Connected Email Accounts Section */}
-        <div className="rounded-xl border text-card-foreground shadow bg-black/80 border-white/10 mb-6">
-          <div className="flex flex-col">
-            <div className="flex flex-row justify-between gap-2 border-b border-white/10 bg-zinc-800/50 rounded-t-xl">
-              <div className="flex items-center gap-4 px-6 py-4">
-                <div>
-                  <h2 className="font-medium text-white text-[14px]">Connected Gmail Accounts</h2>
-                  <p className="text-xs text-zinc-400 max-w-72">Manage your connected email accounts</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 mx-6">
-                <Button
-                  variant="outline"
-                  className="text-xs font-medium bg-[#3c1671] text-white hover:bg-[#3c1671] hover:border-[#6D28D9] border border-white/10 px-4 py-2"
-                  onClick={() => setShowAddAccountPopup(true)}
-                >
-                  <div className="flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="12" y1="5" x2="12" y2="19"></line>
-                      <line x1="5" y1="12" x2="19" y2="12"></line>
-                    </svg>
-                    <span className="ml-2">Add Account</span>
-                  </div>
-                </Button>
-              </div>
-            </div>
-            
-            <div className="p-6">
-              {gmailAccounts.length === 0 ? (
-                <div className="text-center py-8">
-                  <img
-                    src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/2560px-Gmail_icon_%282020%29.svg.png"
-                    alt="Gmail"
-                    className="w-12 h-12 mx-auto mb-4 opacity-50"
-                  />
-                  <p className="text-zinc-400 mb-4">No Gmail accounts connected</p>
-                  <p className="text-xs text-zinc-500 mb-4">Connect your Gmail account to enable email categorization</p>
-                  <Button
-                    variant="outline"
-                    className="text-xs font-medium bg-[#3c1671] text-white hover:bg-[#3c1671] hover:border-[#6D28D9] border border-white/10 px-4 py-2"
-                    onClick={() => window.location.href = '/settings?tab=personalization'}
-                  >
-                    Connect Gmail Account
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {gmailAccounts.map((account, index) => (
-                    <div
-                      key={index}
-                      className="bg-zinc-900 rounded-lg p-4 border border-zinc-800 flex items-center justify-between hover:border-zinc-700 transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <img
-                          src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/2560px-Gmail_icon_%282020%29.svg.png"
-                          alt="Gmail"
-                          className="w-6"
-                        />
-                        <div>
-                          <div className="text-white font-medium text-sm">{account.email_address}</div>
-                          <div className="text-xs text-zinc-400">
-                            Connected
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="hidden px-2 py-1 bg-zinc-800 rounded text-xs text-zinc-300">
-                          Gmail
-                        </span>
-                        <button
-                          onClick={() => handleGmailDisconnect(account.email_address)}
-                          className="text-xs text-red-400 hover:text-red-300 transition-colors px-2 py-1 hover:bg-red-400/10 rounded"
-                        >
-                          Remove connection
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                  
-                  {/* Summary stats */}
-                  <div className="mt-4 pt-4 border-t border-zinc-800">
-                    <div className="flex items-center justify-between text-xs text-zinc-400">
-                      <span>{gmailAccounts.length} account{gmailAccounts.length !== 1 ? 's' : ''} connected</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
         </div>
 
         {/* Right Column - Gmail Preview */}
@@ -1003,6 +912,99 @@ function EmailsContent() {
             </motion.div>
           )}
         </AnimatePresence>
+      </div>
+
+      {/* Connected Email Accounts Section */}
+      <div className="p-8 pt-0">
+        <div className="w-full rounded-xl border text-card-foreground shadow bg-black/80 border-white/10 mb-6">
+          <div className="flex flex-col">
+            <div className="flex flex-row justify-between gap-2 border-b border-white/10 bg-zinc-800/50 rounded-t-xl">
+              <div className="flex items-center gap-4 px-6 py-4">
+                <div>
+                  <h2 className="font-medium text-white text-[14px]">Connected Gmail Accounts</h2>
+                  <p className="text-xs text-zinc-400 max-w-72">Manage your connected email accounts</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 mx-6">
+                <Button
+                  variant="outline"
+                  className="text-xs font-medium bg-[#3c1671] text-white hover:bg-[#3c1671] hover:border-[#6D28D9] border border-white/10 px-4 py-2"
+                  onClick={() => setShowAddAccountPopup(true)}
+                >
+                  <div className="flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="12" y1="5" x2="12" y2="19"></line>
+                      <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    <span className="ml-2">Add Account</span>
+                  </div>
+                </Button>
+              </div>
+            </div>
+            
+            <div className="p-6">
+              {gmailAccounts.length === 0 ? (
+                <div className="text-center py-8">
+                  <img
+                    src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/2560px-Gmail_icon_%282020%29.svg.png"
+                    alt="Gmail"
+                    className="w-12 mx-auto mb-4 opacity-50"
+                  />
+                  <p className="text-zinc-400 mb-4">No Gmail accounts connected</p>
+                  <p className="text-xs text-zinc-500 mb-4">Connect your Gmail account to enable email categorization</p>
+                  <Button
+                    variant="outline"
+                    className="text-xs font-medium bg-[#3c1671] text-white hover:bg-[#3c1671] hover:border-[#6D28D9] border border-white/10 px-4 py-2"
+                    onClick={() => setShowAddAccountPopup(true)}
+                  >
+                    Connect Gmail Account
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {gmailAccounts.map((account, index) => (
+                    <div
+                      key={index}
+                      className="bg-zinc-900 rounded-lg p-4 border border-zinc-800 flex items-center justify-between hover:border-zinc-700 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <img
+                          src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/2560px-Gmail_icon_%282020%29.svg.png"
+                          alt="Gmail"
+                          className="w-6"
+                        />
+                        <div>
+                          <div className="text-white font-medium text-sm">{account.email_address}</div>
+                          <div className="text-xs text-zinc-400">
+                            Connected
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="hidden px-2 py-1 bg-zinc-800 rounded text-xs text-zinc-300">
+                          Gmail
+                        </span>
+                        <button
+                          onClick={() => handleGmailDisconnect(account.email_address)}
+                          className="text-xs text-red-400 hover:text-red-300 transition-colors px-2 py-1 hover:bg-red-400/10 rounded"
+                        >
+                          Remove connection
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {/* Summary stats */}
+                  <div className="mt-4 pt-4 border-t border-zinc-800">
+                    <div className="flex items-center justify-between text-xs text-zinc-400">
+                      <span>{gmailAccounts.length} account{gmailAccounts.length !== 1 ? 's' : ''} connected</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Add Account Popup */}

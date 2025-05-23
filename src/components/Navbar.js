@@ -80,21 +80,6 @@ export function Navbar() {
         </div>
         <div className="relative group">
           <Button
-            variant={isActive("/emails") ? "active-navbar" : "navbar"}
-            size="icon"
-            onClick={() => router.push("/emails")}
-            className={
-              isActive("/emails") ? "bg-[#3c1671] border border-[#6D28D9]" : ""
-            }
-          >
-            <Mail className="h-6 w-6" style={{ color: "oklch(55.2% 0.016 285.938)" }} />
-          </Button>
-          <span className="absolute left-12 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-white">
-            Emails
-          </span>
-        </div>
-        <div className="relative group">
-          <Button
             variant={isActive("/meetings") ? "active-navbar" : "navbar"}
             size="icon"
             onClick={() => router.push("/meetings")}
@@ -108,6 +93,21 @@ export function Navbar() {
           </Button>
           <span className="absolute left-12 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-white">
             Meetings
+          </span>
+        </div>
+        <div className="relative group">
+          <Button
+            variant={isActive("/emails") ? "active-navbar" : "navbar"}
+            size="icon"
+            onClick={() => router.push("/emails")}
+            className={
+              isActive("/emails") ? "bg-[#3c1671] border border-[#6D28D9]" : ""
+            }
+          >
+            <Mail className="h-6 w-6" style={{ color: "oklch(55.2% 0.016 285.938)" }} />
+          </Button>
+          <span className="absolute left-12 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-white">
+            Emails
           </span>
         </div>
         <div className="relative group">
