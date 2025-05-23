@@ -104,7 +104,7 @@ export async function GET(request) {
             email_address: primaryEmail,
             access_token: tokens.access_token,
             refresh_token: tokens.refresh_token,
-            type: null,  // google_token_version set to null as requested,
+            type: null,  // google_token_version set to null as requested
             google_cohort: 10
           });
         
