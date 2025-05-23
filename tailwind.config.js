@@ -69,12 +69,23 @@ module.exports = {
                         'shimmer': {
                           '0%': { transform: 'translateX(-100%)' },
                           '100%': { transform: 'translateX(100%)' }
+                        },
+                        'fadeInUp': {
+                          'from': {
+                            opacity: '0',
+                            transform: 'translateY(32px)'
+                          },
+                          'to': {
+                            opacity: '1',
+                            transform: 'translateY(0)'
+                          }
                         }
   		},
   		animation: {
   			'gradient-x': 'gradient-x 3s ease infinite',
                         'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-                        'shimmer': 'shimmer 2s infinite'
+                        'shimmer': 'shimmer 2s infinite',
+                        'fadeInUp': 'fadeInUp 0.6s ease-out forwards'
   		},
 		fontFamily: {
 			roboto: ['Roboto', 'sans-serif'],
