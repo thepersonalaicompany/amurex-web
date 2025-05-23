@@ -104,7 +104,8 @@ export async function GET(request) {
             email_address: primaryEmail,
             access_token: tokens.access_token,
             refresh_token: tokens.refresh_token,
-            type: null  // google_token_version set to null as requested
+            type: null,  // google_token_version set to null as requested,
+            google_cohort: 10
           });
         
         if (gmailError) {
@@ -139,6 +140,8 @@ export async function GET(request) {
       redirectUrl = `${process.env.NEXT_PUBLIC_APP_URL}/onboarding/complete`;
     } else if (source === 'search') {
       redirectUrl = `${process.env.NEXT_PUBLIC_APP_URL}/search?connection=success&source=google`;
+    } else if (source === 'emails') {
+      redirectUrl = `${process.env.NEXT_PUBLIC_APP_URL}/emails?connection=success&source=google`;
     } else {
       redirectUrl = `${process.env.NEXT_PUBLIC_APP_URL}/settings?connection=success&source=google`;
     }

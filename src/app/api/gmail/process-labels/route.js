@@ -463,37 +463,18 @@ export async function POST(req) {
   try {
     const requestData = await req.json();
     const userId = requestData.userId;
-    const useStandardColors = requestData.useStandardColors === true;
+    const useStandardColors = true;
     const maxEmails = requestData.maxEmails || 20;
+    const googleClientId = requestData.googleClientId;
+    const googleClientSecret = requestData.googleClientSecret;
+    const refreshToken = requestData.refreshToken;
 
     if (!userId) {
       return NextResponse.json({ success: false, error: "User ID is required" }, { status: 400 });
     }
 
-    // Fetch user's Google credentials and email tagging settings using admin Supabase client
-    const { data: userData, error: userError } = await adminSupabase
-      .from("users")
-      .select("google_refresh_token, email_tagging_enabled, email_categories, google_cohort")
-      .eq("id", userId)
-      .single();
-
-    console.log("Processing emails for user:", userId);
-
-    if (userError || !userData || !userData.google_refresh_token) {
-      return NextResponse.json({ 
-        success: false, 
-        error: "Google credentials not found" 
-      }, { status: 400 });
-    }
-
-    if (!userData.email_tagging_enabled) {
-      return NextResponse.json({ 
-        success: false, 
-        error: "Email tagging is not enabled for this user" 
-      }, { status: 400 });
-    }
-
-    // Parse the email_categories JSON or use default values
+    // Declare variables that will be used later
+    let oauth2Client;
     let enabledCategories = {
       to_respond: true,
       fyi: true,
@@ -504,53 +485,132 @@ export async function POST(req) {
       actioned: true,
     };
 
-    try {
-      if (userData.email_categories) {
-        const parsedCategories = typeof userData.email_categories === 'object' 
-          ? userData.email_categories 
-          : JSON.parse(userData.email_categories);
-          
-        if (parsedCategories.categories) {
-          enabledCategories = parsedCategories.categories;
-        }
-      }
-    } catch (parseError) {
-      console.error("Error parsing email_categories:", parseError);
-      // Continue with default categories
-    }
-
-    // Fetch client credentials for this user's cohort
-    if (!userData.google_cohort) {
-      return NextResponse.json({ 
-        success: false, 
-        error: "User has no assigned Google client cohort" 
-      }, { status: 400 });
-    }
-    
-    const { data: clientData, error: clientError } = await adminSupabase
-      .from('google_clients')
-      .select('client_id, client_secret')
-      .eq('id', userData.google_cohort)
-      .single();
+    // Check if credentials are provided in the request body
+    if (googleClientId && googleClientSecret && refreshToken) {
+      console.log("Using credentials provided in request body for user:", userId);
       
-    if (clientError) {
-      console.error("Error fetching client credentials:", clientError);
-      return NextResponse.json({ 
-        success: false, 
-        error: "Error fetching OAuth client credentials" 
-      }, { status: 500 });
+      // Fetch user's email tagging settings using admin Supabase client
+      const { data: userData, error: userError } = await adminSupabase
+        .from("users")
+        .select("email_tagging_enabled, email_categories")
+        .eq("id", userId)
+        .single();
+
+      if (userError || !userData) {
+        return NextResponse.json({ 
+          success: false, 
+          error: "User settings not found" 
+        }, { status: 400 });
+      }
+
+      if (!userData.email_tagging_enabled) {
+        return NextResponse.json({ 
+          success: false, 
+          error: "Email tagging is not enabled for this user" 
+        }, { status: 400 });
+      }
+
+      // Parse the email_categories JSON or use default values
+      try {
+        if (userData.email_categories) {
+          const parsedCategories = typeof userData.email_categories === 'object' 
+            ? userData.email_categories 
+            : JSON.parse(userData.email_categories);
+            
+          if (parsedCategories.categories) {
+            enabledCategories = parsedCategories.categories;
+          }
+        }
+      } catch (parseError) {
+        console.error("Error parsing email_categories:", parseError);
+        // Continue with default categories
+      }
+
+      // Create the OAuth client with the provided credentials
+      oauth2Client = new google.auth.OAuth2(
+        googleClientId,
+        googleClientSecret,
+        process.env.GOOGLE_REDIRECT_URI
+      );
+
+      oauth2Client.setCredentials({
+        refresh_token: refreshToken
+      });
+
+    } else {
+      // Fallback to the original database-based credential fetching
+      console.log("No credentials in request body, fetching from database for user:", userId);
+      
+      // Fetch user's Google credentials and email tagging settings using admin Supabase client
+      const { data: userData, error: userError } = await adminSupabase
+        .from("users")
+        .select("google_refresh_token, email_tagging_enabled, email_categories, google_cohort")
+        .eq("id", userId)
+        .single();
+
+      if (userError || !userData || !userData.google_refresh_token) {
+        return NextResponse.json({ 
+          success: false, 
+          error: "Google credentials not found" 
+        }, { status: 400 });
+      }
+
+      if (!userData.email_tagging_enabled) {
+        return NextResponse.json({ 
+          success: false, 
+          error: "Email tagging is not enabled for this user" 
+        }, { status: 400 });
+      }
+
+      // Parse the email_categories JSON or use default values
+      try {
+        if (userData.email_categories) {
+          const parsedCategories = typeof userData.email_categories === 'object' 
+            ? userData.email_categories 
+            : JSON.parse(userData.email_categories);
+            
+          if (parsedCategories.categories) {
+            enabledCategories = parsedCategories.categories;
+          }
+        }
+      } catch (parseError) {
+        console.error("Error parsing email_categories:", parseError);
+        // Continue with default categories
+      }
+
+      // Fetch client credentials for this user's cohort
+      if (!userData.google_cohort) {
+        return NextResponse.json({ 
+          success: false, 
+          error: "User has no assigned Google client cohort" 
+        }, { status: 400 });
+      }
+      
+      const { data: clientData, error: clientError } = await adminSupabase
+        .from('google_clients')
+        .select('client_id, client_secret')
+        .eq('id', userData.google_cohort)
+        .single();
+        
+      if (clientError) {
+        console.error("Error fetching client credentials:", clientError);
+        return NextResponse.json({ 
+          success: false, 
+          error: "Error fetching OAuth client credentials" 
+        }, { status: 500 });
+      }
+
+      // Create the OAuth client with the fetched credentials
+      oauth2Client = new google.auth.OAuth2(
+        clientData.client_id,
+        clientData.client_secret,
+        process.env.GOOGLE_REDIRECT_URI
+      );
+
+      oauth2Client.setCredentials({
+        refresh_token: userData.google_refresh_token
+      });
     }
-
-    // Create the OAuth client with the fetched credentials
-    const oauth2Client = new google.auth.OAuth2(
-      clientData.client_id,
-      clientData.client_secret,
-      process.env.GOOGLE_REDIRECT_URI
-    );
-
-    oauth2Client.setCredentials({
-      refresh_token: userData.google_refresh_token
-    });
 
     // Validate the OAuth token by making a simple API call
     const validation = await validateGmailAccess(oauth2Client);

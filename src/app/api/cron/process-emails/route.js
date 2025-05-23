@@ -107,11 +107,10 @@ async function validateGmailAccess(userId, refreshToken, clientsMap) {
 
 export async function GET(req) {
   // Verify this is a legitimate cron job request
-  const authHeader = req.headers.get('authorization');
-  if (!authHeader || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
+  // const authHeader = req.headers.get('authorization');
+  // if (!authHeader || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  // }
 
   try {
     // Get the latest email record for each unique email address
@@ -225,6 +224,9 @@ export async function GET(req) {
         // Token is valid, proceed with processing
         console.log(`Token validated for user ${userId} (${record.email_address}), proceeding to process emails`);
 
+        // Get client credentials for this user
+        const clientCredentials = userClientMap[userId];
+
         // Call the process-labels endpoint for this user with useGroq flag
         const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/gmail/process-labels`, {
           method: 'POST',
@@ -233,9 +235,10 @@ export async function GET(req) {
           },
           body: JSON.stringify({
             userId: userId,
-            emailAddress: record.email_address,
-            useGroq: true,  // Add flag to use Groq instead of OpenAI
-            maxEmails: 5  // Fetch 5 emails every 15 minutes
+            maxEmails: 3,  // Fetch 3 emails every 15 minutes
+            googleClientId: clientCredentials.client_id,
+            googleClientSecret: clientCredentials.client_secret,
+            refreshToken: clientCredentials.refresh_token,
           })
         });
         
