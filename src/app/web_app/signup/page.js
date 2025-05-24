@@ -268,7 +268,7 @@ export default function SignUp() {
 
   return (
     <div
-      className="flex min-h-screen items-center justify-center p-4 md:p-0"
+      className="relative flex min-h-screen items-center justify-center p-4 md:p-0"
       style={{
         backgroundImage: "url(/sign-background.webp)",
         backgroundSize: "cover",
@@ -276,19 +276,20 @@ export default function SignUp() {
         backgroundRepeat: "no-repeat",
       }}
     >
-      <div className="w-full max-w-[95%] max-w-lg">
-        <div className="flex justify-center items-center mb-6 md:mb-8">
-          <img
-            src="/amurex.png"
-            alt="Amurex logo"
-            className="w-8 h-8 md:w-10 md:h-10 border-2 border-white rounded-full"
-          />
-          <p className="text-white text-base md:text-lg font-semibold pl-2">
-            Amurex
-          </p>
-        </div>
+      {/* Amurex Logo - Top Right */}
+      <div className="absolute top-4 left-4 md:top-6 md:left-6 flex items-center z-10">
+        <img
+          src="/amurex.png"
+          alt="Amurex logo"
+          className="w-8 h-8 md:w-10 md:h-10 border-2 border-white rounded-full"
+        />
+        <p className="text-white text-base md:text-lg font-semibold pl-2">
+          Amurex
+        </p>
+      </div>
 
-        <div className="w-full rounded-lg p-6 md:p-8 backdrop-blur-sm shadow-lg">
+      <div className="w-full max-w-[95%] max-w-lg">
+        <div className="w-full rounded-lg p-6 md:p-8">
           <div className="text-center mb-6 md:mb-8">
             <h1
               className="text-3xl md:text-4xl mb-2 text-white"
@@ -341,60 +342,48 @@ export default function SignUp() {
                 ← Back to Google Sign Up
               </button>
 
-              <form onSubmit={handleSignUp} className="space-y-4 md:space-y-6">
+              <form onSubmit={handleSignUp} className="space-y-4 max-w-md mx-auto">
                 <div className="flex gap-4">
                   <div className="flex-1 bg-transparent">
-                    <label className="block text-sm font-normal text-white mb-1 bg-transparent">
-                      First Name
-                    </label>
                     <Input
                       type="text"
-                      placeholder="John"
+                      placeholder="First Name"
                       value={firstName}
                       onChange={(e) => setFirstName(e.target.value)}
-                      className="w-full py-3 md:py-4 px-3 bg-transparent text-white border border-[#262727] text-sm md:text-base"
+                      className="w-full py-3 md:py-4 px-3 bg-transparent text-white border border-zinc-400 text-sm font-light"
                     />
                   </div>
                   <div className="flex-1">
-                    <label className="block text-sm font-normal text-white mb-1 bg-transparent">
-                      Last Name
-                    </label>
                     <Input
                       type="text"
-                      placeholder="Doe"
+                      placeholder="Last Name"
                       value={lastName}
                       onChange={(e) => setLastName(e.target.value)}
-                      className="w-full py-3 md:py-4 px-3 bg-transparent text-white border border-[#262727] text-sm md:text-base"
+                      className="w-full py-3 md:py-4 px-3 bg-transparent text-white border border-zinc-400 text-sm font-light"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-normal text-white mb-1 bg-transparent">
-                    Email
-                  </label>
                   <Input
                     type="email"
-                    placeholder="john.doe@example.com"
+                    placeholder="you@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full py-3 md:py-4 px-3 bg-transparent text-white border border-[#262727] text-sm md:text-base"
+                    className="w-full py-3 md:py-4 px-3 bg-transparent text-white border border-zinc-400 text-sm font-light"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-normal text-white mb-1 bg-transparent">
-                    Password
-                  </label>
                   <Input
                     type="password"
-                    placeholder="********"
+                    placeholder="Password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full py-3 md:py-4 px-3 bg-transparent text-white border border-[#262727] text-sm md:text-base"
+                    className="w-full py-3 md:py-4 px-3 bg-transparent text-white border border-zinc-400 text-sm font-light"
                   />
                   <p className="mt-1 text-xs md:text-sm text-gray-400 py-2 md:py-4">
-                    Must be at least 8 characters
+                    Password must be at least 8 characters
                   </p>
                 </div>
 
@@ -411,7 +400,7 @@ export default function SignUp() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full !bg-white text-[#0E0F0F] p-2.5 md:p-3 text-sm md:text-base font-semibold rounded-lg hover:!bg-[#0E0F0F] hover:text-white hover:border-white border border-[#0E0F0F] transition-all duration-200"
+                  className="w-full p-2.5 md:p-3 text-md rounded-lg border border-zinc-400 font-light bg-[#9334E9] text-[#FAFAFA] transition-all duration-200 hover:bg-[#3c1671] hover:border-[#6D28D9]"
                 >
                   {loading ? "Creating Account..." : "Sign Up"}
                 </button>
@@ -428,6 +417,37 @@ export default function SignUp() {
               Sign In
             </Link>
           </p>
+        </div>
+
+        {/* Testimonial Block */}
+        <div className="mt-8 w-full max-w-md mx-auto">
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
+            <div className="flex flex-col items-center text-center">
+              <div className="w-16 h-16 rounded-full bg-gray-300 mb-4 overflow-hidden">
+                <img 
+                  src="/testimonial-avatar.jpg" 
+                  alt="Testimonial avatar" 
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                    e.target.nextSibling.style.display = 'flex';
+                  }}
+                />
+                <img 
+                  src="https://images.crunchbase.com/image/upload/c_thumb,h_170,w_170,f_auto,g_face,z_0.7,b_white,q_auto:eco,dpr_2/v1397186118/aa46748ccea376ecbf6c30173a34d1e0.jpg"
+                  alt="Sudha Valluru"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <blockquote className="text-white text-lg font-medium mb-4 leading-relaxed">
+                "I wish I could have Amurex as my gmail search bar... It has the potential to elevate how we engage with digital information."
+              </blockquote>
+              <div className="text-white">
+                <div className="font-semibold">Sudha Valluru</div>
+                <div className="text-gray-300 text-sm">COO & Co-founder @ NaceAI (backed by General Catalyst)</div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
