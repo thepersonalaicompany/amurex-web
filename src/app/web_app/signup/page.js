@@ -440,7 +440,7 @@ export default function SignUp() {
                 />
               </div>
               <blockquote className="text-white text-lg font-medium mb-4 leading-relaxed">
-                "I wish I could have Amurex as my gmail search bar... It has the potential to elevate how we engage with digital information."
+                &quot;I wish I could have Amurex as my gmail search bar... It has the potential to elevate how we engage with digital information.&quot;
               </blockquote>
               <div className="text-white">
                 <div className="font-semibold">Sudha Valluru</div>
