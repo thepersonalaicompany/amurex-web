@@ -767,12 +767,24 @@ export default function AISearch() {
         // Google Docs is only available with "full" access
         setHasGoogleDocs(googleConnected && data?.google_token_version === "full");
 
-        // Gmail is available with either "full" or "gmail_only" access
-        setHasGmail(googleConnected &&
-          (data?.google_token_version === "full" || data?.google_token_version === "gmail_only"));
+        connectionsChecked++;
+        if (connectionsChecked === 3) {
+          checkOnboarding(googleConnected, notionConnected);
+        }
+      });
+
+    // Check Gmail connection by checking user_gmails table
+    supabase
+      .from("user_gmails")
+      .select("id")
+      .eq("user_id", session.user.id)
+      .limit(1)
+      .then(({ data }) => {
+        const hasGmailData = !!data?.length;
+        setHasGmail(hasGmailData);
 
         connectionsChecked++;
-        if (connectionsChecked === 2) {
+        if (connectionsChecked === 3) {
           checkOnboarding(googleConnected, notionConnected);
         }
       });
@@ -798,7 +810,7 @@ export default function AISearch() {
         notionConnected = !!data?.notion_connected;
         setHasNotion(notionConnected);
         connectionsChecked++;
-        if (connectionsChecked === 2) {
+        if (connectionsChecked === 3) {
           checkOnboarding(googleConnected, notionConnected);
         }
       });
