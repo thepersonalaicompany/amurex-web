@@ -8,7 +8,7 @@ const supabaseAdmin = createClient(
 );
 
 // Import the cron function directly
-async function runOmiExportCron(isInitial = false) {
+async function runOmiExportCron(isInitial = false, specificUserId = null) {
     try {
         console.log('Starting OMI export cron job...');
 
@@ -16,11 +16,18 @@ async function runOmiExportCron(isInitial = false) {
         console.log(`Running in ${isInitial ? 'initial' : 'incremental'} mode`);
 
         // 1. Get users with OMI connection data
-        const { data: users, error: usersError } = await supabaseAdmin
+        let query = supabaseAdmin
             .from('users')
             .select('id, email, omi_connected, omi_uid')
             .eq('omi_connected', true)
-            .not('omi_uid', 'is', null)
+            .not('omi_uid', 'is', null);
+
+        // If specificUserId is provided, filter for that user only
+        if (specificUserId) {
+            query = query.eq('id', specificUserId);
+        }
+
+        const { data: users, error: usersError } = await query;
 
         if (usersError) {
             console.error('Error fetching users:', usersError);
@@ -235,7 +242,7 @@ export async function POST(req) {
         }
 
         // Call the cron function directly with initial=true
-        const cronResult = await runOmiExportCron(true);
+        const cronResult = await runOmiExportCron(true, userId);
         console.log('Initial export triggered successfully for user:', userId);
 
         return NextResponse.json({ 
