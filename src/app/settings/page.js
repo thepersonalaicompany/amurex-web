@@ -37,6 +37,7 @@ const PROVIDER_ICONS = {
   obsidian: "https://obsidian.md/images/obsidian-logo-gradient.svg",
   gmail:
     "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/2560px-Gmail_icon_%282020%29.svg.png",
+  omi: "/omilogo.webp"
 };
 
 const BASE_URL_BACKEND = "https://api.amurex.ai";
@@ -1319,9 +1320,9 @@ function SettingsContent() {
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-4">
                             <img
-                              src={PROVIDER_ICONS.notion}
-                              alt="Notion"
-                              className="w-6 h-6"
+                              src={PROVIDER_ICONS.omi}
+                              alt="Omi"
+                              className="w-8 "
                             />
                             <div>
                               <h3 className="font-medium text-white text-lg">
