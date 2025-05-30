@@ -47,6 +47,7 @@ function SettingsContent() {
   const [userEmail, setUserEmail] = useState("");
   const [userId, setUserId] = useState(null);
   const [notionConnected, setNotionConnected] = useState(false);
+  const [omiConnected, setOmiConnected] = useState(false);
   const [googleDocsConnected, setGoogleDocsConnected] = useState(false);
   const [calendarConnected, setCalendarConnected] = useState(false);
   const [notionDocuments, setNotionDocuments] = useState([]);
@@ -292,7 +293,7 @@ function SettingsContent() {
         const { data: user, error } = await supabase
           .from("users")
           .select(
-            "notion_connected, google_docs_connected, calendar_connected, memory_enabled, email, created_at, email_tagging_enabled, emails_enabled"
+            "notion_connected, google_docs_connected, omi_connected, calendar_connected, memory_enabled, email, created_at, email_tagging_enabled, emails_enabled"
           )
           .eq("id", session.user.id)
           .single();
@@ -308,6 +309,7 @@ function SettingsContent() {
             })
           );
           setNotionConnected(user.notion_connected);
+          setOmiConnected(user.omi_connected)
           setGoogleDocsConnected(user.google_docs_connected);
           console.log(
             "Setting googleDocsConnected to:",
@@ -449,30 +451,31 @@ function SettingsContent() {
     }
   };
 
-  const handleCalendarConnect = async () => {
+  const connectOmi = async () => {
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (session) {
-        const response = await fetch("/api/google/auth", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ userId: session.user.id }),
-        });
-        const data = await response.json();
-        if (data.url) {
-          router.push(data.url);
-        } else {
-          console.error("Error starting Google OAuth flow:", data.error);
-        }
-      }
+      // Your app ID from OMI platform registration
+      const APP_ID = "01JWF84YVZ6SYKE486KWARA2CK";
+      
+      // Generate a random state string to prevent CSRF attacks
+      const state = Math.random().toString(36).substring(7);
+      
+      // Store state in localStorage to verify on callback
+      localStorage.setItem('omiOAuthState', state);
+
+      // Construct the authorization URL
+      const authUrl = new URL('https://api.omi.me/v1/oauth/authorize');
+      // we should potentially store this in the database as well. 
+      authUrl.searchParams.append('app_id', APP_ID);
+      authUrl.searchParams.append('state', state);
+
+      // Redirect user to OMI authorization page
+      window.location.href = authUrl.toString();
     } catch (error) {
-      console.error("Error connecting Google services:", error);
+      console.error('Error initiating OMI OAuth flow:', error);
+      toast.error('Failed to connect to OMI');
     }
   };
+
 
   const handleMemoryToggle = async (checked) => {
     try {
@@ -1146,8 +1149,6 @@ function SettingsContent() {
                         variant="outline"
                         className="relative bg-zinc-900/50 text-zinc-300 hover:bg-zinc-800 hover:border-[#9334E9] border border-zinc-800 rounded-md backdrop-blur-sm transition-colors duration-200"
                         onClick={async () => {
-                          console.log("clicked");
-
                           // Track button click with analytics
                           try {
                             // Log the user action for analytics using stored userId
@@ -1220,37 +1221,8 @@ function SettingsContent() {
                               <p className="text-sm text-zinc-400">
                                 Sync your Gmail inbox
                               </p>
-                              {/* <p className="text-xs text-zinc-600 max-w-72">
-                                The app is still in the review process. You can safely proceed by clicking on &quot;Advanced&quot; and then &quot;Go to Amurex
-                                (unsafe)&quot;.
-                              </p> */}
                             </div>
                           </div>
-                          {/* <Button
-                            variant="outline"
-                            className={`bg-zinc-900 text-zinc-300 hover:bg-zinc-800 border-zinc-800 ${
-                              googleDocsConnected
-                                ? "bg-green-900 hover:bg-green-800"
-                                : ""
-                            } min-w-[100px]`}
-                            onClick={() => {
-                              setShowWarningModal(true);
-                            }}
-                            disabled={
-                              isImporting && importSource === "Google Docs"
-                            }
-                          >
-                            {isImporting && importSource === "Google Docs" ? (
-                              <div className="flex items-center">
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#9334E9] mr-2"></div>
-                                Importing...
-                              </div>
-                            ) : googleDocsConnected ? (
-                              "Connected"
-                            ) : (
-                              "Connect"
-                            )}
-                          </Button> */}
                           <Button
                             variant="outline"
                             className={`bg-zinc-900 text-zinc-300 hover:bg-zinc-800 border-zinc-800 ${
@@ -1342,6 +1314,51 @@ function SettingsContent() {
                       </CardContent>
                     </Card>
 
+                    <Card className="bg-black border-zinc-800 flex-1">
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <img
+                              src={PROVIDER_ICONS.notion}
+                              alt="Notion"
+                              className="w-6 h-6"
+                            />
+                            <div>
+                              <h3 className="font-medium text-white text-lg">
+                                Connect Omi
+                              </h3>
+                              <p className="text-sm text-zinc-400">
+                                A two way connection to and from your Omi memories.
+                              </p>
+                            </div>
+                          </div>
+                          <Button
+                            variant="outline"
+                            className={`bg-zinc-900 text-zinc-300 hover:bg-zinc-800 border-zinc-800 ${
+                              omiConnected
+                                ? "bg-green-900 hover:bg-green-800"
+                                : ""
+                            } min-w-[100px]`}
+                            onClick={connectOmi}
+                            // disabled={isImporting && importSource === "Omi"}
+                          >
+                            {isImporting && importSource === "Omi" ? (
+                              <div className="flex items-center">
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#9334E9] mr-2"></div>
+                                Importing...
+                              </div>
+                            ) : omiConnected ? (
+                              "Connected"
+                            ) : (
+                              "Connect"
+                            )}
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  <div className="flex gap-4">
                     <Card className="bg-black border-zinc-800 flex-1">
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between">
