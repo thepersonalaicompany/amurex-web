@@ -52,6 +52,31 @@ function OmiCallback() {
             error: error.message 
           }, { status: 500 });
         }
+
+        console.log('User OMI connection updated successfully');
+
+        // Trigger initial export of user's data to OMI
+        try {
+          console.log('Triggering initial OMI export...');
+          const response = await fetch('/api/omi/trigger-initial-export', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              userId: session.user.id
+            })
+          });
+          
+          if (response.ok) {
+            console.log('Initial OMI export triggered successfully');
+          } else {
+            console.error('Failed to trigger initial OMI export:', response.status);
+          }
+        } catch (exportError) {
+          console.error('Error triggering initial OMI export:', exportError);
+          // Don't fail the callback flow if export fails
+        }
     
         router.push('/settings');
     
