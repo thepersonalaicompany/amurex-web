@@ -16,8 +16,8 @@ export async function GET(request) {
     // Fetch users with OMI user IDs
     const { data: users, error: usersError } = await supabase
       .from('users')
-      .select('id, omi_user_id')
-      .not('omi_user_id', 'is', null);
+      .select('id, omi_uid, omi_connected')
+      .not('omi_connected', 'is', false);
 
     if (usersError) {
       throw new Error(`Error fetching users: ${usersError.message}`);
@@ -30,7 +30,7 @@ export async function GET(request) {
       try {
         // Fetch conversations from OMI API
         const response = await fetch(
-          `${OMI_API_BASE_URL}/integrations/${OMI_APP_ID}/conversations?uid=${user.omi_user_id}`,
+          `${OMI_API_BASE_URL}/integrations/${OMI_APP_ID}/conversations?uid=${user.omi_uid}`,
           {
             headers: {
               'Authorization': `Bearer ${OMI_API_KEY}`,
@@ -48,16 +48,13 @@ export async function GET(request) {
         // Store conversations in database
         const { error: insertError } = await supabase
           .from('omi_conversations')
-          .upsert(
-            conversations.map(conv => ({
-              user_id: user.id,
-              omi_user_id: user.omi_user_id,
-              conversation_id: conv.id,
-              data: conv,
-              updated_at: new Date().toISOString(),
-            })),
-            { onConflict: 'user_id,conversation_id' }
-          );
+          .upsert({
+            user_id: user.id,
+            conversations: conversations,
+            created_at: new Date().toISOString()
+          }, {
+            onConflict: 'user_id'
+          });
 
         if (insertError) {
           throw new Error(`Error storing conversations: ${insertError.message}`);
