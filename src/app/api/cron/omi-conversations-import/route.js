@@ -1,5 +1,10 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabaseClient';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
 const OMI_API_BASE_URL = 'https://api.omi.me/v2';
 const OMI_APP_ID = process.env.OMI_APP_ID;
@@ -17,7 +22,10 @@ export async function GET(request) {
     const { data: users, error: usersError } = await supabase
       .from('users')
       .select('id, omi_uid, omi_connected')
-      .not('omi_connected', 'is', false);
+      .eq('omi_connected', true)
+      .limit(50);
+    
+    console.log("This is the users", users);
 
     if (usersError) {
       throw new Error(`Error fetching users: ${usersError.message}`);
@@ -44,20 +52,27 @@ export async function GET(request) {
         }
 
         const conversations = await response.json();
+        console.log(conversations);
 
         // Store conversations in database
-        const { error: insertError } = await supabase
-          .from('omi_conversations')
-          .upsert({
-            user_id: user.id,
-            conversations: conversations,
-            created_at: new Date().toISOString()
-          }, {
-            onConflict: 'user_id'
-          });
 
-        if (insertError) {
-          throw new Error(`Error storing conversations: ${insertError.message}`);
+        for (const conversation of conversations["conversations"]) {
+          const { error: insertError } = await supabase
+            .from('omi_conversations')
+            .upsert({
+              user_id: user.id,
+              omi_conversation_id: conversation["id"],
+              conversations: conversation,
+              created_at: new Date().toISOString()
+            }, {
+              onConflict: 'omi_conversation_id',
+              target: ['omi_conversation_id'],
+              ignoreDuplicates: true
+            });
+
+          if (insertError) {
+            throw new Error(`Error storing conversations: ${insertError.message}`);
+          }
         }
 
         results.push({

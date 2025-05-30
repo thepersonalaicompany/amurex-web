@@ -1,9 +1,15 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabaseClient';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
 const OMI_API_BASE_URL = 'https://api.omi.me/v2';
 const OMI_APP_ID = process.env.OMI_APP_ID;
 const OMI_API_KEY = process.env.OMI_API_KEY;
+
 
 export async function GET(request) {
   try {
@@ -17,7 +23,8 @@ export async function GET(request) {
     const { data: users, error: usersError } = await supabase
       .from('users')
       .select('id, omi_uid, omi_connected')
-      .not('omi_connected', 'is', false);
+      .eq('omi_connected', true)
+      .limit(50);
 
     if (usersError) {
       throw new Error(`Error fetching users: ${usersError.message}`);
@@ -44,16 +51,20 @@ export async function GET(request) {
         }
 
         const memories = await response.json();
+        console.log(memories);
 
-        // Store conversations in database
-        const { error: insertError } = await supabase
+        for (const memory of memories["memories"]) {
+          const { error: insertError } = await supabase
           .from('omi_memories')
           .upsert({
             user_id: user.id,
-            memories: memories,
+            memories: memory,
+            omi_memory_id: memory["id"],
             created_at: new Date().toISOString()
           }, {
-            onConflict: 'user_id'
+            onConflict: 'omi_memory_id',
+            target: ['omi_memory_id'],
+            ignoreDuplicates: true
           });
 
         if (insertError) {
@@ -64,6 +75,7 @@ export async function GET(request) {
             status: 'success',
             memories_count: memories.length,
           });
+          }
         }
 
       } catch (error) {
