@@ -16,26 +16,53 @@ export const maxDuration = 300;
 export const dynamic = "force-dynamic";
 
 async function generateTags(text) {
-  const tagsResponse = await groq.chat.completions.create({
-    model: "llama-3.3-70b-versatile",
-    messages: [
-      {
-        role: "system",
-        content:
-          "You are a helpful assistant that generates relevant tags for a given text. Provide the tags as a comma-separated list without numbers or bullet points.",
-      },
-      {
-        role: "user",
-        content: `Generate 3 relevant tags for the following text, separated by commas:\n\n${text.substring(
-          0,
-          1000
-        )}`,
-      },
-    ],
-  });
-  return tagsResponse.choices[0].message.content
-    .split(",")
-    .map((tag) => tag.trim());
+  if (process.env.CLIENT_MODE === 'local') {
+    // Use local Ollama model as fallback
+    try {
+      const response = await fetch('http://localhost:11434/api/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: process.env.MODEL_NAME || 'llama3.1:8b',
+          prompt: `Generate 3 relevant tags for the following text, separated by commas:\n\n${text.substring(0, 1000)}`,
+          system: "You are a helpful assistant that generates relevant tags for a given text. Provide the tags as a comma-separated list without numbers or bullet points."
+        }),
+      });
+      
+      const result = await response.json();
+      return result.response
+        .split(",")
+        .map((tag) => tag.trim());
+    } catch (error) {
+      console.error("Local model error:", error);
+      // Return default tags if local model fails
+      return ["document", "content", "text"];
+    }
+  } else {
+    // Use Groq API
+    const tagsResponse = await groq.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are a helpful assistant that generates relevant tags for a given text. Provide the tags as a comma-separated list without numbers or bullet points.",
+        },
+        {
+          role: "user",
+          content: `Generate 3 relevant tags for the following text, separated by commas:\n\n${text.substring(
+            0,
+            1000
+          )}`,
+        },
+      ],
+    });
+    return tagsResponse.choices[0].message.content
+      .split(",")
+      .map((tag) => tag.trim());
+  }
 }
 
 export async function POST(req) {

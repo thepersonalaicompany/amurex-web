@@ -33,8 +33,9 @@ async function sendPayload(content, user_id) {
 
 // Function to check which model to use and make the appropriate API call
 async function generateCompletion(messages, modelName) {
+  const clientMode = process.env.CLIENT_MODE;
   // Check if we should use Ollama
-  if (modelName === 'llama3.3') {
+  if (clientMode == 'local' && modelName?.length > 0) {
     // Use Ollama API
     const response = await fetch('http://localhost:11434/api/chat', {
       method: 'POST',
@@ -42,7 +43,7 @@ async function generateCompletion(messages, modelName) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'llama3.3-70b',
+        model: modelName,
         messages: messages,
         stream: false
       }),
@@ -81,7 +82,7 @@ async function generatePrompts(documents) {
     },
   ];
 
-  if (modelName === 'llama3.3') {
+  if (modelName && modelName.length > 0) {
     // Use Ollama API
     const response = await fetch('http://localhost:11434/api/chat', {
       method: 'POST',
@@ -89,13 +90,14 @@ async function generatePrompts(documents) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'llama3.3-70b',
+        model: modelName,
         messages: messages,
         stream: false
       }),
     });
     
     const data = await response.json();
+    console.log("Ollama response from generating prompt", data);
     return JSON.parse(data.message.content);
   } else {
     // Use Groq

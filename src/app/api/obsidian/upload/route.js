@@ -51,6 +51,32 @@ class TextSplitter {
 }
 
 async function generateTags(text) {
+  if (process.env.CLIENT_MODE === 'local' && process.env.MODEL_NAME) {
+    try {
+      // Use local Ollama model
+      const response = await fetch('http://localhost:11434/api/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: process.env.MODEL_NAME,
+          prompt: `Generate 3 relevant tags for the following text, separated by commas:\n\n${text.substring(0, 1000)}`,
+          system: "You are a helpful assistant that generates relevant tags for a given text. Provide the tags as a comma-separated list without numbers or bullet points.",
+        }),
+      });
+      
+      const result = await response.json();
+      return result.response
+        .split(',')
+        .map((tag) => tag.trim());
+    } catch (error) {
+      console.error("Error with local model, falling back to Groq:", error);
+      // Fall through to Groq if local model fails
+    }
+  }
+  
+  // Default to Groq API
   const tagsResponse = await groq.chat.completions.create({
     model: "llama-3.3-70b-versatile",
     messages: [
