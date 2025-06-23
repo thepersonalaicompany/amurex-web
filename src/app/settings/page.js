@@ -24,6 +24,7 @@ import {
   Plus,
   Minus,
   Clock,
+  ChartNoAxesColumn,
 } from "lucide-react";
 import Cookies from "js-cookie";
 import { toast } from "react-hot-toast";
@@ -56,6 +57,7 @@ function SettingsContent() {
   const [importSource, setImportSource] = useState("");
   const [importProgress, setImportProgress] = useState(0);
   const [memoryEnabled, setMemoryEnabled] = useState(false);
+  const [analyticsEnabled, setAnalyticsEnabled] = useState(false);
   const [createdAt, setCreatedAt] = useState("");
   const [emailNotificationsEnabled, setEmailNotificationsEnabled] = useState(false);
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
@@ -202,7 +204,7 @@ function SettingsContent() {
         },
         body: JSON.stringify({
           userId: session.user.id,
-          maxEmails: 20
+          maxEmails: 20,
         }),
       });
 
@@ -214,9 +216,7 @@ function SettingsContent() {
       } else {
         if (data.errorType === "insufficient_permissions") {
           setGmailPermissionError(true);
-          toast.error(
-            "Insufficient Gmail permissions. Please reconnect your Google account."
-          );
+          toast.error("Insufficient Gmail permissions. Please reconnect your Google account.");
         } else {
           toast.error(data.error || "Failed to process emails");
         }
@@ -233,25 +233,30 @@ function SettingsContent() {
   useEffect(() => {
     const checkSession = async () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession();
         setSession(session);
-        
+
         if (session) {
           setUserId(session.user.id);
           // Fetch user data and integrations
           await checkIntegrations();
-          
+
           // Fetch Google token version
           const { data, error: tokenError } = await supabase
             .from("users")
             .select("google_token_version")
             .eq("id", session.user.id)
             .single();
-            
+
           if (!tokenError && data) {
             setGoogleTokenVersion(data.google_token_version);
             setGoogleDocsConnected(data.google_token_version === "full");
-            setGmailConnected(data.google_token_version === "full" || data.google_token_version === "gmail_only");
+            setGmailConnected(
+              data.google_token_version === "full" || data.google_token_version === "gmail_only"
+            );
           }
         } else {
           // Redirect if no session
@@ -263,9 +268,9 @@ function SettingsContent() {
         console.error("Error checking session:", error);
       }
     };
-    
+
     checkSession();
-    
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -283,6 +288,7 @@ function SettingsContent() {
 
   // Move checkIntegrations function above the useEffect
   const checkIntegrations = async () => {
+    
     try {
       console.log("Checking integrations...");
       const {
@@ -294,7 +300,7 @@ function SettingsContent() {
         const { data: user, error } = await supabase
           .from("users")
           .select(
-            "notion_connected, google_docs_connected, omi_connected, calendar_connected, memory_enabled, email, created_at, email_tagging_enabled, emails_enabled"
+            "notion_connected, omi_connected, google_docs_connected, calendar_connected, memory_enabled, analytics_enabled, email, created_at, email_tagging_enabled, emails_enabled"
           )
           .eq("id", session.user.id)
           .single();
@@ -312,12 +318,10 @@ function SettingsContent() {
           setNotionConnected(user.notion_connected);
           setOmiConnected(user.omi_connected)
           setGoogleDocsConnected(user.google_docs_connected);
-          console.log(
-            "Setting googleDocsConnected to:",
-            user.google_docs_connected
-          );
+          console.log("Setting googleDocsConnected to:", user.google_docs_connected);
           setCalendarConnected(user.calendar_connected);
           setMemoryEnabled(user.memory_enabled);
+          setAnalyticsEnabled(user.analytics_enabled);
           setEmailLabelingEnabled(user.email_tagging_enabled || false);
           setEmailNotificationsEnabled(user.emails_enabled || false);
         }
@@ -371,7 +375,14 @@ function SettingsContent() {
         }
       });
     }
-  }, [searchParams, googleTokenVersion, importGoogleDocs, importNotionDocuments, processGmailLabels, router]);
+  }, [
+    searchParams,
+    googleTokenVersion,
+    importGoogleDocs,
+    importNotionDocuments,
+    processGmailLabels,
+    router,
+  ]);
 
   useEffect(() => {
     const connection = searchParams.get("connection");
@@ -497,6 +508,26 @@ function SettingsContent() {
     }
   };
 
+  const handleAnalyticsToggle = async (checked) => {
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (session) {
+        const { error,data } = await supabase
+          .from("users")
+          .update({ analytics_enabled: checked })
+          .eq("id", session.user.id);
+
+        if (error) throw error;
+        setAnalyticsEnabled(checked);
+        toast.success(checked ? "Analytics enabled" : "Analytics disabled");
+      }
+    } catch (error) {
+      console.error("Error updating analytics settings:", error);
+    }
+  };
+
   const handleEmailNotificationsToggle = async (checked) => {
     try {
       const {
@@ -580,21 +611,29 @@ function SettingsContent() {
   }, [searchParams, handleGoogleCallback]);
 
   const logUserAction = async (userId, eventType) => {
-    try {
-      await fetch(`${BASE_URL_BACKEND}/track`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({
-          uuid: userId,
-          event_type: eventType,
-        }),
-      });
-    } catch (error) {
-      console.error("Error tracking:", error);
-    }
+      const { data: userData, error: userError } = await supabase
+      .from("users")
+      .select("analytics_enabled")
+      .eq("id", userId)
+      .single();
+
+    if(userData?.analytics_enabled) {
+      try {
+        await fetch(`${BASE_URL_BACKEND}/track`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({
+            uuid: userId,
+            event_type: eventType,
+          }),
+        });
+      } catch (error) {
+        console.error("Error tracking:", error);
+      }
+  }
   };
 
   const handleSave = async (field) => {
@@ -658,9 +697,7 @@ function SettingsContent() {
       if (error) throw error;
 
       setTeamMembers((members) =>
-        members.map((member) =>
-          member.id === memberId ? { ...member, role: editedRole } : member
-        )
+        members.map((member) => (member.id === memberId ? { ...member, role: editedRole } : member))
       );
 
       setEditingMemberId(null);
@@ -773,9 +810,7 @@ function SettingsContent() {
 
   const handleCopyInviteLink = async () => {
     try {
-      await navigator.clipboard.writeText(
-        `${window.location.host}/teams/join/${teamInviteCode}`
-      );
+      await navigator.clipboard.writeText(`${window.location.host}/teams/join/${teamInviteCode}`);
       setCopyButtonText("Copied!");
       setTimeout(() => setCopyButtonText("Copy URL"), 2000);
     } catch (err) {
@@ -868,9 +903,9 @@ function SettingsContent() {
 
   // Update the handleFileSelect function
   const handleFileSelect = (e) => {
-    const files = Array.from(
-      e.target?.files || e.dataTransfer?.files || []
-    ).filter((file) => file.name.endsWith(".md"));
+    const files = Array.from(e.target?.files || e.dataTransfer?.files || []).filter((file) =>
+      file.name.endsWith(".md")
+    );
     setSelectedFiles(files);
   };
 
@@ -971,9 +1006,7 @@ function SettingsContent() {
 
         if (error) throw error;
         setEmailLabelingEnabled(checked);
-        toast.success(
-          checked ? "Email labeling enabled" : "Email labeling disabled"
-        );
+        toast.success(checked ? "Email labeling enabled" : "Email labeling disabled");
       }
     } catch (error) {
       console.error("Error updating email labeling settings:", error);
@@ -1002,10 +1035,10 @@ function SettingsContent() {
         toast.error("You must be logged in to connect Google Docs");
         return;
       }
-      
+
       setIsImporting(true);
       setImportSource("Google Docs");
-      
+
       const response = await fetch("/api/google/auth", {
         method: "POST",
         headers: {
@@ -1013,12 +1046,12 @@ function SettingsContent() {
         },
         body: JSON.stringify({
           userId: userId,
-          clientId: 2  // Always use client ID 2
+          clientId: 2, // Always use client ID 2
         }),
       });
 
       const data = await response.json();
-      
+
       if (data.url) {
         // Store a flag to indicate we want to import after connection
         localStorage.setItem("pendingGoogleDocsImport", "true");
@@ -1038,7 +1071,7 @@ function SettingsContent() {
   return (
     <div className="flex min-h-screen bg-black text-white">
       <MobileWarningBanner />
-      
+
       {/* Main Settings Area */}
       <div className="flex flex-1 overflow-hidden">
         {/* Settings Sidebar */}
@@ -1068,9 +1101,7 @@ function SettingsContent() {
             <button
               onClick={() => handleTabChange("team")}
               className={`w-full text-left px-4 py-2 rounded-lg hidden ${
-                activeTab === "team"
-                  ? "bg-zinc-800 text-white"
-                  : "text-zinc-400 hover:bg-zinc-800"
+                activeTab === "team" ? "bg-zinc-800 text-white" : "text-zinc-400 hover:bg-zinc-800"
               }`}
             >
               Team
@@ -1090,37 +1121,49 @@ function SettingsContent() {
 
         {/* Warning Modal */}
         {showWarningModal && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
-          <div className="bg-zinc-900 rounded-lg p-6 max-w-md w-full border border-zinc-700">
-            <h3 className="text-xl font-medium text-white mb-4">Your data is safe</h3>
-            <p className="text-zinc-300 mb-6">
-                Since the app is still in Google&apos;s review process, you will be warned that the app is unsafe.
-                <br /><br />
-                You can safely proceed by clicking on &quot;Advanced&quot; and then &quot;Go to Amurex
-                (unsafe)&quot;.
-            </p>
-            <p className="text-zinc-300 mb-6">
-              We ensure that the app is safe to use and your data <span className="font-bold underline"><a href="https://github.com/thepersonalaicompany/amurex-web" target="_blank" rel="noopener noreferrer">is secure</a></span>.
-            </p>
-            <div className="flex justify-end gap-4">
-              <button
-                onClick={() => setShowWarningModal(false)}
-                className="px-4 py-2 rounded-lg bg-zinc-800 text-white hover:bg-zinc-700 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  setShowWarningModal(false);
-                  handleGoogleDocsConnect();
-                }}
-                className="px-4 py-2 rounded-lg bg-[#9334E9] text-white hover:bg-[#7928CA] transition-colors"
-              >
-                Proceed
-              </button>
+          <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
+            <div className="bg-zinc-900 rounded-lg p-6 max-w-md w-full border border-zinc-700">
+              <h3 className="text-xl font-medium text-white mb-4">Your data is safe</h3>
+              <p className="text-zinc-300 mb-6">
+                Since the app is still in Google&apos;s review process, you will be warned that the
+                app is unsafe.
+                <br />
+                <br />
+                You can safely proceed by clicking on &quot;Advanced&quot; and then &quot;Go to
+                Amurex (unsafe)&quot;.
+              </p>
+              <p className="text-zinc-300 mb-6">
+                We ensure that the app is safe to use and your data{" "}
+                <span className="font-bold underline">
+                  <a
+                    href="https://github.com/thepersonalaicompany/amurex-web"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    is secure
+                  </a>
+                </span>
+                .
+              </p>
+              <div className="flex justify-end gap-4">
+                <button
+                  onClick={() => setShowWarningModal(false)}
+                  className="px-4 py-2 rounded-lg bg-zinc-800 text-white hover:bg-zinc-700 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    setShowWarningModal(false);
+                    handleGoogleDocsConnect();
+                  }}
+                  className="px-4 py-2 rounded-lg bg-[#9334E9] text-white hover:bg-[#7928CA] transition-colors"
+                >
+                  Proceed
+                </button>
+              </div>
             </div>
           </div>
-        </div>
         )}
 
         {/* Main Content */}
@@ -1136,9 +1179,7 @@ function SettingsContent() {
                     <div className="flex items-center gap-4">
                       <MessageSquare className="w-6 h-6 text-[#9334E9]" />
                       <div>
-                        <h3 className="font-medium text-white text-lg">
-                          Knowledge Search (new!)
-                        </h3>
+                        <h3 className="font-medium text-white text-lg">Knowledge Search (new!)</h3>
                         <p className="text-sm text-zinc-400">
                           Try our new feature - search your emails, documents, notes, and more
                         </p>
@@ -1178,9 +1219,7 @@ function SettingsContent() {
 
           {activeTab === "personalization" && (
             <div className="space-y-8">
-              <h1 className="text-2xl font-medium text-white">
-                Personalization
-              </h1>
+              <h1 className="text-2xl font-medium text-white">Personalization</h1>
 
               {/* Memory Toggle */}
               <Card className="bg-black border-zinc-800">
@@ -1193,15 +1232,12 @@ function SettingsContent() {
                       </h2>
                       <p className="text-sm text-zinc-400">
                         Enable memory storing to unlock our{" "}
-                        <b>AI-powered knowledge search feature</b>, allowing you to
-                        have intelligent conversations about your past meetings, emails, documents, and more
+                        <b>AI-powered knowledge search feature</b>, allowing you to have intelligent
+                        conversations about your past meetings, emails, documents, and more
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <IconToggle
-                        checked={memoryEnabled}
-                        onChange={handleMemoryToggle}
-                      />
+                      <IconToggle checked={memoryEnabled} onChange={handleMemoryToggle} />
                     </div>
                   </div>
 
@@ -1210,11 +1246,7 @@ function SettingsContent() {
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-4">
-                            <img
-                              src={PROVIDER_ICONS.gmail}
-                              alt="Google"
-                              className="w-6"
-                            />
+                            <img src={PROVIDER_ICONS.gmail} alt="Google" className="w-6" />
                             <div>
                               <h3 className="font-medium text-white text-lg">
                                 Connect Gmail
@@ -1227,12 +1259,10 @@ function SettingsContent() {
                           <Button
                             variant="outline"
                             className={`bg-zinc-900 text-zinc-300 hover:bg-zinc-800 border-zinc-800 ${
-                              googleDocsConnected
-                                ? "bg-green-900 hover:bg-green-800"
-                                : ""
+                              googleDocsConnected ? "bg-green-900 hover:bg-green-800" : ""
                             } min-w-[100px]`}
                             onClick={() => {
-                              router.push('/emails');
+                              router.push("/emails");
                             }}
                           >
                             Connect
@@ -1245,26 +1275,16 @@ function SettingsContent() {
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-4">
-                            <img
-                              src={PROVIDER_ICONS.notion}
-                              alt="Notion"
-                              className="w-6 h-6"
-                            />
+                            <img src={PROVIDER_ICONS.notion} alt="Notion" className="w-6 h-6" />
                             <div>
-                              <h3 className="font-medium text-white text-lg">
-                                Connect Notion
-                              </h3>
-                              <p className="text-sm text-zinc-400">
-                                Sync your Notion pages
-                              </p>
+                              <h3 className="font-medium text-white text-lg">Connect Notion</h3>
+                              <p className="text-sm text-zinc-400">Sync your Notion pages</p>
                             </div>
                           </div>
                           <Button
                             variant="outline"
                             className={`bg-zinc-900 text-zinc-300 hover:bg-zinc-800 border-zinc-800 ${
-                              notionConnected
-                                ? "bg-green-900 hover:bg-green-800"
-                                : ""
+                              notionConnected ? "bg-green-900 hover:bg-green-800" : ""
                             } min-w-[100px]`}
                             onClick={connectNotion}
                             disabled={isImporting && importSource === "Notion"}
@@ -1290,18 +1310,12 @@ function SettingsContent() {
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-4">
-                            <img
-                              src={PROVIDER_ICONS.obsidian}
-                              alt="Obsidian"
-                              className="w-6 h-6"
-                            />
+                            <img src={PROVIDER_ICONS.obsidian} alt="Obsidian" className="w-6 h-6" />
                             <div>
                               <h3 className="font-medium text-white text-lg">
                                 Upload from Obsidian
                               </h3>
-                              <p className="text-sm text-zinc-400">
-                                Import your markdown files
-                              </p>
+                              <p className="text-sm text-zinc-400">Import your markdown files</p>
                             </div>
                           </div>
                           <Button
@@ -1371,9 +1385,7 @@ function SettingsContent() {
                               <h3 className="font-medium text-white text-lg">
                                 Request Integration
                               </h3>
-                              <p className="text-sm text-zinc-400">
-                                Suggest the next integration
-                              </p>
+                              <p className="text-sm text-zinc-400">Suggest the next integration</p>
                             </div>
                           </div>
                           <Button
@@ -1398,15 +1410,9 @@ function SettingsContent() {
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-4">
-                            <img
-                              src={PROVIDER_ICONS.gmail}
-                              alt="Gmail"
-                              className="w-6"
-                            />
+                            <img src={PROVIDER_ICONS.gmail} alt="Gmail" className="w-6" />
                             <div>
-                              <h3 className="font-medium text-white text-lg">
-                                Gmail Smart Labels
-                              </h3>
+                              <h3 className="font-medium text-white text-lg">Gmail Smart Labels</h3>
                               <p className="text-sm text-zinc-400">
                                 Auto-categorize emails with AI
                               </p>
@@ -1416,9 +1422,7 @@ function SettingsContent() {
                             <Switch
                               checked={emailLabelingEnabled}
                               onCheckedChange={handleEmailLabelToggle}
-                              className={
-                                emailLabelingEnabled ? "bg-[#9334E9]" : ""
-                              }
+                              className={emailLabelingEnabled ? "bg-[#9334E9]" : ""}
                             />
                             {gmailPermissionError && (
                               <Button
@@ -1440,14 +1444,14 @@ function SettingsContent() {
                         )}
                         {gmailPermissionError && (
                           <p className="text-sm text-amber-500 mt-2">
-                            Additional Gmail permissions are required. Please
-                            reconnect your Google account.
+                            Additional Gmail permissions are required. Please reconnect your Google
+                            account.
                           </p>
                         )}
                         {emailLabelingEnabled && !gmailPermissionError && (
                           <p className="text-xs text-zinc-400 mt-2">
-                            Uses AI to categorize your unread emails (max 10)
-                            and apply labels in Gmail
+                            Uses AI to categorize your unread emails (max 10) and apply labels in
+                            Gmail
                           </p>
                         )}
 
@@ -1483,6 +1487,24 @@ function SettingsContent() {
                   </div>
                 </CardContent>
               </Card>
+              <Card className="bg-black border-zinc-800 flex-1">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-6 h-6 rounded-full bg-zinc-800 flex items-center justify-center">
+                        <ChartNoAxesColumn className="w-5 h-5 text-[#9334E9] bg-transparent" />
+                      </div>
+                      <div>
+                        <h3 className="font-medium text-white text-lg">Analytics Tracking</h3>
+                        <p className="text-sm text-zinc-400">
+                          Help us improve by sharing your usage data
+                        </p>
+                      </div>
+                    </div>
+                    <IconToggle checked={analyticsEnabled} onChange={handleAnalyticsToggle} />
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           )}
 
@@ -1513,14 +1535,12 @@ function SettingsContent() {
                       <div className="pt-2 border-t border-zinc-800">
                         <div className="flex items-center justify-between hidden">
                           <div>
-                            <h3 className="text-md font-medium text-white">
-                              Email Notifications
-                            </h3>
+                            <h3 className="text-md font-medium text-white">Email Notifications</h3>
                             <p className="text-sm text-zinc-400">
                               Receive meeting summaries after each call
                             </p>
                           </div>
-                          <IconToggle 
+                          <IconToggle
                             checked={emailNotificationsEnabled}
                             onChange={handleEmailNotificationsToggle}
                           />
@@ -1530,12 +1550,8 @@ function SettingsContent() {
                       <div className="pt">
                         <div className="flex items-center justify-between">
                           <div>
-                            <h3 className="text-md font-medium text-white">
-                              Sign Out
-                            </h3>
-                            <p className="text-sm text-zinc-400">
-                              Sign out of your account
-                            </p>
+                            <h3 className="text-md font-medium text-white">Sign Out</h3>
+                            <p className="text-sm text-zinc-400">Sign out of your account</p>
                           </div>
                           <Button
                             variant="outline"
@@ -1556,9 +1572,7 @@ function SettingsContent() {
           {activeTab === "team" && (
             <>
               <div className="space-y-2">
-                <h1 className="text-2xl font-medium text-white">
-                  Team Settings
-                </h1>
+                <h1 className="text-2xl font-medium text-white">Team Settings</h1>
 
                 <Card className="bg-black border-zinc-800">
                   <CardContent className="p-6">
@@ -1640,9 +1654,7 @@ function SettingsContent() {
                             <input
                               type="text"
                               value={editedLocation}
-                              onChange={(e) =>
-                                setEditedLocation(e.target.value)
-                              }
+                              onChange={(e) => setEditedLocation(e.target.value)}
                               className="mt-1 w-full bg-zinc-900 border border-zinc-700 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#9334E9] focus:border-transparent"
                             />
                           ) : (
@@ -1651,9 +1663,7 @@ function SettingsContent() {
                         </div>
 
                         <div>
-                          <h3 className="text-md text-zinc-400">
-                            Created Date
-                          </h3>
+                          <h3 className="text-md text-zinc-400">Created Date</h3>
                           <p className="text-white">{teamCreatedAt}</p>
                         </div>
                       </div>
@@ -1700,25 +1710,19 @@ function SettingsContent() {
                                   {editingMemberId === member.id ? (
                                     <select
                                       value={editedRole}
-                                      onChange={(e) =>
-                                        setEditedRole(e.target.value)
-                                      }
+                                      onChange={(e) => setEditedRole(e.target.value)}
                                       className="bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-white"
                                     >
                                       <option value="owner">Owner</option>
                                       <option value="member">Member</option>
                                     </select>
                                   ) : (
-                                    <span className="capitalize">
-                                      {member.role}
-                                    </span>
+                                    <span className="capitalize">{member.role}</span>
                                   )}
                                   <span>•</span>
                                   <span>
                                     Joined{" "}
-                                    {new Date(
-                                      member.created_at
-                                    ).toLocaleDateString("en-US", {
+                                    {new Date(member.created_at).toLocaleDateString("en-US", {
                                       year: "numeric",
                                       month: "long",
                                       day: "numeric",
@@ -1740,9 +1744,7 @@ function SettingsContent() {
                                     </Button>
                                     <Button
                                       size="sm"
-                                      onClick={() =>
-                                        handleRoleUpdate(member.id)
-                                      }
+                                      onClick={() => handleRoleUpdate(member.id)}
                                       className="mt-2 px-2 py-2 inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium border border-white/10 !bg-[#9334E9] text-[#FAFAFA] hover:!bg-[#3c1671]"
                                     >
                                       Save
@@ -1786,9 +1788,7 @@ function SettingsContent() {
                         <h2 className="text-md font-semibold flex items-center gap-2 text-white">
                           Encounter an issue?
                         </h2>
-                        <p className="text-sm text-zinc-400">
-                          Help us improve by reporting issues
-                        </p>
+                        <p className="text-sm text-zinc-400">Help us improve by reporting issues</p>
                       </div>
                       <Button
                         variant="outline"
@@ -1840,12 +1840,8 @@ function SettingsContent() {
       {showSignOutConfirm && (
         <div className="px-2 fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-black bg-opacity-40 backdrop-blur-sm p-8 rounded-lg shadow-lg border border-white/20">
-            <h3 className="lg:text-xl text-md font-medium mb-4 text-white">
-              Confirm Sign Out
-            </h3>
-            <p className="text-zinc-400 mb-6">
-              Are you sure you want to sign out of your account?
-            </p>
+            <h3 className="lg:text-xl text-md font-medium mb-4 text-white">Confirm Sign Out</h3>
+            <p className="text-zinc-400 mb-6">Are you sure you want to sign out of your account?</p>
             <div className="flex gap-3 justify-end">
               <button
                 className="px-4 py-2 inline-flex items-center justify-center gap-2 rounded-md text-md font-medium border border-white/10 text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:bg-[#3c1671] hover:border-[#6D28D9]"
@@ -1872,18 +1868,14 @@ function SettingsContent() {
             </h2>
 
             <div className="mt-4">
-              <p className="text-white lg:text-md text-sm font-semibold">
-                Send invites via email
-              </p>
+              <p className="text-white lg:text-md text-sm font-semibold">Send invites via email</p>
               <div className="flex items-center">
                 <input
                   type="text"
                   value={emailInput}
                   onChange={handleEmailInputChange}
                   onKeyDown={isMobile ? undefined : handleEmailInputKeyDown}
-                  placeholder={
-                    isMobile ? "Enter emails" : "Enter emails and press enter"
-                  }
+                  placeholder={isMobile ? "Enter emails" : "Enter emails and press enter"}
                   className="w-full mt-2 p-2 border rounded bg-transparent text-white text-sm lg:text-md"
                 />
                 {isMobile && (
@@ -1898,9 +1890,7 @@ function SettingsContent() {
 
               {emails.length > 0 && (
                 <ul className="mt-2 text-white">
-                  <li className="font-semibold lg:text-md text-sm">
-                    New invites
-                  </li>
+                  <li className="font-semibold lg:text-md text-sm">New invites</li>
                   {emails.map((email, index) => (
                     <li
                       key={index}
@@ -1941,9 +1931,7 @@ function SettingsContent() {
             </div>
 
             <div className="mt-6">
-              <p className="text-white lg:text-md text-sm font-semibold">
-                Or copy the invite URL
-              </p>
+              <p className="text-white lg:text-md text-sm font-semibold">Or copy the invite URL</p>
               <input
                 type="text"
                 value={`${window.location.host}/teams/join/${teamInviteCode}`}
@@ -2002,9 +1990,7 @@ function SettingsContent() {
       {isObsidianModalOpen && (
         <div className="px-2 fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-black bg-opacity-40 backdrop-blur-sm p-8 rounded-lg shadow-lg border border-white/20 max-w-lg w-full">
-            <h2 className="text-xl font-medium mb-4 text-white">
-              Upload Markdown Files
-            </h2>
+            <h2 className="text-xl font-medium mb-4 text-white">Upload Markdown Files</h2>
 
             <div className="mt-4">
               <input
@@ -2025,23 +2011,16 @@ function SettingsContent() {
                 <div className="text-center">
                   <FileText className="w-8 h-8 text-[#9334E9] mx-auto mb-2" />
                   <p className="text-white">Click to select markdown files</p>
-                  <p className="text-sm text-zinc-400">
-                    or drag and drop them here
-                  </p>
+                  <p className="text-sm text-zinc-400">or drag and drop them here</p>
                 </div>
               </label>
 
               {selectedFiles.length > 0 && (
                 <div className="mt-4">
-                  <h3 className="text-white font-medium mb-2">
-                    Selected Files:
-                  </h3>
+                  <h3 className="text-white font-medium mb-2">Selected Files:</h3>
                   <ul className="space-y-2">
                     {selectedFiles.map((file, index) => (
-                      <li
-                        key={index}
-                        className="text-zinc-400 flex items-center"
-                      >
+                      <li key={index} className="text-zinc-400 flex items-center">
                         <FileText className="w-4 h-4 mr-2" />
                         {file.name}
                       </li>
@@ -2092,8 +2071,8 @@ function SettingsContent() {
           <div className="bg-zinc-900 rounded-lg p-6 max-w-md w-full border border-zinc-700">
             <h3 className="text-xl font-medium text-white mb-4">Broader Google Access Required</h3>
             <p className="text-zinc-300 mb-6">
-              We need broader access to your Google account to enable Google Docs integration. 
-              The app is still in the verification process from Google.
+              We need broader access to your Google account to enable Google Docs integration. The
+              app is still in the verification process from Google.
             </p>
             <p className="text-zinc-300 mb-6">
               If you wish to proceed, you can continue with the authentication process.
