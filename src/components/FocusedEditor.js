@@ -1,7 +1,7 @@
 "use client";
 import { useState, useCallback, useRef, useEffect } from "react";
-import { Editor } from "novel-lightweight";
-import { supabase } from '@/lib/supabaseClient';
+import { Editor } from "novel";
+import { supabase } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/Button";
 import { X } from "lucide-react";
 
