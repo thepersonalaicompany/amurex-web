@@ -35,7 +35,7 @@ async function sendPayload(content, user_id) {
 async function generateCompletion(messages, modelName) {
   const clientMode = process.env.CLIENT_MODE;
   // Check if we should use Ollama
-  if (clientMode == 'local' && modelName?.length > 0) {
+  if (clientMode == 'local' && modelName?.trim().length > 0) {
     // Use Ollama API
     const response = await fetch('http://localhost:11434/api/chat', {
       method: 'POST',
@@ -71,6 +71,7 @@ async function generateCompletion(messages, modelName) {
 // Add this new function near the other helper functions
 async function generatePrompts(documents) {
   const modelName = process.env.MODEL_NAME;
+  const clientMode = process.env.CLIENT_MODE;
   const messages = [
     {
       role: "system",
@@ -82,7 +83,7 @@ async function generatePrompts(documents) {
     },
   ];
 
-  if (modelName && modelName.length > 0) {
+  if (modelName?.trim().length > 0 && clientMode === 'local') {
     // Use Ollama API
     const response = await fetch('http://localhost:11434/api/chat', {
       method: 'POST',
@@ -244,32 +245,126 @@ export async function POST(req) {
           console.log("No AI response from API, using Groq");
 
           const groqStartTime = performance.now();
-          const groqStream = await groq.chat.completions.create({
-            messages: [
+            // Determine which model to use based on environment variables
+            const clientMode = process.env.CLIENT_MODE;
+            const modelName = process.env.MODEL_NAME;
+            
+            let groqStream;
+            
+            if (clientMode === 'local' && modelName?.trim().length > 0) {
+            // Use local model via Ollama with streaming
+            console.log("Using local Ollama model for streaming:", modelName);
+            
+            const response = await fetch('http://localhost:11434/api/chat', {
+              method: 'POST',
+              headers: {
+              'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+              model: modelName,
+              messages: [
+                {
+                role: "system",
+                content: `You are Amurex, a helpful AI productivity assistant. Use the provided document chunks to answer the user's query. If the chunks don't contain relevant information, generate a confident and plausible answer anyway — do not say "I'm not sure" or "I couldnt find anything" Be helpful, contextual, and confident.
+
+                  Behavior Guidelines:
+
+                  1. When Documents Are Found:
+                  - Use the documents to answer the user's query.
+                  - Start answering the user's query with the documents straight away.
+                  - Example: "When is my next meeting with Mike?" - "Your next meeting with Mike is on Tuesday at 10am."
+
+                  2. When No Documents Are Found:
+                  - Confidently make up a helpful (but very short!) answer if needed.
+                  - You can mention you're improvising if appropriate, but do so smoothly.
+
+                  3. When Asked "Who are you?" or "What can you do?":
+                  - Don't say that you were not able to find anything in the documents. Just introduce yourself as Amurex and describe your core features:
+                    - AI meeting assistant (live insights, summaries, transcripts)
+                    - Smart search across tools like Notion, Google Drive, and more
+                    - Inbox organizer and email prioritizer
+                  - Highlight your privacy focus, open-source nature, and ability to be self-hosted.
+                  - Tone: friendly, smart, maybe a little witty — like a dependable teammate whos always on.
+
+                  Always aim to be helpful, aware, and resourceful — even if you have to fake it a bit.`,
+                },
+                ...context,
+                {
+                role: "user",
+                content: `Query: ${message}
+                
+                Retrieved documents: ${JSON.stringify(cleanedSources)}`,
+                },
+              ],
+              stream: true
+              }),
+            });
+            
+            // Create a ReadableStream from the Ollama response
+            groqStream = {
+              [Symbol.asyncIterator]: async function* () {
+              console.log("Processing Ollama stream response");
+              
+              if (!response.body) {
+                console.error("No response body received from Ollama");
+                return;
+              }
+
+              const decoder = new TextDecoder();
+              
+              try {
+                // Process the response as a Node.js readable stream
+                for await (const chunk of response.body) {
+                  const textChunk = decoder.decode(chunk, { stream: true });
+                  try {
+                    const jsonData = JSON.parse(textChunk);
+                    // Format the response to match the Groq stream format
+                    yield {
+                      choices: [
+                        {
+                          delta: {
+                            content: jsonData.message?.content || ''
+                          }
+                        }
+                      ]
+                    };
+                  } catch (e) {
+                    console.error("Failed to parse JSON from Ollama stream:", e);
+                  }
+                }
+              } catch (e) {
+                console.error("Error processing Ollama stream:", e);
+              }
+              }
+            };
+            } else {
+            // Use Groq for streaming
+            groqStream = await groq.chat.completions.create({
+              messages: [
               {
                 role: "system",
                 content: `You are Amurex, a helpful AI productivity assistant. Use the provided document chunks to answer the user's query. If the chunks don't contain relevant information, generate a confident and plausible answer anyway — do not say "I'm not sure" or "I couldnt find anything" Be helpful, contextual, and confident.
 
-                    Behavior Guidelines:
+                  Behavior Guidelines:
 
-                    1. When Documents Are Found:
-                    - Use the documents to answer the user's query.
-                    - Start answering the user's query with the documents straight away.
-                    - Example: "When is my next meeting with Mike?" - "Your next meeting with Mike is on Tuesday at 10am."
+                  1. When Documents Are Found:
+                  - Use the documents to answer the user's query.
+                  - Start answering the user's query with the documents straight away.
+                  - Example: "When is my next meeting with Mike?" - "Your next meeting with Mike is on Tuesday at 10am."
 
-                    2. When No Documents Are Found:
-                    - Confidently make up a helpful (but very short!) answer if needed.
-                    - You can mention you're improvising if appropriate, but do so smoothly.
+                  2. When No Documents Are Found:
+                  - Confidently make up a helpful (but very short!) answer if needed.
+                  - You can mention you're improvising if appropriate, but do so smoothly.
 
-                    3. When Asked "Who are you?" or "What can you do?":
-                    - Don't say that you were not able to find anything in the documents. Just introduce yourself as Amurex and describe your core features:
-                      - AI meeting assistant (live insights, summaries, transcripts)
-                      - Smart search across tools like Notion, Google Drive, and more
-                      - Inbox organizer and email prioritizer
-                    - Highlight your privacy focus, open-source nature, and ability to be self-hosted.
-                    - Tone: friendly, smart, maybe a little witty — like a dependable teammate whos always on.
+                  3. When Asked "Who are you?" or "What can you do?":
+                  - Don't say that you were not able to find anything in the documents. Just introduce yourself as Amurex and describe your core features:
+                  - AI meeting assistant (live insights, summaries, transcripts)
+                  - Smart search across tools like Notion, Google Drive, and more
+                  - Inbox organizer and email prioritizer
+                  - Highlight your privacy focus, open-source nature, and ability to be self-hosted.
+                  - Tone: friendly, smart, maybe a little witty — like a dependable teammate whos always on.
 
-                    Always aim to be helpful, aware, and resourceful — even if you have to fake it a bit.`,
+                  Always aim to be helpful, aware, and resourceful — even if you have to fake it a bit.`,
               },
               ...context,
               {
@@ -278,13 +373,14 @@ export async function POST(req) {
                 
                 Retrieved documents: ${JSON.stringify(cleanedSources)}`,
               },
-            ],
-            model: "llama-3.3-70b-versatile",
-            temperature: 0.5,
-            max_tokens: 1024,
-            top_p: 1,
-            stream: true,
-          });
+              ],
+              model: "llama-3.3-70b-versatile",
+              temperature: 0.5,
+              max_tokens: 1024,
+              top_p: 1,
+              stream: true,
+            });
+            }
           console.log(`[${performance.now() - groqStartTime}ms] Groq stream created`);
 
           const streamProcessStartTime = performance.now();
