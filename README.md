@@ -1,129 +1,130 @@
-<div align="center">
-  <img src="https://github.com/user-attachments/assets/5ceec814-a0e5-45c4-84a9-9001000ff3c5" alt="Amurex Logo" width="800" />
+# Amurex
 
-  <h2>Amurex Web</h2>
+![Static Badge](https://img.shields.io/badge/shadcn%2Fui-2.1.2-blue?link=https%3A%2F%2Fgithub.com%2Fshadcn%2Fui)
 
-  <p>
-    <a href="https://github.com/thepersonalaicompany/amurex/blob/main/LICENSE">
-      <img src="https://img.shields.io/badge/license-AGPL--3.0-blue.svg" alt="License" />
-    </a>
-    <a href="https://chrome.google.com/webstore/detail/amurex/dckidmhhpnfhachdpobgfbjnhfnmddmc">
-      <img src="https://img.shields.io/chrome-web-store/v/dckidmhhpnfhachdpobgfbjnhfnmddmc.svg" alt="Chrome Web Store" />
-    </a>
-    <a href="https://twitter.com/thepersonalaico">
-      <img src="https://img.shields.io/twitter/follow/thepersonalaico?style=social" alt="Twitter Follow" />
-    </a>
-    <a href="https://discord.gg/ftUdQsHWbY">
-      <img alt="Discord" src="https://img.shields.io/discord/1306591395804348476">
-    </a>
-  </p>
-</div>
+> [!NOTE]
 
+> This is not the original project and I will probably delete/private this repo once the real amurex team reviews this.
+> You can find the original project <a href="https://github.com/thepersonalaicompany">here</a>.
+> This app uses `pnpm` as package manager.
 
+## Using this example
 
-## Amurex Web
+Clone the repository:
 
-Amurex Web is the web interface for Amurex, providing a powerful search engine across all your knowledge. Built with Next.js, it enables fast retrieval of past meetings, notes, and documents, ensuring seamless access to your information.
-
-## Demo
-
-
-
-https://github.com/user-attachments/assets/050bf888-18f8-414d-b1ad-7f8e2f8fced7
-
-
-
-## Features
-
-• Universal Search – Instantly find past meetings, notes, and documents.
-
-• Meeting Hub – View and manage past meetings with rich context.
-
-• Optimized for Speed – Built upon our SOTA retrieval algorithm called FAFSeach.
-
-## Prerequisites
-
-- Node.js 18+
-
-- npm, yarn, or pnpm
-
-## Getting Started
-
-First, clone the repository:
-```
-git clone https://github.com/thepersonalaicompany/amurex-web
-cd amurex-web
+```sh
+git clone https://github.com/dwi11harsh/amurex.git
 ```
 
-Create a .env.local file in the root directory with the following variables:
-```
-# supabase
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
-SUPABASE_ANON_KEY=
-SUPABASE_URL=
+Install dependencies:
 
-# opeani
-OPENAI_API_KEY=
-
-# base url
-NEXT_PUBLIC_BASE_URL=
-NEXT_PUBLIC_APP_URL=
-
-# notion
-NOTION_CLIENT_SECRET=
-NOTION_CLIENT_ID=
-NOTION_AUTH_URL=
-NOTION_REDIRECT_URI=
-
-# google
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-GOOGLE_REDIRECT_URI=
-GOOGLE_CALENDAR_REDIRECT_URI=
-
-# embeddings (using mistral now)
-MIXEDBREAD_API_KEY=
-MISTRAL_API_KEY=
-
-# resend
-RESEND_API_KEY=
+```sh
+cd amurex
+pnpm install
 ```
 
-### Installation
+### Add ui components
 
-1. Install dependencies:
-```
-npm install  # or yarn install or pnpm install
-```
+Use the pre-made script:
 
-2. Run the development server:
-
-
-```
-npm run dev  # or yarn dev or pnpm dev
+```sh
+pnpm ui add <component-name>
 ```
 
-3. Open http://localhost:3000 in your browser.
+> This works just like the `shadcn/ui` CLI.
 
-### Building for Production
+### Add a new app
 
-To create an optimized production build:
-```
-npm run build
-```
+Turborepo offer a simple command to add a new app:
 
-To start the production server:
-```
-npm run start
+```sh
+pnpm turbo gen workspace --name <app-name>
 ```
 
-### Learn More
+This will create a new empty app in the `apps` directory.
 
-To learn more about Next.js, check out:
+If you want, you can copy an existing app with:
 
-- [Next.js Documentation](https://nextjs.org/docs)
+```sh
+pnpm turbo gen workspace --name <app-name> --copy
+```
 
-- [Learn Next.js](https://nextjs.org/docs)
+> [!NOTE]
+> Remember to run `pnpm install` after copying an app.
 
+## What's inside?
+
+This Turborepo includes the following packages/apps:
+
+### Apps and Packages
+
+- `web`: a [Next.js](https://nextjs.org/) app
+- `@amurex/ui`: a stub React component library (🚀 powered by **shadcn/ui**)
+- `@amurex/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
+- `@amurex/typescript-config`: `tsconfig.json`s used throughout the monorepo
+
+Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
+
+### Utilities
+
+This Turborepo has some additional tools already setup for you:
+
+- [TypeScript](https://www.typescriptlang.org/) for static type checking
+- [ESLint](https://eslint.org/) for code linting
+- [Prettier](https://prettier.io) for code formatting
+
+### Build
+
+To build all apps and packages, run the following command:
+
+```sh
+cd amurex
+pnpm build
+```
+
+### Develop
+
+To develop all apps and packages, run the following command:
+
+```sh
+cd amurex
+pnpm dev
+```
+
+#### Supabase Setup
+
+You can navigate to Supabase directory and follow the instructions to setup your DB for testing
+
+### Remote Caching
+
+Turborepo can use a technique known as [Remote Caching](https://turbo.build/repo/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
+
+By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup), then enter the following commands:
+
+```
+cd amurex
+npx turbo login
+```
+
+This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
+
+Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
+
+```sh
+npx turbo link
+```
+
+## Useful Links
+
+Learn more about the power of Turborepo:
+
+- [Tasks](https://turbo.build/repo/docs/core-concepts/monorepos/running-tasks)
+- [Caching](https://turbo.build/repo/docs/core-concepts/caching)
+- [Remote Caching](https://turbo.build/repo/docs/core-concepts/remote-caching)
+- [Filtering](https://turbo.build/repo/docs/core-concepts/monorepos/filtering)
+- [Configuration Options](https://turbo.build/repo/docs/reference/configuration)
+- [CLI Usage](https://turbo.build/repo/docs/reference/command-line-reference)
+
+Learn more about shadcn/ui:
+
+- [Documentation](https://ui.shadcn.com/docs)

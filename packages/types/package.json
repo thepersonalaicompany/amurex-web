@@ -1,0 +1,13 @@
+{
+  "name": "@amurex/types",
+  "type": "module",
+  "scripts": {},
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "devDependencies": {
+    "@amurex/typescript-config": "workspace:*",
+    "@amurex/supabase": "workspace:*",
+    "typescript": "latest"
+  }
+}

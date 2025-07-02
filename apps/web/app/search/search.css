@@ -1,0 +1,320 @@
+.content {
+  display: flex;
+  justify-content: space-between;
+}
+.sidebar {
+  position: absolute;
+  top: 50%;
+  margin-left: 10px;
+  transform: translateY(-50%) translateX(-100%);
+  height: 96vh;
+  display: flex;
+  flex-direction: column;
+  background: rgb(24 24 27 / 0.7);
+  /* backdrop-filter: blur(9px); */
+  border: 1px solid #27272a;
+  border-radius: 0.5rem;
+  z-index: 48;
+  /* padding: 18px 10px; */
+  padding: 1rem;
+  color: #fff;
+  width: 300px;
+  transition: all 0.7s ease;
+}
+.sidebarActive {
+  transform: translateY(-50%) translateX(0%);
+}
+.sidebarLoader {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+.sidebarTitle {
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: 0.4px;
+}
+.sidebarItems {
+  flex: 1 1 auto;
+  overflow-y: auto;
+}
+.sidebarItem {
+  font-size: 14px;
+  padding: 12px;
+  padding-right: 35px; /* Make space for delete icon */
+  cursor: pointer;
+  margin-bottom: 8px;
+  margin-top: 0;
+  transition: all 0.25s ease;
+  position: relative;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  z-index: 1;
+  border-radius: 0.5rem;
+  border: 1px solid transparent;
+}
+
+.sidebarItem:hover {
+  background: rgba(255, 255, 255, 0.13);
+}
+
+.sidebarItem.sidebarItemActive {
+  background: #3c1671;
+  border: 1px solid transparent;
+  border-radius: 0.5rem;
+}
+
+.sidebarItem.sidebarItemActive:hover {
+  border: 1px solid #6d28d9;
+}
+
+.deleteIcon {
+  background: black;
+  border-radius: 0.5rem;
+  position: absolute;
+  right: 5px;
+  top: 50%;
+  width: 25px;
+  height: 25px;
+  transform: translateY(-50%);
+  padding: 6px;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s ease;
+  z-index: 5;
+}
+
+.sidebarItem:hover .deleteIcon {
+  opacity: 1;
+  visibility: visible;
+}
+
+.sidebarIcon {
+  position: absolute;
+  right: -55px;
+  top: 15px;
+  width: 50px;
+  height: 50px;
+  transition: all 0.25s ease;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+
+.sidebarIcon:hover {
+  background: rgba(255, 255, 255, 0.13);
+  border-radius: 0.5rem;
+}
+
+.chat {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  margin-left: 300px;
+  transition: all 0.7s ease;
+  position: relative;
+}
+.chatContent {
+  flex: 1 1 auto;
+  padding: 100px 30px 20px;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+.chatSidebarClosed {
+  margin-left: 0;
+}
+
+.followUpInputArea {
+  padding: 15px 40px;
+  width: calc(100% - 40px);
+  transition: all 0.7s ease;
+  position: relative;
+  right: 11px;
+}
+
+.answer {
+}
+.sourceItems {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+}
+.sourceItem {
+  background-color: black;
+  border-radius: 0.5rem; /* rounded-lg */
+  padding: 1rem; /* p-4 */
+  border: 1px solid #27272a; /* border-zinc-800 */
+  position: relative;
+  transition: border-color 0.2s ease; /* transition-colors */
+  width: 30%;
+  margin-right: 10px;
+}
+
+.sourceItem:hover {
+  border-color: #6d28d9;
+}
+
+.threadItem {
+  /* margin-bottom: 60px; */
+}
+.threadItem:last-child {
+  margin-bottom: 0;
+}
+
+.popupTitle {
+  font-size: 21px;
+  font-weight: 600;
+  color: #fff;
+  word-break: break-all;
+}
+.popupSubtitle {
+  margin-top: 10px;
+  margin-bottom: 16px;
+  font-size: 15px;
+  font-weight: 400;
+  word-break: break-word;
+  color: #fff;
+}
+.errorMessage {
+  text-align: right;
+  color: #f47474;
+  font-weight: 500;
+  font-size: 14px;
+  margin-top: 8px;
+  margin-bottom: -5px;
+}
+
+.popupConfirmationButtons {
+  display: flex;
+  justify-content: end;
+  user-select: none;
+}
+.fileMutationButton {
+  padding: 7px 22px;
+  font-size: 15.5px;
+  border-radius: 8px;
+  margin-top: 15px;
+  letter-spacing: 0.6px;
+  transition: all 0.24s ease;
+  cursor: pointer;
+  letter-spacing: 0.6px;
+  margin-right: 11px;
+  color: #fff;
+
+  border: 2px solid #e9eaec;
+  background: #3a3a3a;
+}
+.fileMutationButton:hover {
+  background: #414141;
+}
+.fileMutationButtonHighlight {
+  padding: 7px 22px;
+  font-size: 15.5px;
+  border-radius: 8px;
+  margin-top: 15px;
+  letter-spacing: 0.9px;
+  transition: all 0.24s ease;
+  cursor: pointer;
+  margin-right: 0;
+  border: none;
+  display: flex;
+  align-items: center;
+  background: #842dda;
+  color: #fff;
+  box-shadow: 0 0 5px rgba(131, 45, 218, 0.243);
+}
+.fileMutationButtonHighlight:hover {
+  box-shadow: 0 0 13px rgba(131, 45, 218, 0.6);
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.no-scrollbar {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+.sidebarDateHeader {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 10px 12px;
+  color: #a1a1aa;
+  cursor: pointer;
+  border-radius: 6px;
+  margin-bottom: 5px;
+  position: relative;
+  z-index: 2;
+  background-color: rgb(24 24 27 / 0.7);
+}
+
+.sidebarDateHeader:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.sidebarThreads {
+  transition: all 0.3s ease;
+  overflow: hidden;
+  position: relative;
+}
+
+.sidebarThreads.collapsed {
+  max-height: 0;
+  margin: 0;
+  opacity: 0;
+  visibility: hidden;
+  margin-top: 0;
+  margin-bottom: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.sidebarThreads.expanded {
+  max-height: 1000px;
+  opacity: 1;
+  visibility: visible;
+  margin-bottom: 10px;
+  padding-top: 5px;
+}
+
+/* Spotlight styles */
+.spotlight-overlay {
+  animation: fadeIn 0.2s ease-out;
+}
+
+.spotlight-container {
+  animation: scaleIn 0.2s ease-out;
+  box-shadow:
+    0 10px 25px -5px rgba(0, 0, 0, 0.6),
+    0 10px 10px -5px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
