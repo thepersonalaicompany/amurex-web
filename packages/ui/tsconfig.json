@@ -1,0 +1,15 @@
+{
+  "extends": "@amurex/typescript-config/react-library.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@amurex/ui/*": ["./src/*"]
+    },
+    "composite": true,
+    "incremental": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler"
+  },
+  "include": ["src"],
+  "exclude": ["node_modules"]
+}

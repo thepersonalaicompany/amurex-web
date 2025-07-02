@@ -1,0 +1,44 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "ui": "tui",
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "outputs": [".next/**", "!.next/cache/**"],
+      "env": []
+    },
+    "lint": {
+      "dependsOn": ["^lint"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    }
+  },
+  "globalEnv": [
+    "NEXT_PUBLIC_SUPABASE_URL",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+    "SUPABASE_URL",
+    "SUPABASE_ANON_KEY",
+    "SUPABASE_SERVICE_ROLE_KEY",
+    "GEMINI_API_KEY",
+    "OPENAI_API_KEY",
+    "GROQ_API_KEY",
+    "MISTRAL_ORGANIZATION_ID",
+    "MISTRAL_API_KEY",
+    "RESEND_API_KEY",
+    "GOOGLE_CLIENT_ID",
+    "GOOGLE_CLIENT_SECRET",
+    "GOOGLE_REDIRECT_URI",
+    "GOOGLE_REDIRECT_URI_NEW",
+    "GOOGLE_APPLICATION_CREDENTIALS",
+    "CRON_SECRET",
+    "NOTION_CLIENT_ID",
+    "NOTION_CLIENT_SECRET",
+    "NOTION_REDIRECT_URI",
+    "NEXT_PUBLIC_APP_URL",
+    "MODEL_NAME",
+    "BRAIN_API_KEY"
+  ]
+}
