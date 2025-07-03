@@ -28,6 +28,8 @@ import {
 import Cookies from "js-cookie";
 import { toast } from "react-hot-toast";
 import MobileWarningBanner from "@/components/MobileWarningBanner";
+import { DeleteAccPopup } from "@/components/DeleteAccPopup";
+import { DeleteAccountAction } from "@/app/actions/deleteAccountAction";
 
 const PROVIDER_ICONS = {
   google:
@@ -37,13 +39,13 @@ const PROVIDER_ICONS = {
   obsidian: "https://obsidian.md/images/obsidian-logo-gradient.svg",
   gmail:
     "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/2560px-Gmail_icon_%282020%29.svg.png",
-  omi: "/omilogo.webp"
+  omi: "/omilogo.webp",
 };
 
 const BASE_URL_BACKEND = "https://api.amurex.ai";
 
 function SettingsContent() {
-  const [activeTab, setActiveTab] = useState("personalization");
+  const [activeTab, setActiveTab] = useState("account");
   const [loading, setLoading] = useState(false);
   const [userEmail, setUserEmail] = useState("");
   const [userId, setUserId] = useState(null);
@@ -57,7 +59,8 @@ function SettingsContent() {
   const [importProgress, setImportProgress] = useState(0);
   const [memoryEnabled, setMemoryEnabled] = useState(false);
   const [createdAt, setCreatedAt] = useState("");
-  const [emailNotificationsEnabled, setEmailNotificationsEnabled] = useState(false);
+  const [emailNotificationsEnabled, setEmailNotificationsEnabled] =
+    useState(false);
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
   const [isProcessingEmails, setIsProcessingEmails] = useState(false);
   const [emailLabelingEnabled, setEmailLabelingEnabled] = useState(false);
@@ -202,7 +205,7 @@ function SettingsContent() {
         },
         body: JSON.stringify({
           userId: session.user.id,
-          maxEmails: 20
+          maxEmails: 20,
         }),
       });
 
@@ -233,25 +236,31 @@ function SettingsContent() {
   useEffect(() => {
     const checkSession = async () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession();
         setSession(session);
-        
+
         if (session) {
           setUserId(session.user.id);
           // Fetch user data and integrations
           await checkIntegrations();
-          
+
           // Fetch Google token version
           const { data, error: tokenError } = await supabase
             .from("users")
             .select("google_token_version")
             .eq("id", session.user.id)
             .single();
-            
+
           if (!tokenError && data) {
             setGoogleTokenVersion(data.google_token_version);
             setGoogleDocsConnected(data.google_token_version === "full");
-            setGmailConnected(data.google_token_version === "full" || data.google_token_version === "gmail_only");
+            setGmailConnected(
+              data.google_token_version === "full" ||
+                data.google_token_version === "gmail_only"
+            );
           }
         } else {
           // Redirect if no session
@@ -263,9 +272,9 @@ function SettingsContent() {
         console.error("Error checking session:", error);
       }
     };
-    
+
     checkSession();
-    
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -310,7 +319,7 @@ function SettingsContent() {
             })
           );
           setNotionConnected(user.notion_connected);
-          setOmiConnected(user.omi_connected)
+          setOmiConnected(user.omi_connected);
           setGoogleDocsConnected(user.google_docs_connected);
           console.log(
             "Setting googleDocsConnected to:",
@@ -363,7 +372,9 @@ function SettingsContent() {
             // Redirect to search page after Google Docs connection
             router.push("/search");
           } else {
-            console.log("Google connection detected, but no full access for Docs");
+            console.log(
+              "Google connection detected, but no full access for Docs"
+            );
             toast.success("Google account connected successfully!");
             // Redirect to search page even without full access
             router.push("/search");
@@ -371,7 +382,14 @@ function SettingsContent() {
         }
       });
     }
-  }, [searchParams, googleTokenVersion, importGoogleDocs, importNotionDocuments, processGmailLabels, router]);
+  }, [
+    searchParams,
+    googleTokenVersion,
+    importGoogleDocs,
+    importNotionDocuments,
+    processGmailLabels,
+    router,
+  ]);
 
   useEffect(() => {
     const connection = searchParams.get("connection");
@@ -456,27 +474,26 @@ function SettingsContent() {
     try {
       // Your app ID from OMI platform registration
       const APP_ID = "01JWF84YVZ6SYKE486KWARA2CK";
-      
+
       // Generate a random state string to prevent CSRF attacks
       const state = Math.random().toString(36).substring(7);
-      
+
       // Store state in localStorage to verify on callback
-      localStorage.setItem('omiOAuthState', state);
+      localStorage.setItem("omiOAuthState", state);
 
       // Construct the authorization URL
-      const authUrl = new URL('https://api.omi.me/v1/oauth/authorize');
-      // we should potentially store this in the database as well. 
-      authUrl.searchParams.append('app_id', APP_ID);
-      authUrl.searchParams.append('state', state);
+      const authUrl = new URL("https://api.omi.me/v1/oauth/authorize");
+      // we should potentially store this in the database as well.
+      authUrl.searchParams.append("app_id", APP_ID);
+      authUrl.searchParams.append("state", state);
 
       // Redirect user to OMI authorization page
       window.location.href = authUrl.toString();
     } catch (error) {
-      console.error('Error initiating OMI OAuth flow:', error);
-      toast.error('Failed to connect to OMI');
+      console.error("Error initiating OMI OAuth flow:", error);
+      toast.error("Failed to connect to OMI");
     }
   };
-
 
   const handleMemoryToggle = async (checked) => {
     try {
@@ -510,7 +527,11 @@ function SettingsContent() {
 
         if (error) throw error;
         setEmailNotificationsEnabled(checked);
-        toast.success(checked ? "Email notifications enabled" : "Email notifications disabled");
+        toast.success(
+          checked
+            ? "Email notifications enabled"
+            : "Email notifications disabled"
+        );
       }
     } catch (error) {
       console.error("Error updating email notification settings:", error);
@@ -1002,10 +1023,10 @@ function SettingsContent() {
         toast.error("You must be logged in to connect Google Docs");
         return;
       }
-      
+
       setIsImporting(true);
       setImportSource("Google Docs");
-      
+
       const response = await fetch("/api/google/auth", {
         method: "POST",
         headers: {
@@ -1013,12 +1034,12 @@ function SettingsContent() {
         },
         body: JSON.stringify({
           userId: userId,
-          clientId: 2  // Always use client ID 2
+          clientId: 2, // Always use client ID 2
         }),
       });
 
       const data = await response.json();
-      
+
       if (data.url) {
         // Store a flag to indicate we want to import after connection
         localStorage.setItem("pendingGoogleDocsImport", "true");
@@ -1034,11 +1055,31 @@ function SettingsContent() {
     }
   };
 
+  // Handle account delete logic
+  const handleDeleteAccount = async () => {
+    // get user id
+    const {
+      data: { session },
+    } = supabase.auth.getSession();
+    if (session?.user?.id) {
+      DeleteAccountAction(session.user.id)
+        .then(() => {
+          console.log("Account deletion confirmed");
+          supabase.auth.signOut();
+          router.push("/web_app/signup");
+        })
+        .catch((error) => {
+          console.error("Error deleting account:", error);
+          toast.error("Failed to delete account");
+        });
+    }
+  };
+
   // Update the return statement to use the imported component
   return (
     <div className="flex min-h-screen bg-black text-white">
       <MobileWarningBanner />
-      
+
       {/* Main Settings Area */}
       <div className="flex flex-1 overflow-hidden">
         {/* Settings Sidebar */}
@@ -1090,37 +1131,51 @@ function SettingsContent() {
 
         {/* Warning Modal */}
         {showWarningModal && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
-          <div className="bg-zinc-900 rounded-lg p-6 max-w-md w-full border border-zinc-700">
-            <h3 className="text-xl font-medium text-white mb-4">Your data is safe</h3>
-            <p className="text-zinc-300 mb-6">
-                Since the app is still in Google&apos;s review process, you will be warned that the app is unsafe.
-                <br /><br />
-                You can safely proceed by clicking on &quot;Advanced&quot; and then &quot;Go to Amurex
-                (unsafe)&quot;.
-            </p>
-            <p className="text-zinc-300 mb-6">
-              We ensure that the app is safe to use and your data <span className="font-bold underline"><a href="https://github.com/thepersonalaicompany/amurex-web" target="_blank" rel="noopener noreferrer">is secure</a></span>.
-            </p>
-            <div className="flex justify-end gap-4">
-              <button
-                onClick={() => setShowWarningModal(false)}
-                className="px-4 py-2 rounded-lg bg-zinc-800 text-white hover:bg-zinc-700 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  setShowWarningModal(false);
-                  handleGoogleDocsConnect();
-                }}
-                className="px-4 py-2 rounded-lg bg-[#9334E9] text-white hover:bg-[#7928CA] transition-colors"
-              >
-                Proceed
-              </button>
+          <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
+            <div className="bg-zinc-900 rounded-lg p-6 max-w-md w-full border border-zinc-700">
+              <h3 className="text-xl font-medium text-white mb-4">
+                Your data is safe
+              </h3>
+              <p className="text-zinc-300 mb-6">
+                Since the app is still in Google&apos;s review process, you will
+                be warned that the app is unsafe.
+                <br />
+                <br />
+                You can safely proceed by clicking on &quot;Advanced&quot; and
+                then &quot;Go to Amurex (unsafe)&quot;.
+              </p>
+              <p className="text-zinc-300 mb-6">
+                We ensure that the app is safe to use and your data{" "}
+                <span className="font-bold underline">
+                  <a
+                    href="https://github.com/thepersonalaicompany/amurex-web"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    is secure
+                  </a>
+                </span>
+                .
+              </p>
+              <div className="flex justify-end gap-4">
+                <button
+                  onClick={() => setShowWarningModal(false)}
+                  className="px-4 py-2 rounded-lg bg-zinc-800 text-white hover:bg-zinc-700 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    setShowWarningModal(false);
+                    handleGoogleDocsConnect();
+                  }}
+                  className="px-4 py-2 rounded-lg bg-[#9334E9] text-white hover:bg-[#7928CA] transition-colors"
+                >
+                  Proceed
+                </button>
+              </div>
             </div>
           </div>
-        </div>
         )}
 
         {/* Main Content */}
@@ -1140,7 +1195,8 @@ function SettingsContent() {
                           Knowledge Search (new!)
                         </h3>
                         <p className="text-sm text-zinc-400">
-                          Try our new feature - search your emails, documents, notes, and more
+                          Try our new feature - search your emails, documents,
+                          notes, and more
                         </p>
                       </div>
                     </div>
@@ -1193,8 +1249,9 @@ function SettingsContent() {
                       </h2>
                       <p className="text-sm text-zinc-400">
                         Enable memory storing to unlock our{" "}
-                        <b>AI-powered knowledge search feature</b>, allowing you to
-                        have intelligent conversations about your past meetings, emails, documents, and more
+                        <b>AI-powered knowledge search feature</b>, allowing you
+                        to have intelligent conversations about your past
+                        meetings, emails, documents, and more
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -1232,7 +1289,7 @@ function SettingsContent() {
                                 : ""
                             } min-w-[100px]`}
                             onClick={() => {
-                              router.push('/emails');
+                              router.push("/emails");
                             }}
                           >
                             Connect
@@ -1329,7 +1386,8 @@ function SettingsContent() {
                                 Connect Omi
                               </h3>
                               <p className="text-sm text-zinc-400">
-                                A two way connection to and from your Omi memories.
+                                A two way connection to and from your Omi
+                                memories.
                               </p>
                             </div>
                           </div>
@@ -1488,8 +1546,11 @@ function SettingsContent() {
 
           {activeTab === "account" && (
             <>
+              {/* Sign Out Section */}
               <div className="flex-1 space-y-8">
-                <h1 className="text-2xl font-medium text-white">Account</h1>
+                <h1 className="text-2xl font-medium text-white">
+                  Account Settings
+                </h1>
 
                 <Card className="bg-black border-zinc-800">
                   <CardContent className="p-6">
@@ -1520,7 +1581,7 @@ function SettingsContent() {
                               Receive meeting summaries after each call
                             </p>
                           </div>
-                          <IconToggle 
+                          <IconToggle
                             checked={emailNotificationsEnabled}
                             onChange={handleEmailNotificationsToggle}
                           />
@@ -1545,6 +1606,39 @@ function SettingsContent() {
                             <LogOut className="w-5 h-5 text-red-500 mr-2 group-hover:text-white" />
                             Sign Out
                           </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Delete Account Section */}
+              <div className="flex-1 space-y-8 mt-8">
+                <h1 className="text-2xl font-medium text-red-500">
+                  Delete account
+                </h1>
+
+                <Card className="bg-black border-zinc-800">
+                  <CardContent className="p-6">
+                    <div>
+                      <div></div>
+
+                      <div className="pt">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            {/* <h3 className="text-md font-medium text-white">
+                              Delete this account
+                            </h3> */}
+                            <p className="text-sm text-zinc-400">
+                              Once your account is deleted, there is no going
+                              back. Please be certain.
+                            </p>
+                          </div>
+                          <DeleteAccPopup
+                            email={userEmail}
+                            handleDeleteAccount={handleDeleteAccount}
+                          />
                         </div>
                       </div>
                     </div>
@@ -2090,13 +2184,17 @@ function SettingsContent() {
       {showBroaderAccessModal && (
         <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
           <div className="bg-zinc-900 rounded-lg p-6 max-w-md w-full border border-zinc-700">
-            <h3 className="text-xl font-medium text-white mb-4">Broader Google Access Required</h3>
+            <h3 className="text-xl font-medium text-white mb-4">
+              Broader Google Access Required
+            </h3>
             <p className="text-zinc-300 mb-6">
-              We need broader access to your Google account to enable Google Docs integration. 
-              The app is still in the verification process from Google.
+              We need broader access to your Google account to enable Google
+              Docs integration. The app is still in the verification process
+              from Google.
             </p>
             <p className="text-zinc-300 mb-6">
-              If you wish to proceed, you can continue with the authentication process.
+              If you wish to proceed, you can continue with the authentication
+              process.
             </p>
             <div className="flex justify-end gap-4">
               <button
