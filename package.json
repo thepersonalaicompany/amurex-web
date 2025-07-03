@@ -16,6 +16,8 @@
     "@mixedbread-ai/sdk": "^2.2.11",
     "@notionhq/client": "^2.2.15",
     "@phosphor-icons/react": "^2.1.7",
+    "@radix-ui/react-dialog": "^1.1.14",
+    "@radix-ui/react-label": "^2.1.7",
     "@radix-ui/react-slot": "^1.1.1",
     "@radix-ui/react-switch": "^1.1.2",
     "@supabase/supabase-js": "^2.45.6",
