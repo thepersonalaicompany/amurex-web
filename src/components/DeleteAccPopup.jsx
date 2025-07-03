@@ -41,7 +41,7 @@ export const DeleteAccPopup = ({ userEmail, handleDeleteAccount }) => {
   };
 
   return (
-    <div className="p-8">
+    <div className="p-4">
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogTrigger asChild>
           <Button

@@ -45,7 +45,7 @@ const PROVIDER_ICONS = {
 const BASE_URL_BACKEND = "https://api.amurex.ai";
 
 function SettingsContent() {
-  const [activeTab, setActiveTab] = useState("account");
+  const [activeTab, setActiveTab] = useState("personalization");
   const [loading, setLoading] = useState(false);
   const [userEmail, setUserEmail] = useState("");
   const [userId, setUserId] = useState(null);
@@ -1058,20 +1058,24 @@ function SettingsContent() {
   // Handle account delete logic
   const handleDeleteAccount = async () => {
     // get user id
-    const {
-      data: { session },
-    } = supabase.auth.getSession();
-    if (session?.user?.id) {
-      DeleteAccountAction(session.user.id)
-        .then(() => {
-          console.log("Account deletion confirmed");
-          supabase.auth.signOut();
-          router.push("/web_app/signup");
-        })
-        .catch((error) => {
-          console.error("Error deleting account:", error);
-          toast.error("Failed to delete account");
-        });
+    try {
+      const {
+        data: { session },
+      } = supabase.auth.getSession();
+      if (session?.user?.id) {
+        DeleteAccountAction(session.user.id)
+          .then(() => {
+            supabase.auth.signOut();
+            router.push("/web_app/signup");
+          })
+          .catch((error) => {
+            console.error("Error deleting account:", error);
+            toast.error("Failed to delete account");
+          });
+      }
+    } catch (error) {
+      console.error("Error deleting account:", error);
+      toast.error("Failed to delete account");
     }
   };
 
@@ -1620,26 +1624,21 @@ function SettingsContent() {
                 </h1>
 
                 <Card className="bg-black border-zinc-800">
-                  <CardContent className="p-6">
+                  <CardContent className="p-3">
                     <div>
-                      <div></div>
-
-                      <div className="pt">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            {/* <h3 className="text-md font-medium text-white">
+                      <div className="flex items-center justify-between">
+                        {/* <h3 className="text-md font-medium text-white">
                               Delete this account
                             </h3> */}
-                            <p className="text-sm text-zinc-400">
-                              Once your account is deleted, there is no going
-                              back. Please be certain.
-                            </p>
-                          </div>
-                          <DeleteAccPopup
-                            email={userEmail}
-                            handleDeleteAccount={handleDeleteAccount}
-                          />
-                        </div>
+                        <p className="text-sm text-zinc-400">
+                          Once your account is deleted, there is no going back.
+                          Please be certain.
+                        </p>
+
+                        <DeleteAccPopup
+                          email={userEmail}
+                          handleDeleteAccount={handleDeleteAccount}
+                        />
                       </div>
                     </div>
                   </CardContent>
