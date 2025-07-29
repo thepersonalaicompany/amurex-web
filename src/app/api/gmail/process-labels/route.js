@@ -230,7 +230,7 @@ async function generateEmbeddings(text) {
 
     let response;
     if (misttralApiKey?.length == 0) {
-      response = await fetch("http://localhost:11434/api/generate", {
+      response = await fetch("/api/generate", {
         method: "GET",
         body: JSON.stringify({text: truncatedText}),
         headers: {
