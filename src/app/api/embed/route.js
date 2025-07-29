@@ -21,5 +21,5 @@ export async function GET(request) {
     });
     console.log(result.data)
 
-    return NextResponse.json(Array.from(result.data));
+    return NextResponse.json({data: Array.from(result.data)});
 }
