@@ -54,10 +54,10 @@ export async function GET(request) {
     const oauth2Client = new google.auth.OAuth2(
       clientData.client_id,
       clientData.client_secret,
-      process.env.GOOGLE_REDIRECT_URI_NEW
+      process.env.GOOGLE_REDIRECT_URI
     );
 
-    console.log('OAuth client created with redirect URI:', process.env.GOOGLE_REDIRECT_URI_NEW);
+    console.log('OAuth client created with redirect URI:', process.env.GOOGLE_REDIRECT_URI);
 
     // Exchange code for tokens
     console.log('Exchanging code for tokens...');
@@ -82,7 +82,7 @@ export async function GET(request) {
     if (tokenError) {
       console.error('Error storing tokens:', tokenError);
       throw tokenError;
-    }
+    } // google_token_expiry
 
     // Get user's email from Gmail profile to store in user_gmails
     oauth2Client.setCredentials(tokens);

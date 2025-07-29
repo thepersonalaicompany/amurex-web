@@ -312,7 +312,7 @@ async function processGoogleDocs(session, supabase, providedTokens = null) {
     const oauth2Client = new google.auth.OAuth2(
       process.env.GOOGLE_CLIENT_ID_NEW,
       process.env.GOOGLE_CLIENT_SECRET_NEW,
-      process.env.GOOGLE_REDIRECT_URI_NEW
+      process.env.GOOGLE_REDIRECT_URI
     );
 
     // Set credentials including expiry
