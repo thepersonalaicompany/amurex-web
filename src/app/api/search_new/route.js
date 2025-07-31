@@ -29,7 +29,7 @@ export async function POST(req) {
 
 async function aiSearch(query, userId) {
   console.log("embeddings mistral lesgo");
-  const embeddingResponse = await fetch('https://api.mistral.ai/v1/embeddings', {
+  const embeddingResponse = await fetch('https://api.mistral.ai/v1/embed', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

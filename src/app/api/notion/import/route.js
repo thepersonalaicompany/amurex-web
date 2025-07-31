@@ -235,7 +235,17 @@ export async function POST(req) {
             const sections = await textSplitter.createDocuments([pageContent]);
             const chunkTexts = sections.map((section) => section.pageContent);
 
-            const embeddingResponse = await fetch(
+            let embeddingResponse;
+            if (misttralApiKey?.length == 0) {
+              embeddingResponse = await fetch("/api/embed", {
+                method: "GET",
+                body: JSON.stringify({text: truncatedText}),
+                headers: {
+                  "Content-Type": "application/json",
+                },
+              });
+            } else {
+              embeddingResponse = await fetch(
               "https://api.mistral.ai/v1/embeddings",
               {
                 method: "POST",
@@ -250,6 +260,8 @@ export async function POST(req) {
                 }),
               }
             );
+            }
+            
 
             const embedData = await embeddingResponse.json();
             const embeddings = embedData.data.map(
@@ -497,10 +509,22 @@ async function generateTags(text) {
 }
 
 async function generateEmbeddings(text) {
-  const embeddingResponse = await openai.embeddings.create({
-    model: "text-embedding-ada-002",
-    input: text.substring(0, 8000),
-  });
+  let embeddingResponse;
+  if (misttralApiKey?.length == 0) {
+        embeddingResponse = await fetch("/api/embed", {
+        method: "GET",
+        body: JSON.stringify({ text: truncatedText }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+    } else {
+        embeddingResponse = await openai.embeddings.create({
+        model: "text-embedding-ada-002",
+        input: text.substring(0, 8000),
+        });
+    }
+  
   return embeddingResponse.data[0].embedding;
 }
 

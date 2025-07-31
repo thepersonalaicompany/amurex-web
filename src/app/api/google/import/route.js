@@ -487,7 +487,17 @@ async function processGoogleDocs(session, supabase, providedTokens = null) {
         }
 
         // Generate embeddings using Mistral API
-        const embeddingResponse = await fetch(
+        let embeddingResponse;
+        if (misttralApiKey?.length == 0) {
+          embeddingResponse = await fetch("/api/embed", {
+          method: "GET",
+          body: JSON.stringify({text: truncatedText}),
+          headers: {
+            "Content-Type": "application/json",
+          },
+      });
+        } else {
+          embeddingResponse = await fetch(
           "https://api.mistral.ai/v1/embeddings",
           {
             method: "POST",
@@ -502,6 +512,8 @@ async function processGoogleDocs(session, supabase, providedTokens = null) {
             }),
           }
         );
+        }
+       
 
         const embedData = await embeddingResponse.json();
 

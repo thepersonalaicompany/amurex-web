@@ -230,7 +230,7 @@ async function generateEmbeddings(text) {
 
     let response;
     if (misttralApiKey?.length == 0) {
-      response = await fetch("/api/generate", {
+      response = await fetch("/api/embed", {
         method: "GET",
         body: JSON.stringify({text: truncatedText}),
         headers: {
@@ -243,7 +243,6 @@ async function generateEmbeddings(text) {
         input: truncatedText,
       });
     }
-
     if (
       response &&
       response.data &&
@@ -255,6 +254,7 @@ async function generateEmbeddings(text) {
       console.error("Invalid embedding response structure:", response);
       return null;
     }
+
   } catch (error) {
     console.error("Error generating embeddings:", error);
     return null;

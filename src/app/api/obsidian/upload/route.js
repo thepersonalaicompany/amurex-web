@@ -174,7 +174,17 @@ export async function POST(req) {
       const sections = await textSplitter.createDocuments([content]);
       const chunkTexts = sections.map((section) => section.pageContent);
 
-      const embeddingResponse = await fetch(
+      let embeddingResponse;
+      if (misttralApiKey?.length == 0) {
+        embeddingResponse = await fetch("/api/embed", {
+          method: "GET",
+          body: JSON.stringify({text: truncatedText}),
+          headers: {
+            "Content-Type": "application/json",
+          },
+      });
+    } else {
+        embeddingResponse = await fetch(
         "https://api.mistral.ai/v1/embeddings",
         {
           method: "POST",
@@ -189,6 +199,8 @@ export async function POST(req) {
           }),
         }
       );
+    }
+      
 
       const embedData = await embeddingResponse.json();
       const embeddings = embedData.data.map(
