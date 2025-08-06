@@ -63,13 +63,17 @@ async function generateTags(text) {
           model: process.env.MODEL_NAME,
           prompt: `Generate 3 relevant tags for the following text, separated by commas:\n\n${text.substring(0, 1000)}`,
           system: "You are a helpful assistant that generates relevant tags for a given text. Provide the tags as a comma-separated list without numbers or bullet points.",
+          stream: false,
         }),
       });
-      
+
+
       const result = await response.json();
-      return result.response
-        .split(',')
+      const tagResponse = result.response
+        ?.split(',')
         .map((tag) => tag.trim());
+
+      return tagResponse;
     } catch (error) {
       console.error("Error with local model, falling back to Groq:", error);
       // Fall through to Groq if local model fails
@@ -171,11 +175,12 @@ export async function POST(req) {
 
     // Process embeddings
     try {
+      const mistralApiKey = process.env.MISTRAL_API_KEY || "";
       const sections = await textSplitter.createDocuments([content]);
       const chunkTexts = sections.map((section) => section.pageContent);
 
       let embeddingResponse;
-      if (misttralApiKey?.length == 0) {
+      if (mistralApiKey?.length == 0) {
         embeddingResponse = await fetch("/api/embed", {
           method: "GET",
           body: JSON.stringify({text: truncatedText}),
@@ -201,8 +206,8 @@ export async function POST(req) {
       );
     }
       
-
       const embedData = await embeddingResponse.json();
+      console.log("Embedding response:", embedData);
       const embeddings = embedData.data.map(
         (item) => `[${item.embedding.join(",")}]`
       );

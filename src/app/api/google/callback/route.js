@@ -105,7 +105,8 @@ export async function GET(request) {
             access_token: tokens.access_token,
             refresh_token: tokens.refresh_token,
             type: 'gmail_only',  // google_token_version set to null as requested
-            google_cohort: 10
+            google_cohort: 10,
+            google_clients: 10
           });
         
         if (gmailError) {
