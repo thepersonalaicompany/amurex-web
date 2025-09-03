@@ -99,7 +99,7 @@ async function categorizeWithAI(fromEmail, subject, body, enabledCategories) {
 
     if (clientMode === "local" && modelName?.length > 0) {
       // Call local Ollama API
-      const req_response = await fetch("http://localhost:11434/api/chat", {
+      const req_response = await fetch(`${process.env.NEXT_PUBLIC_LOCAL_AI_MODEL_URL}/chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

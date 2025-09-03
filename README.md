@@ -81,7 +81,7 @@ NOTION_CLIENT_ID=
 NOTION_AUTH_URL=
 NOTION_REDIRECT_URI=
 
-MODEL_NAME=llama3.1:8b
+MODEL_NAME=llama3.1:8b // this is minimal light-weight model
 CLIENT_MODE=local
 
 #api key to enable model act as a soure of all linked platforms
@@ -91,6 +91,7 @@ BRAIN_API_KEY=
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 GOOGLE_REDIRECT_URI=
+GOOGLE_REDIRECT_URI_NEW=
 GOOGLE_CALENDAR_REDIRECT_URI=
 
 # embeddings (using mistral now)

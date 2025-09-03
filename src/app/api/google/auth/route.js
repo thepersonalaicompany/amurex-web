@@ -23,7 +23,7 @@ async function getOAuth2Client() {
       oauth2Client: new google.auth.OAuth2(
         client.client_id,
         client.client_secret,
-        process.env.GOOGLE_REDIRECT_URI // why is there new in front of it???
+        process.env.GOOGLE_REDIRECT_URI_NEW // why is there new in front of it???
       ),
       clientInfo: client
     };

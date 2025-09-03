@@ -33,11 +33,11 @@ async function sendPayload(content, user_id) {
 
 // Function to check which model to use and make the appropriate API call
 async function generateCompletion(messages, modelName) {
-  const clientMode = process.env.CLIENT_MODE;
+  const clientMode = process.env.CLIENT_MODE || 'local';
   // Check if we should use Ollama
   if (clientMode == 'local' && modelName?.trim().length > 0) {
     // Use Ollama API
-    const response = await fetch('http://localhost:11434/api/chat', {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_LOCAL_AI_MODEL_URL}/chat`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -85,7 +85,7 @@ async function generatePrompts(documents) {
 
   if (modelName?.trim().length > 0 && clientMode === 'local') {
     // Use Ollama API
-    const response = await fetch('http://localhost:11434/api/chat', {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_LOCAL_AI_MODEL_URL}/chat`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -255,7 +255,7 @@ export async function POST(req) {
             // Use local model via Ollama with streaming
             console.log("Using local Ollama model for streaming:", modelName);
             
-            const response = await fetch('http://localhost:11434/api/chat', {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_LOCAL_AI_MODEL_URL}/chat`, {
               method: 'POST',
               headers: {
               'Content-Type': 'application/json',

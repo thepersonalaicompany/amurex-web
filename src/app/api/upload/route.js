@@ -91,7 +91,7 @@ export async function POST(req) {
       if (misttralApiKey?.length == 0) {
         embeddingResponse = await fetch("/api/embed", {
         method: "GET",
-        body: JSON.stringify({text: truncatedText}),
+        body: JSON.stringify({text: section.pageContent}),
         headers: {
           "Content-Type": "application/json",
         },

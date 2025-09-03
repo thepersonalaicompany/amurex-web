@@ -686,7 +686,6 @@ export default function AISearch() {
 
     // fetching user's sessions
     const fetchUserThreads = async () => {
-      console.log(session?.user?.id, 'user Id from session in fetchUserThreads')
       if (!session?.user?.id) return;
 
       try {

@@ -514,7 +514,7 @@ function SettingsContent() {
         data: { session },
       } = await supabase.auth.getSession();
       if (session) {
-        const { error,data } = await supabase
+        const { error, data } = await supabase
           .from("users")
           .update({ analytics_enabled: checked })
           .eq("id", session.user.id);

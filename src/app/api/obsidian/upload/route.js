@@ -54,7 +54,7 @@ async function generateTags(text) {
   if (process.env.CLIENT_MODE === 'local' && process.env.MODEL_NAME) {
     try {
       // Use local Ollama model
-      const response = await fetch('http://localhost:11434/api/generate', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_LOCAL_AI_MODEL_URL}/generate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

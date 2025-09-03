@@ -19,7 +19,7 @@ async function generateTags(text) {
   if (process.env.CLIENT_MODE === 'local') {
     // Use local Ollama model as fallback
     try {
-      const response = await fetch('http://localhost:11434/api/generate', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_LOCAL_AI_MODEL_URL}/generate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -312,7 +312,7 @@ async function processGoogleDocs(session, supabase, providedTokens = null) {
     const oauth2Client = new google.auth.OAuth2(
       process.env.GOOGLE_CLIENT_ID_NEW,
       process.env.GOOGLE_CLIENT_SECRET_NEW,
-      process.env.GOOGLE_REDIRECT_URI
+      process.env.GOOGLE_REDIRECT_URI_NEW
     );
 
     // Set credentials including expiry

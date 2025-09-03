@@ -17,7 +17,8 @@ const P = () =>
   };
 
 let PipelineSingleton;
-if (process.env.NODE_ENV !== "production") {
+const nodeEnv = process.env.NODE_ENV ?? "development"
+if (nodeEnv !== "production") {
   // When running in development mode, attach the pipeline to the
   // global object so that it's preserved between hot reloads.
   // For more information, see https://vercel.com/guides/nextjs-prisma-postgres
