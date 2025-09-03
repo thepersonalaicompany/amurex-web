@@ -15,17 +15,17 @@ export default function MobileWarningBanner() {
   if (!isMobile) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/95 flex flex-col items-center justify-center z-50 p-6 text-center">
-      <div className="bg-amber-900/90 rounded-lg p-8 max-w-md w-full shadow-lg border border-amber-700">
-        <svg 
-          xmlns="http://www.w3.org/2000/svg" 
-          width="48" 
-          height="48" 
-          viewBox="0 0 24 24" 
-          fill="none" 
-          stroke="currentColor" 
-          strokeWidth="2" 
-          strokeLinecap="round" 
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/95 p-6 text-center">
+      <div className="w-full max-w-md rounded-lg border border-amber-700 bg-amber-900/90 p-8 shadow-lg">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="48"
+          height="48"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
           strokeLinejoin="round"
           className="mx-auto mb-4 text-amber-500"
         >
@@ -33,24 +33,29 @@ export default function MobileWarningBanner() {
           <line x1="12" y1="9" x2="12" y2="13"></line>
           <line x1="12" y1="17" x2="12.01" y2="17"></line>
         </svg>
-        <h2 className="text-xl font-bold text-white mb-4">Mobile Access Soon!</h2>
-        <p className="text-white mb-6">
-            Please access this application from a desktop or laptop computer for the best experience.
+        <h2 className="mb-4 text-xl font-bold text-white">
+          Mobile Access Soon!
+        </h2>
+        <p className="mb-6 text-white">
+          Please access this application from a desktop or laptop computer for
+          the best experience.
         </p>
-        <p className="text-amber-300 font-medium mb-6">
-          Tweet about this and tag @thepersonalaico so that our CTO works <b>harder</b>!
+        <p className="mb-6 font-medium text-amber-300">
+          Tweet about this and tag @thepersonalaico so that our CTO works{" "}
+          <b>harder</b>!
         </p>
-        <button 
+        <button
           onClick={() => {
-            const tweetText = "Hey @thepersonalaico, make @iloveprompts work harder so that I can use your app on mobile!👨‍💻";
+            const tweetText =
+              "Hey @thepersonalaico, make @iloveprompts work harder so that I can use your app on mobile!👨‍💻";
             const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
-            window.open(tweetUrl, '_blank');
+            window.open(tweetUrl, "_blank");
           }}
-          className="inline-block bg-white text-amber-900 font-bold py-3 px-6 rounded-lg hover:bg-amber-100 transition-colors"
+          className="inline-block rounded-lg bg-white px-6 py-3 font-bold text-amber-900 transition-colors hover:bg-amber-100"
         >
           Tweet About This
         </button>
       </div>
     </div>
   );
-} 
+}

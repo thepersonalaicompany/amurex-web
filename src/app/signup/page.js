@@ -20,13 +20,14 @@ export default function SignUp() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("welcome") === "true" && params.get("extension") === "true") {
+    if (
+      params.get("welcome") === "true" &&
+      params.get("extension") === "true"
+    ) {
       signinRedirect += "?welcome=true&extension=true";
-    }
-    else if (params.get("welcome") === "true") {
+    } else if (params.get("welcome") === "true") {
       signinRedirect += "?welcome=true";
-    }
-    else if (params.get("extension") === "true") {
+    } else if (params.get("extension") === "true") {
       signinRedirect += "?extension=true";
     }
   }, []);
@@ -62,9 +63,6 @@ export default function SignUp() {
 
     console.log("This is the data", data);
 
-
-
-
     if (error) {
       setMessage(error.message);
     } else if (data.user) {
@@ -82,9 +80,7 @@ export default function SignUp() {
       });
 
       await createUserEntry(data.user.id);
-      setMessage(
-        "Account created successfully!"
-      );
+      setMessage("Account created successfully!");
 
       // Send email to external endpoint
       try {
@@ -93,9 +89,9 @@ export default function SignUp() {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ 
-            "email": email,
-            "type": "signup"
+          body: JSON.stringify({
+            email: email,
+            type: "signup",
           }),
         });
 
@@ -127,26 +123,26 @@ export default function SignUp() {
       }}
     >
       <div className="w-full max-w-[95%] md:max-w-md">
-        <div className="flex justify-center items-center mb-6 md:mb-8">
+        <div className="mb-6 flex items-center justify-center md:mb-8">
           <img
             src="/amurex.png"
             alt="Amurex logo"
-            className="w-8 h-8 md:w-10 md:h-10 border-2 border-white rounded-full"
+            className="h-8 w-8 rounded-full border-2 border-white md:h-10 md:w-10"
           />
-          <p className="text-white text-base md:text-lg font-semibold pl-2">
+          <p className="pl-2 text-base font-semibold text-white md:text-lg">
             Amurex
           </p>
         </div>
 
-        <div className="w-full rounded-lg bg-[#0E0F0F] p-6 md:p-8 backdrop-blur-sm shadow-lg">
-          <div className="text-center mb-6 md:mb-8">
+        <div className="w-full rounded-lg bg-[#0E0F0F] p-6 shadow-lg backdrop-blur-sm md:p-8">
+          <div className="mb-6 text-center md:mb-8">
             <h1
-              className="font-serif text-3xl md:text-4xl mb-2 text-white"
+              className="mb-2 font-serif text-3xl text-white md:text-4xl"
               style={{ fontFamily: "var(--font-noto-serif)" }}
             >
               Sign Up
             </h1>
-            <p className="text-gray-400 text-sm md:text-base">
+            <p className="text-sm text-gray-400 md:text-base">
               Enter your details to create your account
             </p>
           </div>
@@ -154,9 +150,9 @@ export default function SignUp() {
           <hr className="mb-6 border-gray-800" />
 
           <form onSubmit={handleSignUp} className="space-y-4 md:space-y-6">
-          <div className="flex gap-4">
+            <div className="flex gap-4">
               <div className="flex-1">
-                <label className="block text-sm font-medium font-semibold text-white mb-1">
+                <label className="mb-1 block text-sm font-medium font-semibold text-white">
                   First Name
                 </label>
                 <Input
@@ -164,11 +160,11 @@ export default function SignUp() {
                   placeholder="John"
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
-                  className="w-full py-3 md:py-4 px-3 bg-[#262727] text-white border border-[#262727] text-sm md:text-base"
+                  className="w-full border border-[#262727] bg-[#262727] px-3 py-3 text-sm text-white md:py-4 md:text-base"
                 />
               </div>
               <div className="flex-1">
-                <label className="block text-sm font-medium font-semibold text-white mb-1">
+                <label className="mb-1 block text-sm font-medium font-semibold text-white">
                   Last Name
                 </label>
                 <Input
@@ -176,13 +172,13 @@ export default function SignUp() {
                   placeholder="Doe"
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
-                  className="w-full py-3 md:py-4 px-3 bg-[#262727] text-white border border-[#262727] text-sm md:text-base"
+                  className="w-full border border-[#262727] bg-[#262727] px-3 py-3 text-sm text-white md:py-4 md:text-base"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium font-semibold text-white mb-1">
+              <label className="mb-1 block text-sm font-medium font-semibold text-white">
                 Email
               </label>
               <Input
@@ -190,12 +186,12 @@ export default function SignUp() {
                 placeholder="john.doe@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full py-3 md:py-4 px-3 bg-[#262727] text-white border border-[#262727] text-sm md:text-base"
+                className="w-full border border-[#262727] bg-[#262727] px-3 py-3 text-sm text-white md:py-4 md:text-base"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium font-semibold text-white mb-1">
+              <label className="mb-1 block text-sm font-medium font-semibold text-white">
                 Password
               </label>
               <Input
@@ -203,9 +199,9 @@ export default function SignUp() {
                 placeholder="********"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full py-3 md:py-4 px-3 bg-[#262727] text-white border border-[#262727] text-sm md:text-base"
+                className="w-full border border-[#262727] bg-[#262727] px-3 py-3 text-sm text-white md:py-4 md:text-base"
               />
-              <p className="mt-1 text-xs md:text-sm text-gray-400 py-2 md:py-4">
+              <p className="mt-1 py-2 text-xs text-gray-400 md:py-4 md:text-sm">
                 Must be at least 8 characters
               </p>
             </div>
@@ -223,17 +219,17 @@ export default function SignUp() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-white text-[#0E0F0F] p-2.5 md:p-3 text-sm md:text-base font-semibold rounded-lg hover:bg-[#0E0F0F] hover:text-white hover:border-white border border-[#0E0F0F] transition-all duration-200"
+              className="w-full rounded-lg border border-[#0E0F0F] bg-white p-2.5 text-sm font-semibold text-[#0E0F0F] transition-all duration-200 hover:border-white hover:bg-[#0E0F0F] hover:text-white md:p-3 md:text-base"
             >
               {loading ? "Creating Account..." : "Sign Up"}
             </button>
           </form>
 
-          <p className="mt-4 md:mt-6 text-center text-xs md:text-sm text-gray-400">
+          <p className="mt-4 text-center text-xs text-gray-400 md:mt-6 md:text-sm">
             Already have an account?{" "}
             <Link
               href={signinRedirect}
-              className="text-white font-light hover:underline"
+              className="font-light text-white hover:underline"
             >
               Sign In
             </Link>

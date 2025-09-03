@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 :root {
-  --line-color: #E1E1E1;
+  --line-color: #e1e1e1;
   --surface-color: #fff;
   --surface-color-2: #f0f2f5;
   --surface-color-3: #f0f2f5;
@@ -12,10 +12,10 @@
   --color-2: #000;
   --color-3: #000;
   --color-4: #748297;
-  --button-color: #E3E7EE;
+  --button-color: #e3e7ee;
   --accent-color: #ff5924;
   --alert-color: #ff002e;
-  --dropshadow-color: #BABFC2;
+  --dropshadow-color: #babfc2;
   --highlight-color: #fff6aa;
   --gutter: 80px;
   --bar-height: 60px;
@@ -27,23 +27,31 @@
   --note-divider-color: #748297;
   --shortcut-button: #e3e7ee;
   --shortcut-label-color: #000;
-  --sunrise-gradient: linear-gradient(113deg, #F2E5D7 1.23%, #DDCAB5 98.53%), #DDCAB5;
+  --sunrise-gradient:
+    linear-gradient(113deg, #f2e5d7 1.23%, #ddcab5 98.53%), #ddcab5;
   --button-bg-color: #fff;
-  --button-gradient: linear-gradient(90deg, #ED9EC0 0%, #F5BB79 50%, #FF3B21 100%);
+  --button-gradient: linear-gradient(
+    90deg,
+    #ed9ec0 0%,
+    #f5bb79 50%,
+    #ff3b21 100%
+  );
   --fallback-bg: #fff;
-  --fallback-box-shadow: 0px 77px 31px rgb(64 70 79 / 2%), 0px 43px 32px rgb(64 70 79 / 7%), 0px 19px 19px rgb(64 70 79 / 8%), 0px 2px 7px rgb(64 70 79 / 10%);
+  --fallback-box-shadow:
+    0px 77px 31px rgb(64 70 79 / 2%), 0px 43px 32px rgb(64 70 79 / 7%),
+    0px 19px 19px rgb(64 70 79 / 8%), 0px 2px 7px rgb(64 70 79 / 10%);
   --transition-ease: cubic-bezier(0.25, 0.1, 0, 1);
-  --card-color: #909CAE;
-  --card-logo-color: #909CAE;
-  --card-shadow-color: #D4DCE7;
-  --repository-object-label-color: #909CAE;
-  --repository-object-value-color: #292F39;
+  --card-color: #909cae;
+  --card-logo-color: #909cae;
+  --card-shadow-color: #d4dce7;
+  --repository-object-label-color: #909cae;
+  --repository-object-value-color: #292f39;
   --repository-object-link: rgb(240 242 245 / 70%);
   --repository-object-link-hover: rgb(240 242 245 / 100%);
-  --later-tag-background: #F0FFFE;
+  --later-tag-background: #f0fffe;
   --later-tag-color: #559490;
   --root-surface-color: #fff;
-  --scrollbar-color: #D0D8E5;
+  --scrollbar-color: #d0d8e5;
 }
 
 body {
