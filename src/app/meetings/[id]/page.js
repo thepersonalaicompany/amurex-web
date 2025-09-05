@@ -73,21 +73,31 @@ export default function TranscriptDetail({ params }) {
   }, [router]);
 
   const logUserAction = async (userId, eventType) => {
-    fetch(`${BASE_URL_BACKEND}/track`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify({
-        uuid: userId,
-        event_type: eventType,
-        meeting_id: params.id,
-      }),
-    }).catch((error) => {
-      console.error("Error tracking:", error);
-    });
-  };
+    const { data: userData, error: userError } = await supabase
+        .from("users")
+        .select("analytics_enabled")
+        .eq("id", userId)
+        .single();
+    
+    // now I am only considering the case where users manually choose to enable analytics irrespective of where they are self hosting or not.
+    if(userData?.analytics_enabled) {
+
+      fetch(`${BASE_URL_BACKEND}/track`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ 
+          uuid: userId, 
+          event_type: eventType,
+          meeting_id: params.id
+        }),
+      }).catch(error => {
+        console.error("Error tracking:", error);
+      });
+    };
+  }
 
   useEffect(() => {
     fetchMemoryStatus();

@@ -51,6 +51,8 @@ const GMAIL_COLORS = {
 
 // Helper function to categorize emails using Groq
 async function categorizeWithAI(fromEmail, subject, body, enabledCategories) {
+  const modelName = process.env.MODEL_NAME;
+  const clientMode = process.env.CLIENT_MODE || 'local';
   try {
     // Build the system prompt based on enabled categories
     let systemPrompt =
@@ -82,21 +84,64 @@ async function categorizeWithAI(fromEmail, subject, body, enabledCategories) {
 
     systemPrompt += `\nRespond ONLY with the number (1-${index - 1}). If the email doesn't fit into any of these categories, respond with 0. Do not include any other text, just the single digit number.`;
 
-    const response = await groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
-      messages: [
-        {
-          role: "system",
-          content: systemPrompt,
+    const messages = [
+      {
+        role: "system",
+        content: systemPrompt,
+      },
+      {
+        role: "user",
+        content: `Email from: ${fromEmail}\nSubject: ${subject}\n\nBody: ${body}`,
+      },
+    ];
+
+    let response;
+
+    if (clientMode === "local" && modelName?.length > 0) {
+      // Call local Ollama API
+      const req_response = await fetch(`${process.env.NEXT_PUBLIC_LOCAL_AI_MODEL_URL}/chat`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-        {
-          role: "user",
-          content: `Email from: ${fromEmail}\nSubject: ${subject}\n\nBody: ${body}`,
-        },
-      ],
-      max_tokens: 20,
-      temperature: 0.3,
-    });
+        body: JSON.stringify({
+          model: modelName, 
+          messages: messages,
+          stream: false,
+          max_tokens: 20,
+          temperature: 0.3,
+        }),
+      });
+
+      const data = await req_response.json();
+
+      // Format the response to match the OpenAI structure we're expecting
+      response = {
+        choices: [
+          {
+            message: {
+              content: data.message.content,
+            },
+          },
+        ],
+      };
+    } else {
+      response = await groq.chat.completions.create({
+        model: "llama-3.3-70b-versatile",
+        messages: [
+          {
+            role: "system",
+            content: systemPrompt,
+          },
+          {
+            role: "user",
+            content: `Email from: ${fromEmail}\nSubject: ${subject}\n\nBody: ${body}`,
+          },
+        ],
+        max_tokens: 20,
+        temperature: 0.3,
+      });
+    }
 
     // Get the raw response and convert to a number
     const rawResponse = response.choices[0].message.content.trim();
@@ -181,12 +226,23 @@ async function generateEmbeddings(text) {
 
     // Truncate text if it's too long (Mistral has token limits)
     const truncatedText = text.length > 8000 ? text.substring(0, 8000) : text;
+    const misttralApiKey = process.env.MISTRAL_API_KEY || ''
 
-    const response = await mistral.embeddings.create({
-      model: "mistral-embed",
-      input: truncatedText,
-    });
-
+    let response;
+    if (misttralApiKey?.length == 0) {
+      response = await fetch("/api/embed", {
+        method: "GET",
+        body: JSON.stringify({text: truncatedText}),
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+    } else {
+      response = await mistral.embeddings.create({
+        model: "mistral-embed",
+        input: truncatedText,
+      });
+    }
     if (
       response &&
       response.data &&
@@ -198,6 +254,7 @@ async function generateEmbeddings(text) {
       console.error("Invalid embedding response structure:", response);
       return null;
     }
+
   } catch (error) {
     console.error("Error generating embeddings:", error);
     return null;

@@ -34,6 +34,9 @@ const nextConfig = {
       },
     ];
   },
+  experimental: {
+    serverComponentsExternalPackages: ["sharp", "onnxruntime-node"],
+  },
 };
 
 export default nextConfig;

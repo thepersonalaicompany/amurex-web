@@ -66,6 +66,10 @@ OPENAI_API_KEY=
 # base url
 NEXT_PUBLIC_BASE_URL=
 NEXT_PUBLIC_APP_URL=
+NEXT_PUBLIC_BASE_URL=http://0.0.0.0:8080
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXT_PUBLIC_LOCAL_AI_MODEL_URL=http://localhost:11434/api
+NEXT_PUBLIC_BASE_URL_EMBEDDINGS="https://api.mistral.ai/v1/"
 
 # notion
 NOTION_CLIENT_SECRET=
@@ -73,10 +77,17 @@ NOTION_CLIENT_ID=
 NOTION_AUTH_URL=
 NOTION_REDIRECT_URI=
 
+MODEL_NAME=llama3.1:8b // this is minimal light-weight model
+CLIENT_MODE=local
+
+#api key to enable model act as a soure of all linked platforms
+BRAIN_API_KEY=
+
 # google
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 GOOGLE_REDIRECT_URI=
+GOOGLE_REDIRECT_URI_NEW=
 GOOGLE_CALENDAR_REDIRECT_URI=
 
 # embeddings (using mistral now)

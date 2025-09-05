@@ -24,6 +24,7 @@ import {
   Plus,
   Minus,
   Clock,
+  ChartNoAxesColumn,
 } from "lucide-react";
 import Cookies from "js-cookie";
 import { toast } from "react-hot-toast";
@@ -56,6 +57,7 @@ function SettingsContent() {
   const [importSource, setImportSource] = useState("");
   const [importProgress, setImportProgress] = useState(0);
   const [memoryEnabled, setMemoryEnabled] = useState(false);
+  const [analyticsEnabled, setAnalyticsEnabled] = useState(false);
   const [createdAt, setCreatedAt] = useState("");
   const [emailNotificationsEnabled, setEmailNotificationsEnabled] =
     useState(false);
@@ -215,9 +217,7 @@ function SettingsContent() {
       } else {
         if (data.errorType === "insufficient_permissions") {
           setGmailPermissionError(true);
-          toast.error(
-            "Insufficient Gmail permissions. Please reconnect your Google account."
-          );
+          toast.error("Insufficient Gmail permissions. Please reconnect your Google account.");
         } else {
           toast.error(data.error || "Failed to process emails");
         }
@@ -256,8 +256,7 @@ function SettingsContent() {
             setGoogleTokenVersion(data.google_token_version);
             setGoogleDocsConnected(data.google_token_version === "full");
             setGmailConnected(
-              data.google_token_version === "full" ||
-                data.google_token_version === "gmail_only"
+              data.google_token_version === "full" || data.google_token_version === "gmail_only"
             );
           }
         } else {
@@ -290,6 +289,7 @@ function SettingsContent() {
 
   // Move checkIntegrations function above the useEffect
   const checkIntegrations = async () => {
+    
     try {
       console.log("Checking integrations...");
       const {
@@ -319,12 +319,10 @@ function SettingsContent() {
           setNotionConnected(user.notion_connected);
           setOmiConnected(user.omi_connected);
           setGoogleDocsConnected(user.google_docs_connected);
-          console.log(
-            "Setting googleDocsConnected to:",
-            user.google_docs_connected
-          );
+          console.log("Setting googleDocsConnected to:", user.google_docs_connected);
           setCalendarConnected(user.calendar_connected);
           setMemoryEnabled(user.memory_enabled);
+          setAnalyticsEnabled(user.analytics_enabled);
           setEmailLabelingEnabled(user.email_tagging_enabled || false);
           setEmailNotificationsEnabled(user.emails_enabled || false);
         }
@@ -512,6 +510,26 @@ function SettingsContent() {
     }
   };
 
+  const handleAnalyticsToggle = async (checked) => {
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (session) {
+        const { error, data } = await supabase
+          .from("users")
+          .update({ analytics_enabled: checked })
+          .eq("id", session.user.id);
+
+        if (error) throw error;
+        setAnalyticsEnabled(checked);
+        toast.success(checked ? "Analytics enabled" : "Analytics disabled");
+      }
+    } catch (error) {
+      console.error("Error updating analytics settings:", error);
+    }
+  };
+
   const handleEmailNotificationsToggle = async (checked) => {
     try {
       const {
@@ -599,21 +617,29 @@ function SettingsContent() {
   }, [searchParams, handleGoogleCallback]);
 
   const logUserAction = async (userId, eventType) => {
-    try {
-      await fetch(`${BASE_URL_BACKEND}/track`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({
-          uuid: userId,
-          event_type: eventType,
-        }),
-      });
-    } catch (error) {
-      console.error("Error tracking:", error);
-    }
+      const { data: userData, error: userError } = await supabase
+      .from("users")
+      .select("analytics_enabled")
+      .eq("id", userId)
+      .single();
+
+    if(userData?.analytics_enabled) {
+      try {
+        await fetch(`${BASE_URL_BACKEND}/track`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({
+            uuid: userId,
+            event_type: eventType,
+          }),
+        });
+      } catch (error) {
+        console.error("Error tracking:", error);
+      }
+  }
   };
 
   const handleSave = async (field) => {
@@ -677,9 +703,7 @@ function SettingsContent() {
       if (error) throw error;
 
       setTeamMembers((members) =>
-        members.map((member) =>
-          member.id === memberId ? { ...member, role: editedRole } : member
-        )
+        members.map((member) => (member.id === memberId ? { ...member, role: editedRole } : member))
       );
 
       setEditingMemberId(null);
@@ -792,9 +816,7 @@ function SettingsContent() {
 
   const handleCopyInviteLink = async () => {
     try {
-      await navigator.clipboard.writeText(
-        `${window.location.host}/teams/join/${teamInviteCode}`
-      );
+      await navigator.clipboard.writeText(`${window.location.host}/teams/join/${teamInviteCode}`);
       setCopyButtonText("Copied!");
       setTimeout(() => setCopyButtonText("Copy URL"), 2000);
     } catch (err) {
@@ -887,9 +909,9 @@ function SettingsContent() {
 
   // Update the handleFileSelect function
   const handleFileSelect = (e) => {
-    const files = Array.from(
-      e.target?.files || e.dataTransfer?.files || []
-    ).filter((file) => file.name.endsWith(".md"));
+    const files = Array.from(e.target?.files || e.dataTransfer?.files || []).filter((file) =>
+      file.name.endsWith(".md")
+    );
     setSelectedFiles(files);
   };
 
@@ -990,9 +1012,7 @@ function SettingsContent() {
 
         if (error) throw error;
         setEmailLabelingEnabled(checked);
-        toast.success(
-          checked ? "Email labeling enabled" : "Email labeling disabled"
-        );
+        toast.success(checked ? "Email labeling enabled" : "Email labeling disabled");
       }
     } catch (error) {
       console.error("Error updating email labeling settings:", error);
@@ -1212,9 +1232,7 @@ function SettingsContent() {
 
           {activeTab === "personalization" && (
             <div className="space-y-8">
-              <h1 className="text-2xl font-medium text-white">
-                Personalization
-              </h1>
+              <h1 className="text-2xl font-medium text-white">Personalization</h1>
 
               {/* Memory Toggle */}
               <Card className="border-zinc-800 bg-black">
@@ -1233,10 +1251,7 @@ function SettingsContent() {
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <IconToggle
-                        checked={memoryEnabled}
-                        onChange={handleMemoryToggle}
-                      />
+                      <IconToggle checked={memoryEnabled} onChange={handleMemoryToggle} />
                     </div>
                   </div>
 
@@ -1245,11 +1260,7 @@ function SettingsContent() {
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-4">
-                            <img
-                              src={PROVIDER_ICONS.gmail}
-                              alt="Google"
-                              className="w-6"
-                            />
+                            <img src={PROVIDER_ICONS.gmail} alt="Google" className="w-6" />
                             <div>
                               <h3 className="text-lg font-medium text-white">
                                 Connect Gmail
@@ -1334,9 +1345,7 @@ function SettingsContent() {
                               <h3 className="text-lg font-medium text-white">
                                 Upload from Obsidian
                               </h3>
-                              <p className="text-sm text-zinc-400">
-                                Import your markdown files
-                              </p>
+                              <p className="text-sm text-zinc-400">Import your markdown files</p>
                             </div>
                           </div>
                           <Button
@@ -1407,9 +1416,7 @@ function SettingsContent() {
                               <h3 className="text-lg font-medium text-white">
                                 Request Integration
                               </h3>
-                              <p className="text-sm text-zinc-400">
-                                Suggest the next integration
-                              </p>
+                              <p className="text-sm text-zinc-400">Suggest the next integration</p>
                             </div>
                           </div>
                           <Button
@@ -1434,11 +1441,7 @@ function SettingsContent() {
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-4">
-                            <img
-                              src={PROVIDER_ICONS.gmail}
-                              alt="Gmail"
-                              className="w-6"
-                            />
+                            <img src={PROVIDER_ICONS.gmail} alt="Gmail" className="w-6" />
                             <div>
                               <h3 className="text-lg font-medium text-white">
                                 Gmail Smart Labels
@@ -1452,9 +1455,7 @@ function SettingsContent() {
                             <Switch
                               checked={emailLabelingEnabled}
                               onCheckedChange={handleEmailLabelToggle}
-                              className={
-                                emailLabelingEnabled ? "bg-[#9334E9]" : ""
-                              }
+                              className={emailLabelingEnabled ? "bg-[#9334E9]" : ""}
                             />
                             {gmailPermissionError && (
                               <Button
@@ -1519,6 +1520,24 @@ function SettingsContent() {
                   </div>
                 </CardContent>
               </Card>
+              <Card className="bg-black border-zinc-800 flex-1">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-6 h-6 rounded-full bg-zinc-800 flex items-center justify-center">
+                        <ChartNoAxesColumn className="w-5 h-5 text-[#9334E9] bg-transparent" />
+                      </div>
+                      <div>
+                        <h3 className="font-medium text-white text-lg">Analytics Tracking</h3>
+                        <p className="text-sm text-zinc-400">
+                          Help us improve by sharing your usage data
+                        </p>
+                      </div>
+                    </div>
+                    <IconToggle checked={analyticsEnabled} onChange={handleAnalyticsToggle} />
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           )}
 
@@ -1549,9 +1568,7 @@ function SettingsContent() {
                       <div className="border-t border-zinc-800 pt-2">
                         <div className="flex hidden items-center justify-between">
                           <div>
-                            <h3 className="text-md font-medium text-white">
-                              Email Notifications
-                            </h3>
+                            <h3 className="text-md font-medium text-white">Email Notifications</h3>
                             <p className="text-sm text-zinc-400">
                               Receive meeting summaries after each call
                             </p>
@@ -1566,12 +1583,8 @@ function SettingsContent() {
                       <div className="pt">
                         <div className="flex items-center justify-between">
                           <div>
-                            <h3 className="text-md font-medium text-white">
-                              Sign Out
-                            </h3>
-                            <p className="text-sm text-zinc-400">
-                              Sign out of your account
-                            </p>
+                            <h3 className="text-md font-medium text-white">Sign Out</h3>
+                            <p className="text-sm text-zinc-400">Sign out of your account</p>
                           </div>
                           <Button
                             variant="outline"
@@ -1592,9 +1605,7 @@ function SettingsContent() {
           {activeTab === "team" && (
             <>
               <div className="space-y-2">
-                <h1 className="text-2xl font-medium text-white">
-                  Team Settings
-                </h1>
+                <h1 className="text-2xl font-medium text-white">Team Settings</h1>
 
                 <Card className="border-zinc-800 bg-black">
                   <CardContent className="p-6">
@@ -1687,9 +1698,7 @@ function SettingsContent() {
                         </div>
 
                         <div>
-                          <h3 className="text-md text-zinc-400">
-                            Created Date
-                          </h3>
+                          <h3 className="text-md text-zinc-400">Created Date</h3>
                           <p className="text-white">{teamCreatedAt}</p>
                         </div>
                       </div>
@@ -1745,16 +1754,12 @@ function SettingsContent() {
                                       <option value="member">Member</option>
                                     </select>
                                   ) : (
-                                    <span className="capitalize">
-                                      {member.role}
-                                    </span>
+                                    <span className="capitalize">{member.role}</span>
                                   )}
                                   <span>•</span>
                                   <span>
                                     Joined{" "}
-                                    {new Date(
-                                      member.created_at
-                                    ).toLocaleDateString("en-US", {
+                                    {new Date(member.created_at).toLocaleDateString("en-US", {
                                       year: "numeric",
                                       month: "long",
                                       day: "numeric",
@@ -1822,9 +1827,7 @@ function SettingsContent() {
                         <h2 className="text-md flex items-center gap-2 font-semibold text-white">
                           Encounter an issue?
                         </h2>
-                        <p className="text-sm text-zinc-400">
-                          Help us improve by reporting issues
-                        </p>
+                        <p className="text-sm text-zinc-400">Help us improve by reporting issues</p>
                       </div>
                       <Button
                         variant="outline"
@@ -2061,9 +2064,7 @@ function SettingsContent() {
                 <div className="text-center">
                   <FileText className="mx-auto mb-2 h-8 w-8 text-[#9334E9]" />
                   <p className="text-white">Click to select markdown files</p>
-                  <p className="text-sm text-zinc-400">
-                    or drag and drop them here
-                  </p>
+                  <p className="text-sm text-zinc-400">or drag and drop them here</p>
                 </div>
               </label>
 

@@ -66,7 +66,7 @@ export async function GET(request) {
     const oauth2Client = new google.auth.OAuth2(
       clientData.client_id,
       clientData.client_secret,
-      process.env.GOOGLE_REDIRECT_URI_NEW
+      process.env.GOOGLE_REDIRECT_URI
     );
 
     console.log(
@@ -100,7 +100,7 @@ export async function GET(request) {
     if (tokenError) {
       console.error("Error storing tokens:", tokenError);
       throw tokenError;
-    }
+    } // google_token_expiry
 
     // Get user's email from Gmail profile to store in user_gmails
     oauth2Client.setCredentials(tokens);
@@ -122,8 +122,9 @@ export async function GET(request) {
             email_address: primaryEmail,
             access_token: tokens.access_token,
             refresh_token: tokens.refresh_token,
-            type: "gmail_only", // google_token_version set to null as requested
+            type: 'gmail_only',  // google_token_version set to null as requested
             google_cohort: 10,
+            google_clients: 10
           });
 
         if (gmailError) {

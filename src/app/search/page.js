@@ -2779,7 +2779,7 @@ const logUserAction = async (userId, eventType) => {
     // First check if memory_enabled is true for this user
     const { data: userData, error: userError } = await supabase
       .from("users")
-      .select("memory_enabled")
+      .select("memory_enabled, analytics_enabled")
       .eq("id", userId)
       .single();
 
@@ -2789,7 +2789,7 @@ const logUserAction = async (userId, eventType) => {
     }
 
     // Only track if memory_enabled is true
-    if (userData?.memory_enabled) {
+    if (userData?.memory_enabled && userData?.analytics_enabled) {
       await fetch(`${BASE_URL_BACKEND}/track`, {
         method: "POST",
         headers: {

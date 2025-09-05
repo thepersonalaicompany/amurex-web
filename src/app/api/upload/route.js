@@ -102,10 +102,22 @@ export async function POST(req) {
 
     // Process each section
     for (const section of sections) {
-      const embeddingResponse = await groq.embeddings.create({
+      let embeddingResponse
+      if (misttralApiKey?.length == 0) {
+        embeddingResponse = await fetch("/api/embed", {
+        method: "GET",
+        body: JSON.stringify({text: section.pageContent}),
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+    } else {
+        embeddingResponse = await groq.embeddings.create({
         model: "text-embedding-ada-002",
         input: section.pageContent,
       });
+    }
+
 
       await supabase.from("page_sections").insert({
         document_id: document.id,

@@ -51,6 +51,37 @@ class TextSplitter {
 }
 
 async function generateTags(text) {
+  const clientMode = process.env.CLIENT_MODE || 'local';
+  if (clientMode === 'local' && process.env.MODEL_NAME) {
+    try {
+      // Use local Ollama model
+      const response = await fetch(`${process.env.NEXT_PUBLIC_LOCAL_AI_MODEL_URL}/generate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: process.env.MODEL_NAME,
+          prompt: `Generate 3 relevant tags for the following text, separated by commas:\n\n${text.substring(0, 1000)}`,
+          system: "You are a helpful assistant that generates relevant tags for a given text. Provide the tags as a comma-separated list without numbers or bullet points.",
+          stream: false,
+        }),
+      });
+
+
+      const result = await response.json();
+      const tagResponse = result.response
+        ?.split(',')
+        .map((tag) => tag.trim());
+
+      return tagResponse;
+    } catch (error) {
+      console.error("Error with local model, falling back to Groq:", error);
+      // Fall through to Groq if local model fails
+    }
+  }
+  
+  // Default to Groq API
   const tagsResponse = await groq.chat.completions.create({
     model: "llama-3.3-70b-versatile",
     messages: [
@@ -145,10 +176,21 @@ export async function POST(req) {
 
     // Process embeddings
     try {
+      const mistralApiKey = process.env.MISTRAL_API_KEY || "";
       const sections = await textSplitter.createDocuments([content]);
       const chunkTexts = sections.map((section) => section.pageContent);
 
-      const embeddingResponse = await fetch(
+      let embeddingResponse;
+      if (mistralApiKey?.length == 0) {
+        embeddingResponse = await fetch("/api/embed", {
+          method: "GET",
+          body: JSON.stringify({text: truncatedText}),
+          headers: {
+            "Content-Type": "application/json",
+          },
+      });
+    } else {
+        embeddingResponse = await fetch(
         "https://api.mistral.ai/v1/embeddings",
         {
           method: "POST",
@@ -163,8 +205,10 @@ export async function POST(req) {
           }),
         }
       );
-
+    }
+      
       const embedData = await embeddingResponse.json();
+      console.log("Embedding response:", embedData);
       const embeddings = embedData.data.map(
         (item) => `[${item.embedding.join(",")}]`
       );

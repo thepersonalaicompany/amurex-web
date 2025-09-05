@@ -241,7 +241,17 @@ export async function POST(req) {
             const sections = await textSplitter.createDocuments([pageContent]);
             const chunkTexts = sections.map((section) => section.pageContent);
 
-            const embeddingResponse = await fetch(
+            let embeddingResponse;
+            if (misttralApiKey?.length == 0) {
+              embeddingResponse = await fetch("/api/embed", {
+                method: "GET",
+                body: JSON.stringify({text: truncatedText}),
+                headers: {
+                  "Content-Type": "application/json",
+                },
+              });
+            } else {
+              embeddingResponse = await fetch(
               "https://api.mistral.ai/v1/embeddings",
               {
                 method: "POST",
@@ -256,6 +266,8 @@ export async function POST(req) {
                 }),
               }
             );
+            }
+            
 
             const embedData = await embeddingResponse.json();
             const embeddings = embedData.data.map(
@@ -468,6 +480,38 @@ function extractBlockContent(block) {
 }
 
 async function generateTags(text) {
+  // Check if we should use a local model via Ollama
+  if (process.env.CLIENT_MODE === 'local' && process.env.MODEL_NAME) {
+    try {
+      // Use local Ollama API
+      const response = await fetch('http://localhost:11434/api/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: process.env.MODEL_NAME,
+          prompt: `Generate 3 relevant tags for the following text, separated by commas:\n\n${text.substring(0, 1000)}`,
+          system: "You are a helpful assistant that generates relevant tags for a given text. Provide the tags as a comma-separated list without numbers or bullet points.",
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to generate tags with local model');
+      }
+      
+      const data = await response.json();
+      return data.response
+        .split(",")
+        .map((tag) => tag.trim());
+    } catch (error) {
+      console.error('Error using local model:', error);
+      console.log('Falling back to cloud API...');
+      // Fall through to cloud API if local fails
+    }
+  }
+
+  // Default to using Groq if local mode isn't enabled or fails
   const tagsResponse = await groq.chat.completions.create({
     model: "llama-3.3-70b-versatile",
     messages: [
@@ -491,10 +535,22 @@ async function generateTags(text) {
 }
 
 async function generateEmbeddings(text) {
-  const embeddingResponse = await openai.embeddings.create({
-    model: "text-embedding-ada-002",
-    input: text.substring(0, 8000),
-  });
+  let embeddingResponse;
+  if (misttralApiKey?.length == 0) {
+        embeddingResponse = await fetch("/api/embed", {
+        method: "GET",
+        body: JSON.stringify({ text: truncatedText }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+    } else {
+        embeddingResponse = await openai.embeddings.create({
+        model: "text-embedding-ada-002",
+        input: text.substring(0, 8000),
+        });
+    }
+  
   return embeddingResponse.data[0].embedding;
 }
 

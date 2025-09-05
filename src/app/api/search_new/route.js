@@ -35,21 +35,18 @@ export async function POST(req) {
 
 async function aiSearch(query, userId) {
   console.log("embeddings mistral lesgo");
-  const embeddingResponse = await fetch(
-    "https://api.mistral.ai/v1/embeddings",
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.MISTRAL_API_KEY}`,
-      },
-      body: JSON.stringify({
-        input: query,
-        model: "mistral-embed",
-        encoding_format: "float",
-      }),
-    }
-  );
+  const embeddingResponse = await fetch('https://api.mistral.ai/v1/embed', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${process.env.MISTRAL_API_KEY}`
+    },
+    body: JSON.stringify({
+      input: query,
+      model: "mistral-embed",
+      encoding_format: "float"
+    })
+  });
 
   const embedData = await embeddingResponse.json();
   const queryEmbedding = embedData.data[0].embedding;
