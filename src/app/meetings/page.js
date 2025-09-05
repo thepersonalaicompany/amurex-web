@@ -1,7 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FileText, Search, Calendar, Clock, Video, BellRing } from "lucide-react";
+import {
+  FileText,
+  Search,
+  Calendar,
+  Clock,
+  Video,
+  BellRing,
+} from "lucide-react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
@@ -19,7 +26,8 @@ export default function TranscriptList() {
   const [filter, setFilter] = useState("personal");
   const router = useRouter();
   const [userTeams, setUserTeams] = useState([]);
-  const [emailNotificationsEnabled, setEmailNotificationsEnabled] = useState(false);
+  const [emailNotificationsEnabled, setEmailNotificationsEnabled] =
+    useState(false);
 
   useEffect(() => {
     fetchTranscripts();
@@ -188,7 +196,11 @@ export default function TranscriptList() {
 
         if (error) throw error;
         setEmailNotificationsEnabled(checked);
-        toast.success(checked ? "Email notifications enabled" : "Email notifications disabled");
+        toast.success(
+          checked
+            ? "Email notifications enabled"
+            : "Email notifications disabled"
+        );
       }
     } catch (error) {
       console.error("Error updating email notification settings:", error);
@@ -220,8 +232,8 @@ export default function TranscriptList() {
   if (loading) {
     return (
       <div className="min-h-screen bg-black">
-        <div className="p-8 mx-auto">
-          <h1 className="text-2xl font-medium mb-6 text-white">Loading...</h1>
+        <div className="mx-auto p-8">
+          <h1 className="mb-6 text-2xl font-medium text-white">Loading...</h1>
         </div>
       </div>
     );
@@ -230,14 +242,16 @@ export default function TranscriptList() {
   return (
     <>
       <div className="min-h-screen bg-black">
-        <div className="p-8 mx-auto">
-          <div className="flex justify-between items-center mb-4">
+        <div className="mx-auto p-8">
+          <div className="mb-4 flex items-center justify-between">
             <h2 className="text-2xl font-medium text-white">Meetings</h2>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <BellRing className="w-5 h-5 text-white" />
-                <div className="text-white hidden sm:block">Email notes after meetings</div>
-                <IconToggle 
+                <BellRing className="h-5 w-5 text-white" />
+                <div className="hidden text-white sm:block">
+                  Email notes after meetings
+                </div>
+                <IconToggle
                   checked={emailNotificationsEnabled}
                   onChange={handleEmailNotificationsToggle}
                 />
@@ -245,9 +259,9 @@ export default function TranscriptList() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 mb-6 flex-wrap bg-[#1C1C1E] p-1 rounded-lg w-fit hidden">
+          <div className="mb-6 flex hidden w-fit flex-wrap items-center gap-2 rounded-lg bg-[#1C1C1E] p-1">
             <label
-              className={`relative px-4 py-2 rounded-md cursor-pointer transition-all duration-200 ${
+              className={`relative cursor-pointer rounded-md px-4 py-2 transition-all duration-200 ${
                 filter === "personal"
                   ? "bg-[#9334E9] text-[#FAFAFA] hover:cursor-not-allowed"
                   : "text-zinc-400 hover:text-zinc-200"
@@ -265,7 +279,7 @@ export default function TranscriptList() {
             {userTeams.map((team) => (
               <label
                 key={team.team_id}
-                className={`relative px-4 py-2 rounded-md cursor-pointer transition-all duration-200 ${
+                className={`relative cursor-pointer rounded-md px-4 py-2 transition-all duration-200 ${
                   filter === team.team_id
                     ? "bg-[#9334E9] text-[#FAFAFA] hover:cursor-not-allowed"
                     : "text-zinc-400 hover:text-zinc-200"
@@ -285,57 +299,66 @@ export default function TranscriptList() {
             ))}
           </div>
 
-          <div className="mb-6 relative">
+          <div className="relative mb-6">
             <input
               type="text"
               placeholder="Search meetings..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-[#1C1C1E] text-white placeholder-zinc-400 rounded-lg px-10 py-3 border-0 focus:ring-1 focus:ring-purple-500 focus:outline-none"
+              className="w-full rounded-lg border-0 bg-[#1C1C1E] px-10 py-3 text-white placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-purple-500"
             />
             <Search
-              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400"
+              className="absolute left-3 top-1/2 -translate-y-1/2 transform text-zinc-400"
               size={18}
             />
           </div>
 
           <a href="/search" rel="noopener noreferrer">
-            <div 
-              className="hidden my-2 bg-zinc-800/80 rounded-xl flex items-center px-3 py-2 cursor-text hover:bg-zinc-700 transition-colors border border-white/10"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-400 mr-2">
+            <div className="my-2 flex hidden cursor-text items-center rounded-xl border border-white/10 bg-zinc-800/80 px-3 py-2 transition-colors hover:bg-zinc-700">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="mr-2 text-zinc-400"
+              >
                 <circle cx="11" cy="11" r="8"></circle>
                 <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
               </svg>
-              <div className="text-zinc-400 text-md">Search in meetings...</div>
+              <div className="text-md text-zinc-400">Search in meetings...</div>
             </div>
           </a>
 
-          {error && <div className="text-red-500 mb-4">{error}</div>}
+          {error && <div className="mb-4 text-red-500">{error}</div>}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {filteredTranscripts.map((transcript) => (
               <Link key={transcript.id} href={`/meetings/${transcript.id}`}>
-                <div className="bg-[#09090A] border border-zinc-800 hover:bg-[#27272A] transition-colors rounded-lg p-4">
+                <div className="rounded-lg border border-zinc-800 bg-[#09090A] p-4 transition-colors hover:bg-[#27272A]">
                   <div className="flex items-start gap-3">
                     <div className="text-[#9334E9]">
                       <FileText className="h-5 w-5" />
                     </div>
                     <div className="flex-1">
-                      <h2 className="text-white font-medium mb-2">
+                      <h2 className="mb-2 font-medium text-white">
                         {transcript.title}
                       </h2>
                       {filter !== "personal" && (
-                        <div className="text-purple-500 text-sm mb-2">
+                        <div className="mb-2 text-sm text-purple-500">
                           {transcript.team_name}
                         </div>
                       )}
-                      <div className="flex items-center text-zinc-400 text-sm gap-1">
+                      <div className="flex items-center gap-1 text-sm text-zinc-400">
                         <Calendar className="h-4 w-4" />
                         <span>{transcript.date}</span>
                       </div>
-                      <div className="flex items-center justify-between mt-1">
-                        <div className="flex items-center text-zinc-400 text-sm gap-1">
+                      <div className="mt-1 flex items-center justify-between">
+                        <div className="flex items-center gap-1 text-sm text-zinc-400">
                           <Clock className="h-4 w-4" />
                           <span>{transcript.time}</span>
                         </div>
@@ -350,17 +373,17 @@ export default function TranscriptList() {
           {transcripts.length === 0 && (
             <>
               {/* Email categorization card */}
-              <div className="mt-8 mx-auto max-w-4xl">
+              <div className="mx-auto mt-8 max-w-4xl">
                 <div className="relative">
-                  <div className="absolute -inset-0.5 bg-gradient-to-r from-[#9334E9] to-[#9334E9] rounded-lg blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-gradient-x"></div>
-                  <Card className="bg-black border-zinc-500 relative overflow-hidden w-full">
-                    <div className="absolute inset-0 bg-[#9334E9]/20 animate-pulse"></div>
+                  <div className="absolute -inset-0.5 animate-gradient-x rounded-lg bg-gradient-to-r from-[#9334E9] to-[#9334E9] opacity-75 blur transition duration-1000 group-hover:opacity-100 group-hover:duration-200"></div>
+                  <Card className="relative w-full overflow-hidden border-zinc-500 bg-black">
+                    <div className="absolute inset-0 animate-pulse bg-[#9334E9]/20"></div>
                     <div className="absolute inset-0 bg-gradient-to-r from-[#9334E9]/30 via-[#9334E9]/20 to-[#9334E9]/30"></div>
-                    <CardContent className="p-4 relative text-center">
-                      <div className="flex items-center gap-4 justify-center">
-                        <Video className="w-6 h-6 text-[#9334E9] hidden" />
+                    <CardContent className="relative p-4 text-center">
+                      <div className="flex items-center justify-center gap-4">
+                        <Video className="hidden h-6 w-6 text-[#9334E9]" />
                         <div>
-                          <h3 className="font-medium text-white text-lg">
+                          <h3 className="text-lg font-medium text-white">
                             Try Amurex for Online Meetings
                           </h3>
                           <p className="text-sm text-zinc-400">
@@ -373,7 +396,7 @@ export default function TranscriptList() {
                           href="https://chromewebstore.google.com/detail/amurex-early-preview/dckidmhhpnfhachdpobgfbjnhfnmddmc"
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center px-4 py-2 rounded-md text-sm font-medium border border-white/10 bg-[#9334E9] text-[#FAFAFA] hover:bg-[#3c1671] hover:border-[#6D28D9] transition-colors duration-200"
+                          className="inline-flex items-center rounded-md border border-white/10 bg-[#9334E9] px-4 py-2 text-sm font-medium text-[#FAFAFA] transition-colors duration-200 hover:border-[#6D28D9] hover:bg-[#3c1671]"
                         >
                           Get Chrome Extension
                         </a>
@@ -384,7 +407,7 @@ export default function TranscriptList() {
               </div>
 
               {/* Google Meet preview */}
-              <div className="mt-8 mx-auto max-w-4xl">
+              <div className="mx-auto mt-8 max-w-4xl">
                 <MeetPreview />
               </div>
             </>
@@ -393,34 +416,38 @@ export default function TranscriptList() {
           {filteredTranscripts.length === 0 && (
             <>
               {/* No meetings found card */}
-              <div className="mt-8 mx-auto text-center">
-                <h3 className="font-medium text-white text-2xl">
+              <div className="mx-auto mt-8 text-center">
+                <h3 className="text-2xl font-medium text-white">
                   No meetings found for <b>{searchTerm}</b>
                 </h3>
                 <p className="text-lg text-zinc-400">
                   Please try a different search query, or
                 </p>
-                <div className="relative w-[50%] mx-auto mt-6">
-                  <div className="absolute -inset-0.5 bg-gradient-to-r from-[#9334E9] to-[#9334E9] rounded-lg blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-gradient-x"></div>
-                  <Card className="bg-black border-zinc-500 relative overflow-hidden">
-                    <div className="absolute inset-0 bg-[#9334E9]/20 animate-pulse"></div>
+                <div className="relative mx-auto mt-6 w-[50%]">
+                  <div className="absolute -inset-0.5 animate-gradient-x rounded-lg bg-gradient-to-r from-[#9334E9] to-[#9334E9] opacity-75 blur transition duration-1000 group-hover:opacity-100 group-hover:duration-200"></div>
+                  <Card className="relative overflow-hidden border-zinc-500 bg-black">
+                    <div className="absolute inset-0 animate-pulse bg-[#9334E9]/20"></div>
                     <div className="absolute inset-0 bg-gradient-to-r from-[#9334E9]/30 via-[#9334E9]/20 to-[#9334E9]/30"></div>
-                    <CardContent className="p-4 relative text-center">
-                      <div className="flex items-center gap-4 justify-center">
-                        <Video className="w-6 h-6 text-[#9334E9] hidden" />
+                    <CardContent className="relative p-4 text-center">
+                      <div className="flex items-center justify-center gap-4">
+                        <Video className="hidden h-6 w-6 text-[#9334E9]" />
                         <div className="w-[80%]">
-                          <h3 className="font-medium text-white text-2xl mb-2">
+                          <h3 className="mb-2 text-2xl font-medium text-white">
                             Try a smarter search
                           </h3>
                           <p className="text-md font-light text-white">
-                            Knowledge Search - our new feature that allows you to <br></br><span className="italic">search your meetings, emails, and documents</span>
+                            Knowledge Search - our new feature that allows you
+                            to <br></br>
+                            <span className="italic">
+                              search your meetings, emails, and documents
+                            </span>
                           </p>
                         </div>
                       </div>
                       <div className="mt-4">
                         <a
                           href="/search"
-                          className="inline-flex items-center px-4 py-2 rounded-md text-sm font-medium border border-white/10 bg-[#9334E9] text-[#FAFAFA] hover:bg-[#3c1671] hover:border-[#6D28D9] transition-colors duration-200"
+                          className="inline-flex items-center rounded-md border border-white/10 bg-[#9334E9] px-4 py-2 text-sm font-medium text-[#FAFAFA] transition-colors duration-200 hover:border-[#6D28D9] hover:bg-[#3c1671]"
                         >
                           Try Knowledge Search
                         </a>
@@ -439,89 +466,102 @@ export default function TranscriptList() {
 
 const MeetPreview = () => {
   return (
-    <div className="relative mt-8 mx-auto max-w-4xl rounded-xl overflow-hidden border border-zinc-800">
+    <div className="relative mx-auto mt-8 max-w-4xl overflow-hidden rounded-xl border border-zinc-800">
       {/* Main meeting area - using gmeet.png as background */}
-      <div className="bg-[#0f0f10] h-[450px] relative" style={{ 
-        backgroundImage: "url('/gmeet_new.png')", 
-        backgroundSize: "cover",
-        backgroundPosition: "right center"
-      }}>
+      <div
+        className="relative h-[450px] bg-[#0f0f10]"
+        style={{
+          backgroundImage: "url('/gmeet_new.png')",
+          backgroundSize: "cover",
+          backgroundPosition: "right center",
+        }}
+      >
         {/* Dimming overlay */}
         <div className="absolute inset-0 bg-black bg-opacity-50"></div>
-        
-        <div className="flex items-center justify-start pl-4 pt-4 relative z-10">
+
+        <div className="relative z-10 flex items-center justify-start pl-4 pt-4">
           <img
             src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Google_Meet_icon_%282020%29.svg/1024px-Google_Meet_icon_%282020%29.svg.png?20221213135236"
             alt="Google Meet"
             className="w-8"
           />
-          <span className="pl-2 text-white text-base">Google Meet</span>
+          <span className="pl-2 text-base text-white">Google Meet</span>
         </div>
         {/* Meeting controls - positioned at bottom center */}
-        <div className="absolute bottom-8 left-1/3 transform -translate-x-1/2 flex items-center gap-6 z-10">
-          <div className="w-14 h-14 rounded-full bg-[#ea4335] flex items-center justify-center">
-            <span className="text-white text-2xl">×</span>
+        <div className="absolute bottom-8 left-1/3 z-10 flex -translate-x-1/2 transform items-center gap-6">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#ea4335]">
+            <span className="text-2xl text-white">×</span>
           </div>
-          <div className="w-14 h-14 rounded-full bg-[#3c4043] flex items-center justify-center">
-            <span className="text-white text-xl">🎤</span>
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#3c4043]">
+            <span className="text-xl text-white">🎤</span>
           </div>
-          <div className="w-14 h-14 rounded-full bg-[#3c4043] flex items-center justify-center">
-            <span className="text-white text-xl">📹</span>
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#3c4043]">
+            <span className="text-xl text-white">📹</span>
           </div>
         </div>
       </div>
-      
+
       {/* Amurex sidepanel */}
-      <div className="absolute top-0 right-0 h-full w-[380px] bg-[#0a0a0a] border-l border-zinc-800">
+      <div className="absolute right-0 top-0 h-full w-[380px] border-l border-zinc-800 bg-[#0a0a0a]">
         {/* Amurex header */}
-        <div className="flex items-center justify-between py-2 px-4 border-b border-zinc-800">
+        <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-2">
           <div className="flex items-center">
-            <span className="text-white text-xl font-medium">Amurex</span>
+            <span className="text-xl font-medium text-white">Amurex</span>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-zinc-400 text-lg">⚙️</span>
-            <span className="text-zinc-400 text-lg">➡️</span>
+            <span className="text-lg text-zinc-400">⚙️</span>
+            <span className="text-lg text-zinc-400">➡️</span>
           </div>
         </div>
-        
+
         {/* Sidepanel content - smaller text */}
         <div className="p-4">
           <div className="mb-6">
-            <h3 className="text-white text-lg font-medium mb-2">Action items</h3>
-            <div className="text-zinc-300 text-sm">
+            <h3 className="mb-2 text-lg font-medium text-white">
+              Action items
+            </h3>
+            <div className="text-sm text-zinc-300">
               <p className="mb-2 font-bold">You</p>
-              <ul className="list-disc pl-5 mb-2">
+              <ul className="mb-2 list-disc pl-5">
                 <li>Start using Amurex for your meetings</li>
               </ul>
             </div>
           </div>
-          
+
           <div>
-            <h3 className="text-white text-lg font-medium mb-2">Summary</h3>
-            <div className="text-zinc-300 text-sm">
-              <p className="mb-2"><span className="font-medium">Date:</span> September 14, 2024</p>
-              <p className="mb-1"><span className="font-medium">Participants:</span></p>
-              <ul className="list-disc pl-5 mb-2">
+            <h3 className="mb-2 text-lg font-medium text-white">Summary</h3>
+            <div className="text-sm text-zinc-300">
+              <p className="mb-2">
+                <span className="font-medium">Date:</span> September 14, 2024
+              </p>
+              <p className="mb-1">
+                <span className="font-medium">Participants:</span>
+              </p>
+              <ul className="mb-2 list-disc pl-5">
                 <li>You</li>
               </ul>
-              <p className="mb-1"><span className="font-medium">Summary:</span></p>
-              <ul className="list-disc pl-5 mb-2">
+              <p className="mb-1">
+                <span className="font-medium">Summary:</span>
+              </p>
+              <ul className="mb-2 list-disc pl-5">
                 <li>Onboarding process to get started with Amurex.</li>
               </ul>
-              <p className="mb-1"><span className="font-medium">Key Points:</span></p>
+              <p className="mb-1">
+                <span className="font-medium">Key Points:</span>
+              </p>
               <ul className="list-disc pl-5">
                 <li>Amurex will help you organize your work and life.</li>
               </ul>
             </div>
           </div>
         </div>
-        
+
         {/* Bottom tabs */}
-        <div className="absolute bottom-0 w-full flex border-t border-zinc-800">
-          <div className="flex-1 py-4 text-center text-purple-500 border-t-2 border-purple-500 font-medium text-base">
+        <div className="absolute bottom-0 flex w-full border-t border-zinc-800">
+          <div className="flex-1 border-t-2 border-purple-500 py-4 text-center text-base font-medium text-purple-500">
             Summary
           </div>
-          <div className="flex-1 py-4 text-center text-zinc-400 font-medium text-base">
+          <div className="flex-1 py-4 text-center text-base font-medium text-zinc-400">
             Live Suggestions
           </div>
         </div>
@@ -529,4 +569,3 @@ const MeetPreview = () => {
     </div>
   );
 };
-

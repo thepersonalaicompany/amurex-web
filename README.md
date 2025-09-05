@@ -19,19 +19,13 @@
   </p>
 </div>
 
-
-
 ## Amurex Web
 
 Amurex Web is the web interface for Amurex, providing a powerful search engine across all your knowledge. Built with Next.js, it enables fast retrieval of past meetings, notes, and documents, ensuring seamless access to your information.
 
 ## Demo
 
-
-
 https://github.com/user-attachments/assets/050bf888-18f8-414d-b1ad-7f8e2f8fced7
-
-
 
 ## Features
 
@@ -50,12 +44,14 @@ https://github.com/user-attachments/assets/050bf888-18f8-414d-b1ad-7f8e2f8fced7
 ## Getting Started
 
 First, clone the repository:
+
 ```
 git clone https://github.com/thepersonalaicompany/amurex-web
 cd amurex-web
 ```
 
 Create a .env.local file in the root directory with the following variables:
+
 ```
 # supabase
 NEXT_PUBLIC_SUPABASE_URL=
@@ -105,12 +101,12 @@ RESEND_API_KEY=
 ### Installation
 
 1. Install dependencies:
+
 ```
 npm install  # or yarn install or pnpm install
 ```
 
 2. Run the development server:
-
 
 ```
 npm run dev  # or yarn dev or pnpm dev
@@ -121,11 +117,13 @@ npm run dev  # or yarn dev or pnpm dev
 ### Building for Production
 
 To create an optimized production build:
+
 ```
 npm run build
 ```
 
 To start the production server:
+
 ```
 npm run start
 ```
@@ -137,4 +135,3 @@ To learn more about Next.js, check out:
 - [Next.js Documentation](https://nextjs.org/docs)
 
 - [Learn Next.js](https://nextjs.org/docs)
-

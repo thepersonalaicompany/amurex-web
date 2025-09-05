@@ -69,7 +69,13 @@ async function generateTags(text) {
 export async function POST(req) {
   try {
     const requestData = await req.json();
-    const { userId, accessToken, googleAccessToken, googleRefreshToken, googleTokenExpiry } = requestData;
+    const {
+      userId,
+      accessToken,
+      googleAccessToken,
+      googleRefreshToken,
+      googleTokenExpiry,
+    } = requestData;
     let userEmail = req.headers.get("x-user-email");
 
     // Create Supabase client - either with the provided access token or with service role
@@ -98,7 +104,9 @@ export async function POST(req) {
     // Check user's Google token version
     const { data: userData, error: userError } = await supabaseClient
       .from("users")
-      .select("email, google_token_version, google_access_token, google_refresh_token, google_token_expiry")
+      .select(
+        "email, google_token_version, google_access_token, google_refresh_token, google_token_expiry"
+      )
       .eq("id", userId)
       .single();
 
@@ -115,14 +123,18 @@ export async function POST(req) {
     const googleTokens = {
       access_token: googleAccessToken || userData.google_access_token,
       refresh_token: googleRefreshToken || userData.google_refresh_token,
-      expiry_date: googleTokenExpiry || userData.google_token_expiry
+      expiry_date: googleTokenExpiry || userData.google_token_expiry,
     };
 
     // Only process Google Docs if token version is "full"
     let docsResults = [];
     if (userData?.google_token_version === "full") {
       // Process the documents using the appropriate tokens
-      docsResults = await processGoogleDocs({ id: userId }, supabaseClient, googleTokens);
+      docsResults = await processGoogleDocs(
+        { id: userId },
+        supabaseClient,
+        googleTokens
+      );
 
       // Send email notification if documents were processed
       if (docsResults.length > 0) {
@@ -147,7 +159,10 @@ export async function POST(req) {
     }
 
     // Process Gmail emails by calling the existing Gmail process-labels endpoint
-    let gmailResults = { success: false, error: "Gmail processing not attempted" };
+    let gmailResults = {
+      success: false,
+      error: "Gmail processing not attempted",
+    };
     try {
       const gmailResponse = await fetch(
         `${process.env.NEXT_PUBLIC_APP_URL}/api/gmail/process-labels`,
@@ -158,18 +173,18 @@ export async function POST(req) {
           },
           body: JSON.stringify({
             userId: userId,
-            maxEmails: 20
+            maxEmails: 20,
           }),
         }
       );
-      
+
       gmailResults = await gmailResponse.json();
       console.log("Gmail processing results:", gmailResults);
     } catch (gmailError) {
       console.error("Error processing Gmail:", gmailError);
-      gmailResults = { 
-        success: false, 
-        error: gmailError.message || "Failed to process Gmail" 
+      gmailResults = {
+        success: false,
+        error: gmailError.message || "Failed to process Gmail",
       };
     }
 
@@ -181,7 +196,7 @@ export async function POST(req) {
         title: result.title || `Document ${result.id}`,
         status: result.status,
       })),
-      gmail: gmailResults
+      gmail: gmailResults,
     });
   } catch (error) {
     console.error("Error initiating Google import:", error);
@@ -196,8 +211,8 @@ export async function GET(req) {
   try {
     // Get user ID from the URL query parameters
     const url = new URL(req.url);
-    const userId = url.searchParams.get('userId');
-    
+    const userId = url.searchParams.get("userId");
+
     if (!userId) {
       return NextResponse.json(
         { success: false, error: "User ID is required" },
@@ -233,7 +248,10 @@ export async function GET(req) {
     }
 
     // Process Gmail emails by calling the existing Gmail process-labels endpoint
-    let gmailResults = { success: false, error: "Gmail processing not attempted" };
+    let gmailResults = {
+      success: false,
+      error: "Gmail processing not attempted",
+    };
     try {
       const gmailResponse = await fetch(
         `${process.env.NEXT_PUBLIC_APP_URL}/api/gmail/process-labels`,
@@ -248,14 +266,14 @@ export async function GET(req) {
           }),
         }
       );
-      
+
       gmailResults = await gmailResponse.json();
       console.log("Gmail processing results:", gmailResults);
     } catch (gmailError) {
       console.error("Error processing Gmail:", gmailError);
-      gmailResults = { 
-        success: false, 
-        error: gmailError.message || "Failed to process Gmail" 
+      gmailResults = {
+        success: false,
+        error: gmailError.message || "Failed to process Gmail",
       };
     }
 
@@ -267,7 +285,7 @@ export async function GET(req) {
         title: result.title || `Document ${result.id}`,
         status: result.status,
       })),
-      gmail: gmailResults
+      gmail: gmailResults,
     });
   } catch (error) {
     console.error("Error fetching Google data:", error);
@@ -285,7 +303,7 @@ async function processGoogleDocs(session, supabase, providedTokens = null) {
       process.env.NEXT_PUBLIC_SUPABASE_URL,
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
-    
+
     // If tokens are provided directly, use them
     let tokens;
     if (providedTokens && providedTokens.access_token) {
@@ -294,7 +312,9 @@ async function processGoogleDocs(session, supabase, providedTokens = null) {
       // Otherwise get user's Google tokens from database
       const { data: user, error: userError } = await adminSupabase
         .from("users")
-        .select("google_access_token, google_refresh_token, google_token_expiry, created_at")
+        .select(
+          "google_access_token, google_refresh_token, google_token_expiry, created_at"
+        )
         .eq("id", session.id)
         .single();
 
@@ -302,11 +322,11 @@ async function processGoogleDocs(session, supabase, providedTokens = null) {
         console.error("Google credentials not found:", userError);
         throw new Error("Google Docs not connected");
       }
-      
+
       tokens = {
         access_token: user.google_access_token,
         refresh_token: user.google_refresh_token,
-        expiry_date: new Date(user.google_token_expiry).getTime()
+        expiry_date: new Date(user.google_token_expiry).getTime(),
       };
     }
 
@@ -324,10 +344,7 @@ async function processGoogleDocs(session, supabase, providedTokens = null) {
     });
 
     // Force token refresh if it's expired or about to expire
-    if (
-      !tokens.expiry_date ||
-      new Date(tokens.expiry_date) <= new Date()
-    ) {
+    if (!tokens.expiry_date || new Date(tokens.expiry_date) <= new Date()) {
       console.log("Token expired or missing expiry, refreshing...");
       const { credentials } = await oauth2Client.refreshAccessToken();
 
@@ -359,8 +376,11 @@ async function processGoogleDocs(session, supabase, providedTokens = null) {
     });
 
     // Print fetched results
-    console.log("Fetched Google Docs:", JSON.stringify(response.data.files, null, 2));
-    
+    console.log(
+      "Fetched Google Docs:",
+      JSON.stringify(response.data.files, null, 2)
+    );
+
     // Commented out text splitter initialization
     /*
     const textSplitter = new RecursiveCharacterTextSplitter({
@@ -401,11 +421,18 @@ async function processGoogleDocs(session, supabase, providedTokens = null) {
           .join("\n");
 
         // Log content for debugging
-        console.log(`Document ${file.name} (${file.id}) content length: ${content.length}`);
-        console.log(`Document content preview: ${content.substring(0, 500)}...`);
+        console.log(
+          `Document ${file.name} (${file.id}) content length: ${content.length}`
+        );
+        console.log(
+          `Document content preview: ${content.substring(0, 500)}...`
+        );
 
         // Log the raw document structure to see what we're working with
-        console.log(`Raw document structure:`, JSON.stringify(doc.data.body.content.slice(0, 2), null, 2));
+        console.log(
+          `Raw document structure:`,
+          JSON.stringify(doc.data.body.content.slice(0, 2), null, 2)
+        );
 
         if (!content) {
           console.warn(
@@ -451,7 +478,7 @@ async function processGoogleDocs(session, supabase, providedTokens = null) {
 
         // Generate tags
         const tags = await generateTags(content);
-        
+
         // Commented out chunking and embedding generation
         /*
         const chunks = await textSplitter.createDocuments([content]);
@@ -544,7 +571,7 @@ async function processGoogleDocs(session, supabase, providedTokens = null) {
           })
         ).join(",")}]`;
         */
-        
+
         // Using empty arrays for chunks and embeddings
         const chunkTexts = [];
         const embeddings = [];

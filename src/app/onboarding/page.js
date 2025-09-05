@@ -594,23 +594,23 @@ function OnboardingContent() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col">
+    <div className="flex min-h-screen flex-col bg-black text-white">
       {/* Header */}
-      <header className="p-4 relative">
+      <header className="relative p-4">
         {/* Logo positioned absolutely on the left */}
         <div className="absolute left-4 flex items-center gap-2">
           <img
             src="/amurex.png"
             alt="Amurex logo"
-            className="w-10 h-10 border-2 border-black rounded-full"
+            className="h-10 w-10 rounded-full border-2 border-black"
             style={{ color: "var(--color-4)" }}
           />
           <span className="text-xl font-bold">Amurex</span>
         </div>
 
         {/* Progress bar centered in the page */}
-        <div className="flex flex-col items-center justify-center w-full">
-          <div className="text-xs text-zinc-400 mb-1 flex justify-between w-96">
+        <div className="flex w-full flex-col items-center justify-center">
+          <div className="mb-1 flex w-96 justify-between text-xs text-zinc-400">
             <span>
               {currentStep === 1
                 ? "Connect Gmail"
@@ -620,7 +620,7 @@ function OnboardingContent() {
               {currentStep} of {totalSteps}
             </span>
           </div>
-          <div className="w-96 h-1 bg-gray-800 rounded-full overflow-hidden">
+          <div className="h-1 w-96 overflow-hidden rounded-full bg-gray-800">
             <div
               className="h-full bg-[#9334E9]"
               style={{ width: `${(currentStep / totalSteps) * 100}%` }}
@@ -630,25 +630,25 @@ function OnboardingContent() {
       </header>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col items-center justify-center max-w-5xl mx-auto px-4">
+      <div className="mx-auto flex max-w-5xl flex-1 flex-col items-center justify-center px-4">
         {currentStep === 1 && (
-          <div className="w-full flex flex-col md:flex-row items-start justify-between gap-12 min-h-[80vh]">
+          <div className="flex min-h-[80vh] w-full flex-col items-start justify-between gap-12 md:flex-row">
             {/* Left side content - keep this compact */}
-            <div className="w-full md:w-1/3 flex flex-col items-start">
+            <div className="flex w-full flex-col items-start md:w-1/3">
               {/* Add the disclaimer text */}
-              <div className="bg-[#111111] rounded-lg p-4 mb-6 flex items-start gap-3">
-                <div className="w-6 h-6 rounded-full bg-[#2D1B40] flex-shrink-0 flex items-center justify-center mt-0.5">
-                  <span className="text-[#9334E9] text-sm font-bold">i</span>
+              <div className="mb-6 flex items-start gap-3 rounded-lg bg-[#111111] p-4">
+                <div className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-[#2D1B40]">
+                  <span className="text-sm font-bold text-[#9334E9]">i</span>
                 </div>
-                <p className="text-white text-sm">
+                <p className="text-sm text-white">
                   We never send email on your behalf. We leave drafts for you to
                   edit and send. If it doesn&apos;t work out with us, we&apos;ll
                   leave your inbox as we found it.
                 </p>
               </div>
 
-              <h2 className="text-2xl font-bold mb-2">Connect your Gmail</h2>
-              <p className="text-gray-400 mb-6 max-w-md">
+              <h2 className="mb-2 text-2xl font-bold">Connect your Gmail</h2>
+              <p className="mb-6 max-w-md text-gray-400">
                 Connect your Gmail account to enable email categorization and
                 search
               </p>
@@ -659,11 +659,11 @@ function OnboardingContent() {
                     <button
                       onClick={handleConnectGmail}
                       disabled={isConnecting}
-                      className="flex items-center gap-3 py-3 px-6 bg-white text-black rounded-lg border border-gray-300 hover:bg-gray-100 transition-colors mb-4 w-fit justify-center"
+                      className="mb-4 flex w-fit items-center justify-center gap-3 rounded-lg border border-gray-300 bg-white px-6 py-3 text-black transition-colors hover:bg-gray-100"
                     >
                       {isConnecting ? (
                         <>
-                          <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                          <div className="h-5 w-5 animate-spin rounded-full border-2 border-black border-t-transparent"></div>
                           Connecting...
                         </>
                       ) : (
@@ -698,8 +698,8 @@ function OnboardingContent() {
                       )}
                     </button>
                   ) : (
-                    <div className="border border-gray-800 rounded-lg p-4 mb-4">
-                      <div className="flex items-center justify-between mb-2">
+                    <div className="mb-4 rounded-lg border border-gray-800 p-4">
+                      <div className="mb-2 flex items-center justify-between">
                         <h3 className="font-medium text-white">
                           Connecting to Gmail
                         </h3>
@@ -709,11 +709,11 @@ function OnboardingContent() {
                       </div>
 
                       {/* Progress steps */}
-                      <div className="space-y-4 mb-4 mt-6">
+                      <div className="mb-4 mt-6 space-y-4">
                         {/* Step 1: Authentication */}
                         <div className="flex items-center gap-3">
                           {processingStep >= 1 ? (
-                            <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center">
+                            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-green-500">
                               <svg
                                 width="14"
                                 height="14"
@@ -731,7 +731,7 @@ function OnboardingContent() {
                               </svg>
                             </div>
                           ) : (
-                            <div className="w-6 h-6 rounded-full border border-gray-600"></div>
+                            <div className="h-6 w-6 rounded-full border border-gray-600"></div>
                           )}
                           <span
                             className={
@@ -747,7 +747,7 @@ function OnboardingContent() {
                         {/* Step 2: Fetching emails */}
                         <div className="flex items-center gap-3">
                           {processingStep >= 2 ? (
-                            <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center">
+                            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-green-500">
                               <svg
                                 width="14"
                                 height="14"
@@ -765,11 +765,11 @@ function OnboardingContent() {
                               </svg>
                             </div>
                           ) : processingStep === 1 ? (
-                            <div className="w-6 h-6 rounded-full border border-gray-600 flex items-center justify-center">
-                              <div className="w-3 h-3 border-2 border-[#9334E9] border-t-transparent rounded-full animate-spin"></div>
+                            <div className="flex h-6 w-6 items-center justify-center rounded-full border border-gray-600">
+                              <div className="h-3 w-3 animate-spin rounded-full border-2 border-[#9334E9] border-t-transparent"></div>
                             </div>
                           ) : (
-                            <div className="w-6 h-6 rounded-full border border-gray-600"></div>
+                            <div className="h-6 w-6 rounded-full border border-gray-600"></div>
                           )}
                           <span
                             className={
@@ -785,7 +785,7 @@ function OnboardingContent() {
                         {/* Step 3: Processing complete */}
                         <div className="flex items-center gap-3">
                           {processingStep >= 3 ? (
-                            <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center">
+                            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-green-500">
                               <svg
                                 width="14"
                                 height="14"
@@ -803,11 +803,11 @@ function OnboardingContent() {
                               </svg>
                             </div>
                           ) : processingStep === 2 ? (
-                            <div className="w-6 h-6 rounded-full border border-gray-600 flex items-center justify-center">
-                              <div className="w-3 h-3 border-2 border-[#9334E9] border-t-transparent rounded-full animate-spin"></div>
+                            <div className="flex h-6 w-6 items-center justify-center rounded-full border border-gray-600">
+                              <div className="h-3 w-3 animate-spin rounded-full border-2 border-[#9334E9] border-t-transparent"></div>
                             </div>
                           ) : (
-                            <div className="w-6 h-6 rounded-full border border-gray-600"></div>
+                            <div className="h-6 w-6 rounded-full border border-gray-600"></div>
                           )}
                           <span
                             className={
@@ -822,7 +822,7 @@ function OnboardingContent() {
                       </div>
 
                       {/* Progress bar */}
-                      <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden mt-6">
+                      <div className="mt-6 h-2 w-full overflow-hidden rounded-full bg-gray-800">
                         <div
                           className="h-full bg-[#9334E9] transition-all duration-300"
                           style={{ width: `${processingProgress}%` }}
@@ -837,10 +837,10 @@ function OnboardingContent() {
                               setIsGoogleConnected(true);
                               setCurrentStep(2);
                             }}
-                            className="px-6 py-2 rounded-lg bg-[#9334E9] border border-[#9334E9] text-white hover:bg-[#3c1671] hover:border-[#6D28D9] transition-colors flex items-center gap-2"
+                            className="flex items-center gap-2 rounded-lg border border-[#9334E9] bg-[#9334E9] px-6 py-2 text-white transition-colors hover:border-[#6D28D9] hover:bg-[#3c1671]"
                           >
                             Continue
-                            <ArrowRight className="w-4 h-4" />
+                            <ArrowRight className="h-4 w-4" />
                           </button>
                         </div>
                       )}
@@ -856,8 +856,8 @@ function OnboardingContent() {
                   </button> */}
                 </div>
               ) : (
-                <div className="flex flex-col items-center w-full mb-8">
-                  <div className="w-16 h-16 bg-[#2D1B40] rounded-full flex items-center justify-center mb-4">
+                <div className="mb-8 flex w-full flex-col items-center">
+                  <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#2D1B40]">
                     <svg
                       width="32"
                       height="32"
@@ -874,10 +874,10 @@ function OnboardingContent() {
                       />
                     </svg>
                   </div>
-                  <h3 className="text-xl font-medium text-white mb-2">
+                  <h3 className="mb-2 text-xl font-medium text-white">
                     Gmail Connected
                   </h3>
-                  <p className="text-gray-400 text-center">
+                  <p className="text-center text-gray-400">
                     Your Gmail account is already connected.
                   </p>
                 </div>
@@ -888,7 +888,7 @@ function OnboardingContent() {
             <div className="w-full md:w-3/5">
               <div className="flex">
                 <button
-                  className={`px-4 py-2 text-sm font-medium rounded-tl-lg transition-colors ${
+                  className={`rounded-tl-lg px-4 py-2 text-sm font-medium transition-colors ${
                     activeSlide === 1
                       ? "bg-[#9334E9] text-white"
                       : "bg-gray-800 text-gray-400 hover:bg-gray-700"
@@ -898,7 +898,7 @@ function OnboardingContent() {
                   Knowledge Search
                 </button>
                 <button
-                  className={`px-4 py-2 text-sm font-medium rounded-tr-lg transition-colors ${
+                  className={`rounded-tr-lg px-4 py-2 text-sm font-medium transition-colors ${
                     activeSlide === 0
                       ? "bg-[#9334E9] text-white"
                       : "bg-gray-800 text-gray-400 hover:bg-gray-700"
@@ -909,13 +909,13 @@ function OnboardingContent() {
                 </button>
               </div>
 
-              <div className="relative overflow-hidden w-[650px] border border-gray-800 shadow-2xl rounded-tr-lg rounded-bl-lg rounded-br-lg">
+              <div className="relative w-[650px] overflow-hidden rounded-bl-lg rounded-br-lg rounded-tr-lg border border-gray-800 shadow-2xl">
                 {/* Knowledge Search slide (now first) */}
                 <div
                   className={`transition-all duration-500 ${
                     activeSlide === 1
                       ? "opacity-100"
-                      : "opacity-0 absolute inset-0"
+                      : "absolute inset-0 opacity-0"
                   }`}
                   style={{
                     transform:
@@ -926,9 +926,9 @@ function OnboardingContent() {
                     key={gifKey}
                     src={`/amurex-knowledge.gif?v=${gifKey}`}
                     alt="Amurex product demo"
-                    className="w-full h-auto"
+                    className="h-auto w-full"
                   />
-                  <p className="text-md text-gray-400 p-2 bg-gray-900">
+                  <p className="text-md bg-gray-900 p-2 text-gray-400">
                     Search and retrieve information instantly
                   </p>
                 </div>
@@ -938,7 +938,7 @@ function OnboardingContent() {
                   className={`transition-all duration-500 ${
                     activeSlide === 0
                       ? "opacity-100"
-                      : "opacity-0 absolute inset-0"
+                      : "absolute inset-0 opacity-0"
                   }`}
                   style={{
                     transform:
@@ -948,15 +948,15 @@ function OnboardingContent() {
                   <img
                     src="/inbox.png"
                     alt="Amurex product screenshot"
-                    className="w-full h-auto"
+                    className="h-auto w-full"
                   />
-                  <p className="text-md text-gray-400 p-2 bg-gray-900">
+                  <p className="text-md bg-gray-900 p-2 text-gray-400">
                     Organize your emails with smart categories
                   </p>
                 </div>
 
                 {/* Progress bar */}
-                <div className="absolute bottom-0 left-0 w-full h-1 bg-gray-800">
+                <div className="absolute bottom-0 left-0 h-1 w-full bg-gray-800">
                   <div
                     className="h-full bg-[#9334E9] transition-all duration-100 ease-linear"
                     style={{ width: `${slideProgress}%` }}
@@ -969,37 +969,37 @@ function OnboardingContent() {
 
         {currentStep === 2 && (
           /* Knowledge sources step */
-          <div className="w-full flex flex-col items-center">
-            <div className="w-16 h-16 rounded-full bg-[#1E1E1E] flex items-center justify-center mb-6">
-              <div className="w-12 h-12 rounded-full bg-[#2D1B40] flex items-center justify-center">
-                <FileText className="w-6 h-6 text-[#9334E9]" />
+          <div className="flex w-full flex-col items-center">
+            <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-[#1E1E1E]">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#2D1B40]">
+                <FileText className="h-6 w-6 text-[#9334E9]" />
               </div>
             </div>
 
-            <h1 className="text-3xl font-bold mb-4 text-center">
+            <h1 className="mb-4 text-center text-3xl font-bold">
               Connect your knowledge sources
             </h1>
-            <p className="text-gray-400 text-center mb-12">
+            <p className="mb-12 text-center text-gray-400">
               Connect your existing knowledge sources to get more personalized
               responses
             </p>
 
             {/* Tools selection */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full mb-8">
+            <div className="mb-8 grid w-full grid-cols-1 gap-4 md:grid-cols-3">
               {/* Notion */}
               <div
-                className={`p-4 rounded-lg border flex flex-col justify-between h-full ${
+                className={`flex h-full flex-col justify-between rounded-lg border p-4 ${
                   selectedTools.includes("notion")
                     ? "border-green-500/30"
                     : "border-gray-700 bg-black"
                 }`}
               >
                 <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-[#2D1B40] flex items-center justify-center">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#2D1B40]">
                     <img
                       src="https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png"
                       alt="Notion"
-                      className="w-6 h-6"
+                      className="h-6 w-6"
                     />
                   </div>
                   <div className="flex-1">
@@ -1018,14 +1018,14 @@ function OnboardingContent() {
                       : handleConnectNotion
                   }
                   disabled={isNotionConnecting}
-                  className={`px-3 py-1.5 rounded-md transition-colors text-sm mt-4 ${
+                  className={`mt-4 rounded-md px-3 py-1.5 text-sm transition-colors ${
                     notionConnected
                       ? "bg-green-600 text-white hover:bg-green-700"
-                      : "text-white border border-[#9334E9] bg-[#9334E9] hover:bg-[#3c1671] hover:border-[#6D28D9]"
+                      : "border border-[#9334E9] bg-[#9334E9] text-white hover:border-[#6D28D9] hover:bg-[#3c1671]"
                   }`}
                 >
                   {isNotionConnecting ? (
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
                   ) : notionConnected ? (
                     "Connected"
                   ) : (
@@ -1036,7 +1036,7 @@ function OnboardingContent() {
 
               {/* Obsidian */}
               <div
-                className={`p-4 rounded-lg border flex flex-col justify-between h-full ${
+                className={`flex h-full flex-col justify-between rounded-lg border p-4 ${
                   selectedTools.includes("obsidian")
                     ? "border-green-500/30"
                     : "border-gray-700 bg-black"
@@ -1044,11 +1044,11 @@ function OnboardingContent() {
                 onClick={() => toggleTool("obsidian")}
               >
                 <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-[#2D1B40] flex items-center justify-center">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#2D1B40]">
                     <img
                       src="https://obsidian.md/images/obsidian-logo-gradient.svg"
                       alt="Obsidian"
-                      className="w-6 h-6"
+                      className="h-6 w-6"
                     />
                   </div>
                   <div className="flex-1">
@@ -1063,16 +1063,16 @@ function OnboardingContent() {
                     e.stopPropagation();
                     toggleTool("obsidian");
                   }}
-                  className="mt-4 px-3 py-1.5 bg-[#9334E9] border border-[#9334E9] hover:bg-[#3c1671] hover:border-[#6D28D9] text-white rounded-md transition-colors text-sm"
+                  className="mt-4 rounded-md border border-[#9334E9] bg-[#9334E9] px-3 py-1.5 text-sm text-white transition-colors hover:border-[#6D28D9] hover:bg-[#3c1671]"
                 >
                   {selectedTools.includes("obsidian") ? "Selected" : "Select"}
                 </button>
               </div>
 
               {/* Google Docs */}
-              <div className="p-4 rounded-lg border flex flex-col justify-between h-full border-green-500/30">
+              <div className="flex h-full flex-col justify-between rounded-lg border border-green-500/30 p-4">
                 <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-[#2D1B40] flex items-center justify-center">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#2D1B40]">
                     <img
                       src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/2560px-Gmail_icon_%282020%29.svg.png"
                       alt="Gmail"
@@ -1086,7 +1086,7 @@ function OnboardingContent() {
                     </p>
                   </div>
                 </div>
-                <button className="mt-4 px-3 py-1.5 rounded-md transition-colors text-sm bg-green-600 text-white hover:bg-green-700">
+                <button className="mt-4 rounded-md bg-green-600 px-3 py-1.5 text-sm text-white transition-colors hover:bg-green-700">
                   Connected
                 </button>
               </div>
@@ -1094,9 +1094,9 @@ function OnboardingContent() {
 
             {/* Obsidian file upload area (shown only when Obsidian is selected) */}
             {selectedTools.includes("obsidian") && (
-              <div className="w-full mb-8">
+              <div className="mb-8 w-full">
                 <div
-                  className="border-2 border-dashed border-gray-700 rounded-lg p-6 text-center cursor-pointer hover:border-[#9334E9] transition-colors"
+                  className="cursor-pointer rounded-lg border-2 border-dashed border-gray-700 p-6 text-center transition-colors hover:border-[#9334E9]"
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
                   onDrop={handleDrop}
@@ -1143,7 +1143,7 @@ function OnboardingContent() {
                     <p className="mt-2 text-gray-400">
                       Drag and drop your Markdown files here, or click to browse
                     </p>
-                    <p className="text-sm text-gray-500 mt-1">
+                    <p className="mt-1 text-sm text-gray-500">
                       Only .md files are supported
                     </p>
                   </div>
@@ -1151,14 +1151,14 @@ function OnboardingContent() {
 
                 {selectedFiles.length > 0 && (
                   <div className="mt-4">
-                    <h4 className="text-white font-medium mb-2">
+                    <h4 className="mb-2 font-medium text-white">
                       Selected files ({selectedFiles.length})
                     </h4>
-                    <ul className="max-h-40 overflow-y-auto bg-[#111111] rounded-lg p-2">
+                    <ul className="max-h-40 overflow-y-auto rounded-lg bg-[#111111] p-2">
                       {selectedFiles.map((file, index) => (
                         <li
                           key={index}
-                          className="text-gray-300 text-sm py-1 px-2 flex justify-between items-center"
+                          className="flex items-center justify-between px-2 py-1 text-sm text-gray-300"
                         >
                           <span>{file.name}</span>
                           <span className="text-gray-500">
@@ -1169,13 +1169,13 @@ function OnboardingContent() {
                     </ul>
                     {isUploading && (
                       <div className="mt-2">
-                        <div className="w-full bg-gray-700 rounded-full h-2.5">
+                        <div className="h-2.5 w-full rounded-full bg-gray-700">
                           <div
-                            className="bg-[#9334E9] h-2.5 rounded-full"
+                            className="h-2.5 rounded-full bg-[#9334E9]"
                             style={{ width: `${uploadProgress}%` }}
                           ></div>
                         </div>
-                        <p className="text-sm text-gray-400 mt-1">
+                        <p className="mt-1 text-sm text-gray-400">
                           Uploading... {uploadProgress.toFixed(0)}%
                         </p>
                       </div>
@@ -1186,7 +1186,7 @@ function OnboardingContent() {
             )}
 
             {/* Navigation buttons */}
-            <div className="flex justify-center w-full mt-8 gap-4">
+            <div className="mt-8 flex w-full justify-center gap-4">
               <button
                 onClick={() => {
                   // Mark onboarding as complete in localStorage if needed
@@ -1195,10 +1195,10 @@ function OnboardingContent() {
                   // Redirect to chat page
                   window.location.href = "/search";
                 }}
-                className="px-6 py-2 rounded-lg text-white border border-[#9334E9] bg-[#9334E9] hover:bg-[#3c1671] hover:border-[#6D28D9] transition-colors flex items-center gap-2"
+                className="flex items-center gap-2 rounded-lg border border-[#9334E9] bg-[#9334E9] px-6 py-2 text-white transition-colors hover:border-[#6D28D9] hover:bg-[#3c1671]"
               >
                 Complete onboarding
-                <ArrowRight className="w-4 h-4" />
+                <ArrowRight className="h-4 w-4" />
               </button>
             </div>
           </div>
@@ -1206,8 +1206,8 @@ function OnboardingContent() {
 
         {/* Show success message and continue button after auth is completed */}
         {authCompleted && !isProcessingEmails && (
-          <div className="w-full flex flex-col items-center mt-8 p-6 bg-gray-900 rounded-lg border border-gray-800">
-            <div className="w-16 h-16 bg-[#2D1B40] rounded-full flex items-center justify-center mb-4">
+          <div className="mt-8 flex w-full flex-col items-center rounded-lg border border-gray-800 bg-gray-900 p-6">
+            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#2D1B40]">
               <svg
                 width="32"
                 height="32"
@@ -1224,19 +1224,19 @@ function OnboardingContent() {
                 />
               </svg>
             </div>
-            <h3 className="text-xl font-medium text-white mb-2">
+            <h3 className="mb-2 text-xl font-medium text-white">
               Gmail Connected Successfully
             </h3>
-            <p className="text-gray-400 text-center mb-6">
+            <p className="mb-6 text-center text-gray-400">
               We&apos;ve processed {emailStats.processed} emails and stored{" "}
               {emailStats.stored} for quick access.
             </p>
             <button
               onClick={() => setCurrentStep(2)}
-              className="px-6 py-2 rounded-lg bg-[#9334E9] text-white hover:bg-[#8429D0] transition-colors flex items-center gap-2"
+              className="flex items-center gap-2 rounded-lg bg-[#9334E9] px-6 py-2 text-white transition-colors hover:bg-[#8429D0]"
             >
               Continue
-              <ArrowRight className="w-4 h-4" />
+              <ArrowRight className="h-4 w-4" />
             </button>
           </div>
         )}
@@ -1250,7 +1250,7 @@ export default function OnboardingPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="flex min-h-screen items-center justify-center bg-black text-white">
           Loading...
         </div>
       }

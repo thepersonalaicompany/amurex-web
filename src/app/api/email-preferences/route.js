@@ -1,5 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
-import { NextResponse } from 'next/server';
+import { createClient } from "@supabase/supabase-js";
+import { NextResponse } from "next/server";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -20,9 +20,9 @@ export async function POST(req) {
     // Update the user's email_categories in the database
     const { error } = await supabaseAdmin
       .from("users")
-      .update({ 
+      .update({
         email_categories: categories,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
       .eq("id", userId);
 
@@ -34,9 +34,9 @@ export async function POST(req) {
       );
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      message: "Email preferences updated successfully" 
+    return NextResponse.json({
+      success: true,
+      message: "Email preferences updated successfully",
     });
   } catch (error) {
     console.error("Error in email preferences update:", error);
@@ -50,7 +50,7 @@ export async function POST(req) {
 export async function GET(req) {
   try {
     const url = new URL(req.url);
-    const userId = url.searchParams.get('userId');
+    const userId = url.searchParams.get("userId");
 
     if (!userId) {
       return NextResponse.json(
@@ -74,9 +74,9 @@ export async function GET(req) {
       );
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      categories: data.email_categories || getDefaultCategories()
+    return NextResponse.json({
+      success: true,
+      categories: data.email_categories || getDefaultCategories(),
     });
   } catch (error) {
     console.error("Error in email preferences fetch:", error);
@@ -96,8 +96,8 @@ function getDefaultCategories() {
       notification: true,
       meeting_update: true,
       awaiting_reply: true,
-      actioned: true
+      actioned: true,
     },
-    custom_properties: {}
+    custom_properties: {},
   };
-} 
+}

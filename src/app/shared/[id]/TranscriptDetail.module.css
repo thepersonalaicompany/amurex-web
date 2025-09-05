@@ -4,13 +4,13 @@
 .notesContent h4,
 .notesContent h5,
 .notesContent h6 {
-    @apply font-bold; /* Make h3 elements bold */
+  @apply font-bold; /* Make h3 elements bold */
 }
 
 .notesContent ul {
-    @apply list-disc ml-5; /* Use bullet points and add left margin */
+  @apply ml-5 list-disc; /* Use bullet points and add left margin */
 }
 
 .notesContent li {
-    @apply mb-1; /* Add margin between list items */
+  @apply mb-1; /* Add margin between list items */
 }

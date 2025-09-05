@@ -115,12 +115,12 @@ export async function POST(req) {
       try {
         console.log("Processing page:", page.id);
         const pageContent = await fetchNotionPageContent(notion, page.id);
-        
+
         // Debug content length
         console.log(`Page content length: ${pageContent.length} characters`);
         // Log a preview of the content
         console.log(`Content preview: ${pageContent.substring(0, 200)}...`);
-        
+
         const tags = await generateTags(pageContent);
         const checksum = crypto
           .createHash("sha256")
@@ -149,11 +149,13 @@ export async function POST(req) {
 
         // Create new page
         try {
-          console.log(`Attempting to insert document with ${pageContent.length} characters`);
-          
+          console.log(
+            `Attempting to insert document with ${pageContent.length} characters`
+          );
+
           let newPage;
           let pageError;
-          
+
           // First attempt with full content
           const fullContentResult = await adminSupabase
             .from("documents")
@@ -181,18 +183,19 @@ export async function POST(req) {
             })
             .select()
             .single();
-            
+
           newPage = fullContentResult.data;
           pageError = fullContentResult.error;
 
           if (pageError) {
             console.error("Error creating page with full content:", pageError);
             console.log("Trying with truncated content...");
-            
+
             // If full content fails, try with truncated content
-            const truncatedContent = pageContent.substring(0, 10000) + 
+            const truncatedContent =
+              pageContent.substring(0, 10000) +
               "\n[Content truncated due to size limitations]";
-            
+
             const truncatedResult = await adminSupabase
               .from("documents")
               .insert({
@@ -221,15 +224,18 @@ export async function POST(req) {
               })
               .select()
               .single();
-              
+
             if (truncatedResult.error) {
-              console.error("Error even with truncated content:", truncatedResult.error);
+              console.error(
+                "Error even with truncated content:",
+                truncatedResult.error
+              );
               throw truncatedResult.error;
             }
-            
+
             newPage = truncatedResult.data;
           }
-          
+
           // Process embeddings
           try {
             const sections = await textSplitter.createDocuments([pageContent]);
@@ -345,13 +351,13 @@ export async function POST(req) {
 async function fetchNotionPageContent(notion, pageId) {
   const response = await notion.blocks.children.list({ block_id: pageId });
   let content = [];
-  
+
   for (const block of response.results) {
     const blockContent = extractBlockContent(block);
     if (blockContent) {
       content.push(blockContent);
     }
-    
+
     // Recursively fetch child blocks if they exist
     if (block.has_children) {
       const childContent = await fetchNotionPageContent(notion, block.id);
@@ -360,64 +366,84 @@ async function fetchNotionPageContent(notion, pageId) {
       }
     }
   }
-  
+
   return content.join("\n");
 }
 
 function extractBlockContent(block) {
   if (!block || !block.type) return "";
-  
+
   switch (block.type) {
     case "paragraph":
-      return block.paragraph.rich_text.map(text => text.plain_text).join("");
+      return block.paragraph.rich_text.map((text) => text.plain_text).join("");
     case "heading_1":
-      return `# ${block.heading_1.rich_text.map(text => text.plain_text).join("")}`;
+      return `# ${block.heading_1.rich_text.map((text) => text.plain_text).join("")}`;
     case "heading_2":
-      return `## ${block.heading_2.rich_text.map(text => text.plain_text).join("")}`;
+      return `## ${block.heading_2.rich_text.map((text) => text.plain_text).join("")}`;
     case "heading_3":
-      return `### ${block.heading_3.rich_text.map(text => text.plain_text).join("")}`;
+      return `### ${block.heading_3.rich_text.map((text) => text.plain_text).join("")}`;
     case "bulleted_list_item":
-      return `• ${block.bulleted_list_item.rich_text.map(text => text.plain_text).join("")}`;
+      return `• ${block.bulleted_list_item.rich_text.map((text) => text.plain_text).join("")}`;
     case "numbered_list_item":
-      return `- ${block.numbered_list_item.rich_text.map(text => text.plain_text).join("")}`;
+      return `- ${block.numbered_list_item.rich_text.map((text) => text.plain_text).join("")}`;
     case "to_do":
       const checked = block.to_do.checked ? "[x]" : "[ ]";
-      return `${checked} ${block.to_do.rich_text.map(text => text.plain_text).join("")}`;
+      return `${checked} ${block.to_do.rich_text.map((text) => text.plain_text).join("")}`;
     case "toggle":
-      return block.toggle.rich_text.map(text => text.plain_text).join("");
+      return block.toggle.rich_text.map((text) => text.plain_text).join("");
     case "code":
-      return `\`\`\`${block.code.language || ""}\n${block.code.rich_text.map(text => text.plain_text).join("")}\n\`\`\``;
+      return `\`\`\`${block.code.language || ""}\n${block.code.rich_text.map((text) => text.plain_text).join("")}\n\`\`\``;
     case "quote":
-      return `> ${block.quote.rich_text.map(text => text.plain_text).join("")}`;
+      return `> ${block.quote.rich_text.map((text) => text.plain_text).join("")}`;
     case "callout":
-      return `> ${block.callout.rich_text.map(text => text.plain_text).join("")}`;
+      return `> ${block.callout.rich_text.map((text) => text.plain_text).join("")}`;
     case "divider":
       return "---";
     case "table":
       return "[Table content]";
     case "table_row":
-      return block.table_row.cells.map(cell => 
-        cell.map(text => text.plain_text).join("")
-      ).join(" | ");
+      return block.table_row.cells
+        .map((cell) => cell.map((text) => text.plain_text).join(""))
+        .join(" | ");
     case "image":
-      const imgCaption = block.image.caption?.map(text => text.plain_text).join("") || "";
-      const imgUrl = block.image.type === "external" ? block.image.external.url : 
-                    (block.image.file ? block.image.file.url : "");
+      const imgCaption =
+        block.image.caption?.map((text) => text.plain_text).join("") || "";
+      const imgUrl =
+        block.image.type === "external"
+          ? block.image.external.url
+          : block.image.file
+            ? block.image.file.url
+            : "";
       return `[Image${imgCaption ? `: ${imgCaption}` : ""}](${imgUrl})`;
     case "video":
-      const vidCaption = block.video.caption?.map(text => text.plain_text).join("") || "";
-      const vidUrl = block.video.type === "external" ? block.video.external.url : 
-                    (block.video.file ? block.video.file.url : "");
+      const vidCaption =
+        block.video.caption?.map((text) => text.plain_text).join("") || "";
+      const vidUrl =
+        block.video.type === "external"
+          ? block.video.external.url
+          : block.video.file
+            ? block.video.file.url
+            : "";
       return `[Video${vidCaption ? `: ${vidCaption}` : ""}](${vidUrl})`;
     case "file":
-      const fileCaption = block.file.caption?.map(text => text.plain_text).join("") || "";
-      const fileUrl = block.file.type === "external" ? block.file.external.url : 
-                     (block.file.file ? block.file.file.url : "");
+      const fileCaption =
+        block.file.caption?.map((text) => text.plain_text).join("") || "";
+      const fileUrl =
+        block.file.type === "external"
+          ? block.file.external.url
+          : block.file.file
+            ? block.file.file.url
+            : "";
       return `[File${fileCaption ? `: ${fileCaption}` : ""}](${fileUrl})`;
     case "pdf":
-      const pdfCaption = block.pdf.caption?.map(text => text.plain_text).join("") || "";
-      const pdfUrl = block.pdf.type === "external" ? block.pdf.external.url : 
-                    (block.pdf.file ? block.pdf.file.url : "");
+      const pdfCaption =
+        block.pdf.caption?.map((text) => text.plain_text).join("") || "";
+      const pdfUrl =
+        block.pdf.type === "external"
+          ? block.pdf.external.url
+          : block.pdf.file
+            ? block.pdf.file.url
+            : "";
       return `[PDF${pdfCaption ? `: ${pdfCaption}` : ""}](${pdfUrl})`;
     case "bookmark":
       return `[Bookmark: ${block.bookmark.url}](${block.bookmark.url})`;
@@ -430,7 +456,7 @@ function extractBlockContent(block) {
     case "synced_block":
       return "[Synced block content]";
     case "template":
-      return block.template.rich_text.map(text => text.plain_text).join("");
+      return block.template.rich_text.map((text) => text.plain_text).join("");
     case "link_to_page":
       return "[Link to another page]";
     case "child_page":

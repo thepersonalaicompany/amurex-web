@@ -13,7 +13,9 @@ export default function FocusedEditor({ onSave, onClose }) {
 
   useEffect(() => {
     const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       setSession(session);
     };
     getSession();
@@ -43,7 +45,12 @@ export default function FocusedEditor({ onSave, onClose }) {
 
   return (
     <div className="relative w-full max-w-screen-lg">
-      <Button variant="ghost" size="icon" onClick={onClose} className="absolute top-4 right-4">
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={onClose}
+        className="absolute right-4 top-4"
+      >
         <X className="h-6 w-6" />
       </Button>
       <div className="absolute right-5 top-5 z-10 mb-5 rounded-lg bg-stone-100 px-2 py-1 text-sm text-stone-400">
@@ -55,7 +62,9 @@ export default function FocusedEditor({ onSave, onClose }) {
         onUpdate={handleUpdate}
         handleImageUpload={handleImageUpload}
       />
-      <Button onClick={handleSave} className="mt-4">Save Note</Button>
+      <Button onClick={handleSave} className="mt-4">
+        Save Note
+      </Button>
     </div>
   );
 }

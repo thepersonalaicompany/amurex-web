@@ -4,7 +4,7 @@ import { useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { Input } from "@/components/ui/Input";
 import { useRouter } from "next/navigation";
-import { Users, Building2 } from 'lucide-react';
+import { Users, Building2 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function CreateTeam() {
@@ -18,20 +18,22 @@ export default function CreateTeam() {
     setLoading(true);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (!session) {
-        router.push('/web_app/signin');
+        router.push("/web_app/signin");
         return;
       }
 
       // Create the team
       const { data: team, error: teamError } = await supabase
-        .from('teams')
+        .from("teams")
         .insert([
-          { 
+          {
             team_name: teamName,
             location: location,
-          }
+          },
         ])
         .select()
         .single();
@@ -40,23 +42,23 @@ export default function CreateTeam() {
 
       // Add the creator as an owner
       const { error: memberError } = await supabase
-        .from('team_members')
+        .from("team_members")
         .insert([
           {
             team_id: team.id,
             user_id: session.user.id,
-            role: 'owner',
-            status: 'accepted'
-          }
+            role: "owner",
+            status: "accepted",
+          },
         ]);
 
       if (memberError) throw memberError;
 
-      toast.success('Team created successfully!');
+      toast.success("Team created successfully!");
       router.push(`/teams/${team.id}`);
     } catch (error) {
-      console.error('Error creating team:', error);
-      toast.error('Failed to create team');
+      console.error("Error creating team:", error);
+      toast.error("Failed to create team");
     } finally {
       setLoading(false);
     }
@@ -73,26 +75,26 @@ export default function CreateTeam() {
       }}
     >
       <div className="w-full max-w-[95%] md:max-w-md">
-        <div className="flex justify-center items-center mb-6 md:mb-8">
+        <div className="mb-6 flex items-center justify-center md:mb-8">
           <img
             src="/amurex.png"
             alt="Amurex logo"
-            className="w-8 h-8 md:w-10 md:h-10 border-2 border-white rounded-full"
+            className="h-8 w-8 rounded-full border-2 border-white md:h-10 md:w-10"
           />
-          <p className="text-white text-base md:text-lg font-semibold pl-2">
+          <p className="pl-2 text-base font-semibold text-white md:text-lg">
             Amurex
           </p>
         </div>
 
-        <div className="w-full rounded-lg bg-[#0E0F0F] p-6 md:p-8 backdrop-blur-sm shadow-lg">
-          <div className="text-center mb-6 md:mb-8">
+        <div className="w-full rounded-lg bg-[#0E0F0F] p-6 shadow-lg backdrop-blur-sm md:p-8">
+          <div className="mb-6 text-center md:mb-8">
             <h1
-              className="font-serif text-3xl md:text-4xl mb-2 text-white"
+              className="mb-2 font-serif text-3xl text-white md:text-4xl"
               style={{ fontFamily: "var(--font-noto-serif)" }}
             >
               Create a Team
             </h1>
-            <p className="text-gray-400 text-sm md:text-base">
+            <p className="text-sm text-gray-400 md:text-base">
               Set up a new team for your organization
             </p>
           </div>
@@ -101,34 +103,34 @@ export default function CreateTeam() {
 
           <form onSubmit={handleCreateTeam} className="space-y-4 md:space-y-6">
             <div>
-              <label className="block text-sm font-medium font-semibold text-white mb-1">
+              <label className="mb-1 block text-sm font-medium font-semibold text-white">
                 Team Name
               </label>
               <div className="relative">
-                <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                <Users className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 transform text-gray-400" />
                 <Input
                   type="text"
                   placeholder="Engineering Team"
                   value={teamName}
                   onChange={(e) => setTeamName(e.target.value)}
-                  className="w-full py-3 md:py-4 pl-10 pr-3 bg-[#262727] text-white border border-[#262727] text-sm md:text-base"
+                  className="w-full border border-[#262727] bg-[#262727] py-3 pl-10 pr-3 text-sm text-white md:py-4 md:text-base"
                   required
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium font-semibold text-white mb-1">
+              <label className="mb-1 block text-sm font-medium font-semibold text-white">
                 Location
               </label>
               <div className="relative">
-                <Building2 className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                <Building2 className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 transform text-gray-400" />
                 <Input
                   type="text"
                   placeholder="San Francisco"
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
-                  className="w-full py-3 md:py-4 pl-10 pr-3 bg-[#262727] text-white border border-[#262727] text-sm md:text-base"
+                  className="w-full border border-[#262727] bg-[#262727] py-3 pl-10 pr-3 text-sm text-white md:py-4 md:text-base"
                   required
                 />
               </div>
@@ -137,19 +139,19 @@ export default function CreateTeam() {
             <button
               type="submit"
               disabled={loading || !teamName.trim() || !location.trim()}
-              className={`w-full p-2.5 md:p-3 text-sm md:text-base font-semibold rounded-lg transition-all duration-200
-                ${loading || !teamName.trim() || !location.trim()
-                  ? 'bg-gray-600 text-gray-300 cursor-not-allowed'
-                  : 'bg-[#9334E9] text-white hover:bg-[#3c1671] hover:border-[#6D28D9] border border-[#9334E9]'
-                }`}
+              className={`w-full rounded-lg p-2.5 text-sm font-semibold transition-all duration-200 md:p-3 md:text-base ${
+                loading || !teamName.trim() || !location.trim()
+                  ? "cursor-not-allowed bg-gray-600 text-gray-300"
+                  : "border border-[#9334E9] bg-[#9334E9] text-white hover:border-[#6D28D9] hover:bg-[#3c1671]"
+              }`}
             >
               {loading ? "Creating Team..." : "Create Team"}
             </button>
           </form>
 
-          <div className="mt-6 p-4 bg-[#262727] rounded-lg">
-            <h3 className="text-white font-medium mb-2">What happens next?</h3>
-            <ul className="text-gray-400 text-sm space-y-2">
+          <div className="mt-6 rounded-lg bg-[#262727] p-4">
+            <h3 className="mb-2 font-medium text-white">What happens next?</h3>
+            <ul className="space-y-2 text-sm text-gray-400">
               <li>• Your team will be created instantly</li>
               <li>• You&apos;ll be added as the team owner</li>
               <li>• You can invite team members right away</li>
@@ -159,4 +161,4 @@ export default function CreateTeam() {
       </div>
     </div>
   );
-} 
+}

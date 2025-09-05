@@ -38,7 +38,7 @@ const PROVIDER_ICONS = {
   obsidian: "https://obsidian.md/images/obsidian-logo-gradient.svg",
   gmail:
     "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/2560px-Gmail_icon_%282020%29.svg.png",
-  omi: "/omilogo.webp"
+  omi: "/omilogo.webp",
 };
 
 const BASE_URL_BACKEND = "https://api.amurex.ai";
@@ -59,7 +59,8 @@ function SettingsContent() {
   const [memoryEnabled, setMemoryEnabled] = useState(false);
   const [analyticsEnabled, setAnalyticsEnabled] = useState(false);
   const [createdAt, setCreatedAt] = useState("");
-  const [emailNotificationsEnabled, setEmailNotificationsEnabled] = useState(false);
+  const [emailNotificationsEnabled, setEmailNotificationsEnabled] =
+    useState(false);
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
   const [isProcessingEmails, setIsProcessingEmails] = useState(false);
   const [emailLabelingEnabled, setEmailLabelingEnabled] = useState(false);
@@ -316,7 +317,7 @@ function SettingsContent() {
             })
           );
           setNotionConnected(user.notion_connected);
-          setOmiConnected(user.omi_connected)
+          setOmiConnected(user.omi_connected);
           setGoogleDocsConnected(user.google_docs_connected);
           console.log("Setting googleDocsConnected to:", user.google_docs_connected);
           setCalendarConnected(user.calendar_connected);
@@ -367,7 +368,9 @@ function SettingsContent() {
             // Redirect to search page after Google Docs connection
             router.push("/search");
           } else {
-            console.log("Google connection detected, but no full access for Docs");
+            console.log(
+              "Google connection detected, but no full access for Docs"
+            );
             toast.success("Google account connected successfully!");
             // Redirect to search page even without full access
             router.push("/search");
@@ -467,27 +470,26 @@ function SettingsContent() {
     try {
       // Your app ID from OMI platform registration
       const APP_ID = "01JWF84YVZ6SYKE486KWARA2CK";
-      
+
       // Generate a random state string to prevent CSRF attacks
       const state = Math.random().toString(36).substring(7);
-      
+
       // Store state in localStorage to verify on callback
-      localStorage.setItem('omiOAuthState', state);
+      localStorage.setItem("omiOAuthState", state);
 
       // Construct the authorization URL
-      const authUrl = new URL('https://api.omi.me/v1/oauth/authorize');
-      // we should potentially store this in the database as well. 
-      authUrl.searchParams.append('app_id', APP_ID);
-      authUrl.searchParams.append('state', state);
+      const authUrl = new URL("https://api.omi.me/v1/oauth/authorize");
+      // we should potentially store this in the database as well.
+      authUrl.searchParams.append("app_id", APP_ID);
+      authUrl.searchParams.append("state", state);
 
       // Redirect user to OMI authorization page
       window.location.href = authUrl.toString();
     } catch (error) {
-      console.error('Error initiating OMI OAuth flow:', error);
-      toast.error('Failed to connect to OMI');
+      console.error("Error initiating OMI OAuth flow:", error);
+      toast.error("Failed to connect to OMI");
     }
   };
-
 
   const handleMemoryToggle = async (checked) => {
     try {
@@ -541,7 +543,11 @@ function SettingsContent() {
 
         if (error) throw error;
         setEmailNotificationsEnabled(checked);
-        toast.success(checked ? "Email notifications enabled" : "Email notifications disabled");
+        toast.success(
+          checked
+            ? "Email notifications enabled"
+            : "Email notifications disabled"
+        );
       }
     } catch (error) {
       console.error("Error updating email notification settings:", error);
@@ -1075,12 +1081,12 @@ function SettingsContent() {
       {/* Main Settings Area */}
       <div className="flex flex-1 overflow-hidden">
         {/* Settings Sidebar */}
-        <div className="w-64 flex-shrink-0 bg-black p-4 border-r border-zinc-800 overflow-y-auto">
-          <h2 className="text-2xl font-medium text-white mb-6">Settings</h2>
+        <div className="w-64 flex-shrink-0 overflow-y-auto border-r border-zinc-800 bg-black p-4">
+          <h2 className="mb-6 text-2xl font-medium text-white">Settings</h2>
           <div className="text-md space-y-2">
             <button
               onClick={() => handleTabChange("personalization")}
-              className={`w-full text-left px-4 py-2 rounded-lg ${
+              className={`w-full rounded-lg px-4 py-2 text-left ${
                 activeTab === "personalization"
                   ? "bg-zinc-800 text-white"
                   : "text-zinc-400 hover:bg-zinc-800"
@@ -1090,7 +1096,7 @@ function SettingsContent() {
             </button>
             <button
               onClick={() => handleTabChange("account")}
-              className={`w-full text-left px-4 py-2 rounded-lg ${
+              className={`w-full rounded-lg px-4 py-2 text-left ${
                 activeTab === "account"
                   ? "bg-zinc-800 text-white"
                   : "text-zinc-400 hover:bg-zinc-800"
@@ -1100,15 +1106,17 @@ function SettingsContent() {
             </button>
             <button
               onClick={() => handleTabChange("team")}
-              className={`w-full text-left px-4 py-2 rounded-lg hidden ${
-                activeTab === "team" ? "bg-zinc-800 text-white" : "text-zinc-400 hover:bg-zinc-800"
+              className={`hidden w-full rounded-lg px-4 py-2 text-left ${
+                activeTab === "team"
+                  ? "bg-zinc-800 text-white"
+                  : "text-zinc-400 hover:bg-zinc-800"
               }`}
             >
               Team
             </button>
             <button
               onClick={() => handleTabChange("feedback")}
-              className={`w-full text-left px-4 py-2 rounded-lg ${
+              className={`w-full rounded-lg px-4 py-2 text-left ${
                 activeTab === "feedback"
                   ? "bg-zinc-800 text-white"
                   : "text-zinc-400 hover:bg-zinc-800"
@@ -1121,18 +1129,20 @@ function SettingsContent() {
 
         {/* Warning Modal */}
         {showWarningModal && (
-          <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
-            <div className="bg-zinc-900 rounded-lg p-6 max-w-md w-full border border-zinc-700">
-              <h3 className="text-xl font-medium text-white mb-4">Your data is safe</h3>
-              <p className="text-zinc-300 mb-6">
-                Since the app is still in Google&apos;s review process, you will be warned that the
-                app is unsafe.
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+            <div className="w-full max-w-md rounded-lg border border-zinc-700 bg-zinc-900 p-6">
+              <h3 className="mb-4 text-xl font-medium text-white">
+                Your data is safe
+              </h3>
+              <p className="mb-6 text-zinc-300">
+                Since the app is still in Google&apos;s review process, you will
+                be warned that the app is unsafe.
                 <br />
                 <br />
-                You can safely proceed by clicking on &quot;Advanced&quot; and then &quot;Go to
-                Amurex (unsafe)&quot;.
+                You can safely proceed by clicking on &quot;Advanced&quot; and
+                then &quot;Go to Amurex (unsafe)&quot;.
               </p>
-              <p className="text-zinc-300 mb-6">
+              <p className="mb-6 text-zinc-300">
                 We ensure that the app is safe to use and your data{" "}
                 <span className="font-bold underline">
                   <a
@@ -1148,7 +1158,7 @@ function SettingsContent() {
               <div className="flex justify-end gap-4">
                 <button
                   onClick={() => setShowWarningModal(false)}
-                  className="px-4 py-2 rounded-lg bg-zinc-800 text-white hover:bg-zinc-700 transition-colors"
+                  className="rounded-lg bg-zinc-800 px-4 py-2 text-white transition-colors hover:bg-zinc-700"
                 >
                   Cancel
                 </button>
@@ -1157,7 +1167,7 @@ function SettingsContent() {
                     setShowWarningModal(false);
                     handleGoogleDocsConnect();
                   }}
-                  className="px-4 py-2 rounded-lg bg-[#9334E9] text-white hover:bg-[#7928CA] transition-colors"
+                  className="rounded-lg bg-[#9334E9] px-4 py-2 text-white transition-colors hover:bg-[#7928CA]"
                 >
                   Proceed
                 </button>
@@ -1167,29 +1177,32 @@ function SettingsContent() {
         )}
 
         {/* Main Content */}
-        <div className="flex-1 p-8 bg-black overflow-y-auto">
-          <div className="space-y-4 mb-4">
+        <div className="flex-1 overflow-y-auto bg-black p-8">
+          <div className="mb-4 space-y-4">
             <div className="relative">
-              <div className="absolute -inset-0.5 bg-gradient-to-r from-[#9334E9] to-[#9334E9] rounded-lg blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-gradient-x"></div>
-              <Card className="bg-black border-zinc-500 relative overflow-hidden">
-                <div className="absolute inset-0 bg-[#9334E9]/20 animate-pulse"></div>
+              <div className="absolute -inset-0.5 animate-gradient-x rounded-lg bg-gradient-to-r from-[#9334E9] to-[#9334E9] opacity-75 blur transition duration-1000 group-hover:opacity-100 group-hover:duration-200"></div>
+              <Card className="relative overflow-hidden border-zinc-500 bg-black">
+                <div className="absolute inset-0 animate-pulse bg-[#9334E9]/20"></div>
                 <div className="absolute inset-0 bg-gradient-to-r from-[#9334E9]/30 via-[#9334E9]/20 to-[#9334E9]/30"></div>
-                <CardContent className="p-4 relative">
+                <CardContent className="relative p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                      <MessageSquare className="w-6 h-6 text-[#9334E9]" />
+                      <MessageSquare className="h-6 w-6 text-[#9334E9]" />
                       <div>
-                        <h3 className="font-medium text-white text-lg">Knowledge Search (new!)</h3>
+                        <h3 className="text-lg font-medium text-white">
+                          Knowledge Search (new!)
+                        </h3>
                         <p className="text-sm text-zinc-400">
-                          Try our new feature - search your emails, documents, notes, and more
+                          Try our new feature - search your emails, documents,
+                          notes, and more
                         </p>
                       </div>
                     </div>
                     <div className="relative">
-                      <div className="absolute -inset-0.5 bg-gradient-to-r from-[#9334E9] to-[#9334E9] rounded-lg blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-gradient-x"></div>
+                      <div className="absolute -inset-0.5 animate-gradient-x rounded-lg bg-gradient-to-r from-[#9334E9] to-[#9334E9] opacity-75 blur transition duration-1000 group-hover:opacity-100 group-hover:duration-200"></div>
                       <Button
                         variant="outline"
-                        className="relative bg-zinc-900/50 text-zinc-300 hover:bg-zinc-800 hover:border-[#9334E9] border border-zinc-800 rounded-md backdrop-blur-sm transition-colors duration-200"
+                        className="relative rounded-md border border-zinc-800 bg-zinc-900/50 text-zinc-300 backdrop-blur-sm transition-colors duration-200 hover:border-[#9334E9] hover:bg-zinc-800"
                         onClick={async () => {
                           // Track button click with analytics
                           try {
@@ -1222,18 +1235,19 @@ function SettingsContent() {
               <h1 className="text-2xl font-medium text-white">Personalization</h1>
 
               {/* Memory Toggle */}
-              <Card className="bg-black border-zinc-800">
-                <CardContent className="p-6 space-y-6">
+              <Card className="border-zinc-800 bg-black">
+                <CardContent className="space-y-6 p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h2 className="text-lg font-semibold flex items-center gap-2 text-white">
-                        <Cloud className="w-5 h-5 text-[#9334E9]" />
+                      <h2 className="flex items-center gap-2 text-lg font-semibold text-white">
+                        <Cloud className="h-5 w-5 text-[#9334E9]" />
                         Memory
                       </h2>
                       <p className="text-sm text-zinc-400">
                         Enable memory storing to unlock our{" "}
-                        <b>AI-powered knowledge search feature</b>, allowing you to have intelligent
-                        conversations about your past meetings, emails, documents, and more
+                        <b>AI-powered knowledge search feature</b>, allowing you
+                        to have intelligent conversations about your past
+                        meetings, emails, documents, and more
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -1242,13 +1256,13 @@ function SettingsContent() {
                   </div>
 
                   <div className="flex gap-4">
-                    <Card className="bg-black border-zinc-800 flex-1">
+                    <Card className="flex-1 border-zinc-800 bg-black">
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-4">
                             <img src={PROVIDER_ICONS.gmail} alt="Google" className="w-6" />
                             <div>
-                              <h3 className="font-medium text-white text-lg">
+                              <h3 className="text-lg font-medium text-white">
                                 Connect Gmail
                               </h3>
                               <p className="text-sm text-zinc-400">
@@ -1258,8 +1272,10 @@ function SettingsContent() {
                           </div>
                           <Button
                             variant="outline"
-                            className={`bg-zinc-900 text-zinc-300 hover:bg-zinc-800 border-zinc-800 ${
-                              googleDocsConnected ? "bg-green-900 hover:bg-green-800" : ""
+                            className={`border-zinc-800 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 ${
+                              googleDocsConnected
+                                ? "bg-green-900 hover:bg-green-800"
+                                : ""
                             } min-w-[100px]`}
                             onClick={() => {
                               router.push("/emails");
@@ -1271,27 +1287,37 @@ function SettingsContent() {
                       </CardContent>
                     </Card>
 
-                    <Card className="bg-black border-zinc-800 flex-1">
+                    <Card className="flex-1 border-zinc-800 bg-black">
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-4">
-                            <img src={PROVIDER_ICONS.notion} alt="Notion" className="w-6 h-6" />
+                            <img
+                              src={PROVIDER_ICONS.notion}
+                              alt="Notion"
+                              className="h-6 w-6"
+                            />
                             <div>
-                              <h3 className="font-medium text-white text-lg">Connect Notion</h3>
-                              <p className="text-sm text-zinc-400">Sync your Notion pages</p>
+                              <h3 className="text-lg font-medium text-white">
+                                Connect Notion
+                              </h3>
+                              <p className="text-sm text-zinc-400">
+                                Sync your Notion pages
+                              </p>
                             </div>
                           </div>
                           <Button
                             variant="outline"
-                            className={`bg-zinc-900 text-zinc-300 hover:bg-zinc-800 border-zinc-800 ${
-                              notionConnected ? "bg-green-900 hover:bg-green-800" : ""
+                            className={`border-zinc-800 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 ${
+                              notionConnected
+                                ? "bg-green-900 hover:bg-green-800"
+                                : ""
                             } min-w-[100px]`}
                             onClick={connectNotion}
                             disabled={isImporting && importSource === "Notion"}
                           >
                             {isImporting && importSource === "Notion" ? (
                               <div className="flex items-center">
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#9334E9] mr-2"></div>
+                                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-[#9334E9]"></div>
                                 Importing...
                               </div>
                             ) : notionConnected ? (
@@ -1306,13 +1332,17 @@ function SettingsContent() {
                   </div>
 
                   <div className="flex gap-4">
-                    <Card className="bg-black border-zinc-800 flex-1">
+                    <Card className="flex-1 border-zinc-800 bg-black">
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-4">
-                            <img src={PROVIDER_ICONS.obsidian} alt="Obsidian" className="w-6 h-6" />
+                            <img
+                              src={PROVIDER_ICONS.obsidian}
+                              alt="Obsidian"
+                              className="h-6 w-6"
+                            />
                             <div>
-                              <h3 className="font-medium text-white text-lg">
+                              <h3 className="text-lg font-medium text-white">
                                 Upload from Obsidian
                               </h3>
                               <p className="text-sm text-zinc-400">Import your markdown files</p>
@@ -1320,7 +1350,7 @@ function SettingsContent() {
                           </div>
                           <Button
                             variant="outline"
-                            className="bg-zinc-900 text-zinc-300 hover:bg-zinc-800 border-zinc-800 min-w-[100px]"
+                            className="min-w-[100px] border-zinc-800 bg-zinc-900 text-zinc-300 hover:bg-zinc-800"
                             onClick={() => setIsObsidianModalOpen(true)}
                           >
                             Upload
@@ -1329,27 +1359,28 @@ function SettingsContent() {
                       </CardContent>
                     </Card>
 
-                    <Card className="bg-black border-zinc-800 flex-1">
+                    <Card className="flex-1 border-zinc-800 bg-black">
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-4">
                             <img
                               src={PROVIDER_ICONS.omi}
                               alt="Omi"
-                              className="w-8 "
+                              className="w-8"
                             />
                             <div>
-                              <h3 className="font-medium text-white text-lg">
+                              <h3 className="text-lg font-medium text-white">
                                 Connect Omi
                               </h3>
                               <p className="text-sm text-zinc-400">
-                                A two way connection to and from your Omi memories.
+                                A two way connection to and from your Omi
+                                memories.
                               </p>
                             </div>
                           </div>
                           <Button
                             variant="outline"
-                            className={`bg-zinc-900 text-zinc-300 hover:bg-zinc-800 border-zinc-800 ${
+                            className={`border-zinc-800 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 ${
                               omiConnected
                                 ? "bg-green-900 hover:bg-green-800"
                                 : ""
@@ -1359,7 +1390,7 @@ function SettingsContent() {
                           >
                             {isImporting && importSource === "Omi" ? (
                               <div className="flex items-center">
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#9334E9] mr-2"></div>
+                                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-[#9334E9]"></div>
                                 Importing...
                               </div>
                             ) : omiConnected ? (
@@ -1374,15 +1405,15 @@ function SettingsContent() {
                   </div>
 
                   <div className="flex gap-4">
-                    <Card className="bg-black border-zinc-800 flex-1">
+                    <Card className="flex-1 border-zinc-800 bg-black">
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-4">
-                            <div className="w-6 h-6 rounded-full bg-zinc-800 flex items-center justify-center">
-                              <Plus className="w-4 h-4 text-zinc-400" />
+                            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-800">
+                              <Plus className="h-4 w-4 text-zinc-400" />
                             </div>
                             <div>
-                              <h3 className="font-medium text-white text-lg">
+                              <h3 className="text-lg font-medium text-white">
                                 Request Integration
                               </h3>
                               <p className="text-sm text-zinc-400">Suggest the next integration</p>
@@ -1390,7 +1421,7 @@ function SettingsContent() {
                           </div>
                           <Button
                             variant="outline"
-                            className="bg-zinc-900 text-zinc-300 hover:bg-zinc-800 border-zinc-800 min-w-[100px]"
+                            className="min-w-[100px] border-zinc-800 bg-zinc-900 text-zinc-300 hover:bg-zinc-800"
                             onClick={() =>
                               window.open(
                                 "https://github.com/thepersonalaicompany/amurex-web/issues/new",
@@ -1405,14 +1436,16 @@ function SettingsContent() {
                     </Card>
                   </div>
 
-                  <div className="flex gap-4 mt-4 hidden">
-                    <Card className="bg-black border-zinc-800 flex-1">
+                  <div className="mt-4 flex hidden gap-4">
+                    <Card className="flex-1 border-zinc-800 bg-black">
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-4">
                             <img src={PROVIDER_ICONS.gmail} alt="Gmail" className="w-6" />
                             <div>
-                              <h3 className="font-medium text-white text-lg">Gmail Smart Labels</h3>
+                              <h3 className="text-lg font-medium text-white">
+                                Gmail Smart Labels
+                              </h3>
                               <p className="text-sm text-zinc-400">
                                 Auto-categorize emails with AI
                               </p>
@@ -1427,7 +1460,7 @@ function SettingsContent() {
                             {gmailPermissionError && (
                               <Button
                                 variant="outline"
-                                className="bg-amber-900 text-amber-100 hover:bg-amber-800 border-amber-700 min-w-[100px]"
+                                className="min-w-[100px] border-amber-700 bg-amber-900 text-amber-100 hover:bg-amber-800"
                                 onClick={handleReconnectGoogle}
                               >
                                 Reconnect Google
@@ -1438,20 +1471,20 @@ function SettingsContent() {
 
                         {/* Status messages */}
                         {processedEmailCount > 0 && (
-                          <p className="text-sm text-green-500 mt-2">
+                          <p className="mt-2 text-sm text-green-500">
                             Successfully processed {processedEmailCount} emails
                           </p>
                         )}
                         {gmailPermissionError && (
-                          <p className="text-sm text-amber-500 mt-2">
-                            Additional Gmail permissions are required. Please reconnect your Google
-                            account.
+                          <p className="mt-2 text-sm text-amber-500">
+                            Additional Gmail permissions are required. Please
+                            reconnect your Google account.
                           </p>
                         )}
                         {emailLabelingEnabled && !gmailPermissionError && (
-                          <p className="text-xs text-zinc-400 mt-2">
-                            Uses AI to categorize your unread emails (max 10) and apply labels in
-                            Gmail
+                          <p className="mt-2 text-xs text-zinc-400">
+                            Uses AI to categorize your unread emails (max 10)
+                            and apply labels in Gmail
                           </p>
                         )}
 
@@ -1460,13 +1493,13 @@ function SettingsContent() {
                           <div className="mt-4 flex justify-end">
                             <Button
                               variant="outline"
-                              className="bg-zinc-900 text-zinc-300 hover:bg-zinc-800 hover:border-[#9334E9] border border-zinc-700 min-w-[140px] px-4 py-2"
+                              className="min-w-[140px] border border-zinc-700 bg-zinc-900 px-4 py-2 text-zinc-300 hover:border-[#9334E9] hover:bg-zinc-800"
                               onClick={processGmailLabels}
                               disabled={isProcessingEmails}
                             >
                               {isProcessingEmails ? (
                                 <div className="flex items-center">
-                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#9334E9] mr-2"></div>
+                                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-[#9334E9]"></div>
                                   Processing...
                                 </div>
                               ) : (
@@ -1474,7 +1507,7 @@ function SettingsContent() {
                                   <img
                                     src={PROVIDER_ICONS.gmail}
                                     alt="Gmail"
-                                    className="w-4 mr-2"
+                                    className="mr-2 w-4"
                                   />
                                   Process Emails
                                 </div>
@@ -1513,7 +1546,7 @@ function SettingsContent() {
               <div className="flex-1 space-y-8">
                 <h1 className="text-2xl font-medium text-white">Account</h1>
 
-                <Card className="bg-black border-zinc-800">
+                <Card className="border-zinc-800 bg-black">
                   <CardContent className="p-6">
                     <div className="space-y-6">
                       <div className="space-y-4">
@@ -1522,18 +1555,18 @@ function SettingsContent() {
                           <p className="text-white">{userEmail}</p>
                         </div>
                         <div>
-                          <div className="inline-flex items-center px-2.5 py-1 rounded-full text-md font-medium bg-gradient-to-r from-[#9334E9]/60 to-[#9334E9]/40 text-[#e0c5f9] border border-[#9334E9]/50 shadow-[0_0_12px_rgba(147,52,233,0.45)] animate-pulse-slow relative overflow-hidden group">
-                            <span className="absolute inset-0 bg-gradient-to-r from-transparent via-[#9334E9]/40 to-transparent animate-shimmer"></span>
-                            <div className="absolute -inset-1 bg-gradient-to-r from-[#9334E9]/20 via-[#9334E9]/50 to-[#9334E9]/20 opacity-0 group-hover:opacity-100 transition-opacity duration-700 rounded-full blur-sm"></div>
-                            <Clock className="w-3 h-3 mr-1" />
+                          <div className="text-md group relative inline-flex animate-pulse-slow items-center overflow-hidden rounded-full border border-[#9334E9]/50 bg-gradient-to-r from-[#9334E9]/60 to-[#9334E9]/40 px-2.5 py-1 font-medium text-[#e0c5f9] shadow-[0_0_12px_rgba(147,52,233,0.45)]">
+                            <span className="absolute inset-0 animate-shimmer bg-gradient-to-r from-transparent via-[#9334E9]/40 to-transparent"></span>
+                            <div className="absolute -inset-1 rounded-full bg-gradient-to-r from-[#9334E9]/20 via-[#9334E9]/50 to-[#9334E9]/20 opacity-0 blur-sm transition-opacity duration-700 group-hover:opacity-100"></div>
+                            <Clock className="mr-1 h-3 w-3" />
                             With us since
                           </div>
-                          <p className="text-white mt-1">{createdAt}</p>
+                          <p className="mt-1 text-white">{createdAt}</p>
                         </div>
                       </div>
 
-                      <div className="pt-2 border-t border-zinc-800">
-                        <div className="flex items-center justify-between hidden">
+                      <div className="border-t border-zinc-800 pt-2">
+                        <div className="flex hidden items-center justify-between">
                           <div>
                             <h3 className="text-md font-medium text-white">Email Notifications</h3>
                             <p className="text-sm text-zinc-400">
@@ -1555,10 +1588,10 @@ function SettingsContent() {
                           </div>
                           <Button
                             variant="outline"
-                            className="text-sm bg-zinc-800 hover:bg-red-500 text-white whitespace-nowrap flex items-center mt-auto w-fit group"
+                            className="group mt-auto flex w-fit items-center whitespace-nowrap bg-zinc-800 text-sm text-white hover:bg-red-500"
                             onClick={initiateLogout}
                           >
-                            <LogOut className="w-5 h-5 text-red-500 mr-2 group-hover:text-white" />
+                            <LogOut className="mr-2 h-5 w-5 text-red-500 group-hover:text-white" />
                             Sign Out
                           </Button>
                         </div>
@@ -1574,7 +1607,7 @@ function SettingsContent() {
               <div className="space-y-2">
                 <h1 className="text-2xl font-medium text-white">Team Settings</h1>
 
-                <Card className="bg-black border-zinc-800">
+                <Card className="border-zinc-800 bg-black">
                   <CardContent className="p-6">
                     <div className="space-y-6">
                       <div className="space-y-4">
@@ -1586,14 +1619,14 @@ function SettingsContent() {
                                 <Button
                                   size="sm"
                                   onClick={() => handleSave("name")}
-                                  className="mt-2 px-2 py-2 inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium border border-white/10 bg-zinc-800 text-white hover:bg-zinc-700"
+                                  className="mt-2 inline-flex items-center justify-center gap-2 rounded-md border border-white/10 bg-zinc-800 px-2 py-2 text-sm font-medium text-white hover:bg-zinc-700"
                                 >
                                   Cancel
                                 </Button>
                                 <Button
                                   size="sm"
                                   onClick={() => handleSave("name")}
-                                  className="mt-2 px-2 py-2 inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium border border-white/10 !bg-[#9334E9] text-[#FAFAFA] hover:!bg-[#3c1671]"
+                                  className="mt-2 inline-flex items-center justify-center gap-2 rounded-md border border-white/10 !bg-[#9334E9] px-2 py-2 text-sm font-medium text-[#FAFAFA] hover:!bg-[#3c1671]"
                                 >
                                   Save
                                 </Button>
@@ -1602,7 +1635,7 @@ function SettingsContent() {
                               <Button
                                 size="sm"
                                 onClick={() => setEditingField("name")}
-                                className="mt-2 lg:px-4 lg:py-2 px-2 py-2 inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium border border-white/10 !bg-[#9334E9] text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:!bg-[#3c1671] hover:border-[#6D28D9]"
+                                className="mt-2 inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-md border border-white/10 !bg-[#9334E9] px-2 py-2 text-sm font-medium text-[#FAFAFA] transition-all duration-200 hover:border-[#6D28D9] hover:!bg-[#3c1671] lg:px-4 lg:py-2"
                               >
                                 <Pencil className="h-4 w-4" />
                               </Button>
@@ -1613,7 +1646,7 @@ function SettingsContent() {
                               type="text"
                               value={editedName}
                               onChange={(e) => setEditedName(e.target.value)}
-                              className="mt-1 w-full bg-zinc-900 border border-zinc-700 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#9334E9] focus:border-transparent"
+                              className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2 text-white focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#9334E9]"
                             />
                           ) : (
                             <p className="text-white">{teamName}</p>
@@ -1628,14 +1661,14 @@ function SettingsContent() {
                                 <Button
                                   size="sm"
                                   onClick={() => handleSave("location")}
-                                  className="mt-2 px-2 py-2 inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium border border-white/10 bg-zinc-800 text-white hover:bg-zinc-700"
+                                  className="mt-2 inline-flex items-center justify-center gap-2 rounded-md border border-white/10 bg-zinc-800 px-2 py-2 text-sm font-medium text-white hover:bg-zinc-700"
                                 >
                                   Cancel
                                 </Button>
                                 <Button
                                   size="sm"
                                   onClick={() => handleSave("location")}
-                                  className="mt-2 px-2 py-2 inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium border border-white/10 !bg-[#9334E9] text-[#FAFAFA] hover:!bg-[#3c1671]"
+                                  className="mt-2 inline-flex items-center justify-center gap-2 rounded-md border border-white/10 !bg-[#9334E9] px-2 py-2 text-sm font-medium text-[#FAFAFA] hover:!bg-[#3c1671]"
                                 >
                                   Save
                                 </Button>
@@ -1644,7 +1677,7 @@ function SettingsContent() {
                               <Button
                                 size="sm"
                                 onClick={() => setEditingField("location")}
-                                className="mt-2 lg:px-4 lg:py-2 px-2 py-2 inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium border border-white/10 !bg-[#9334E9] text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:!bg-[#3c1671] hover:border-[#6D28D9]"
+                                className="mt-2 inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-md border border-white/10 !bg-[#9334E9] px-2 py-2 text-sm font-medium text-[#FAFAFA] transition-all duration-200 hover:border-[#6D28D9] hover:!bg-[#3c1671] lg:px-4 lg:py-2"
                               >
                                 <Pencil className="h-4 w-4" />
                               </Button>
@@ -1654,8 +1687,10 @@ function SettingsContent() {
                             <input
                               type="text"
                               value={editedLocation}
-                              onChange={(e) => setEditedLocation(e.target.value)}
-                              className="mt-1 w-full bg-zinc-900 border border-zinc-700 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#9334E9] focus:border-transparent"
+                              onChange={(e) =>
+                                setEditedLocation(e.target.value)
+                              }
+                              className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2 text-white focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#9334E9]"
                             />
                           ) : (
                             <p className="text-white">{teamLocation}</p>
@@ -1672,19 +1707,19 @@ function SettingsContent() {
                 </Card>
               </div>
 
-              <div className="space-y-8 mt-8 border-t border-zinc-800 pt-8">
+              <div className="mt-8 space-y-8 border-t border-zinc-800 pt-8">
                 <div className="flex items-center justify-between">
                   <h1 className="text-2xl font-medium text-white">Members</h1>
                   <Button
                     onClick={() => setIsInviteModalOpen(true)}
-                    className="lg:px-4 lg:py-2 px-2 py-2 inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium border border-white/10 !bg-[#9334E9] text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:!bg-[#3c1671] hover:border-[#6D28D9]"
+                    className="inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-md border border-white/10 !bg-[#9334E9] px-2 py-2 text-sm font-medium text-[#FAFAFA] transition-all duration-200 hover:border-[#6D28D9] hover:!bg-[#3c1671] lg:px-4 lg:py-2"
                   >
                     <UserPlus className="h-4 w-4" />
                     Invite Members
                   </Button>
                 </div>
 
-                <Card className="bg-black border-zinc-800">
+                <Card className="border-zinc-800 bg-black">
                   <CardContent className="p-6">
                     {membersLoading ? (
                       <div className="text-zinc-400">Loading members...</div>
@@ -1698,11 +1733,11 @@ function SettingsContent() {
                             className="flex items-center justify-between border-b border-zinc-800 pb-4 last:border-0 last:pb-0"
                           >
                             <div className="flex items-center gap-4">
-                              <div className="bg-zinc-800 rounded-full w-10 h-10 flex items-center justify-center text-sm font-medium text-[#a774ee] border border-[#a774ee]">
+                              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[#a774ee] bg-zinc-800 text-sm font-medium text-[#a774ee]">
                                 {getInitials(member.name, member.users?.email)}
                               </div>
                               <div>
-                                <p className="text-white font-medium">
+                                <p className="font-medium text-white">
                                   {member.name || member.users?.email}{" "}
                                   <b>({member.users?.email || member.name})</b>
                                 </p>
@@ -1710,8 +1745,10 @@ function SettingsContent() {
                                   {editingMemberId === member.id ? (
                                     <select
                                       value={editedRole}
-                                      onChange={(e) => setEditedRole(e.target.value)}
-                                      className="bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-white"
+                                      onChange={(e) =>
+                                        setEditedRole(e.target.value)
+                                      }
+                                      className="rounded border border-zinc-700 bg-zinc-800 px-2 py-1 text-white"
                                     >
                                       <option value="owner">Owner</option>
                                       <option value="member">Member</option>
@@ -1738,14 +1775,16 @@ function SettingsContent() {
                                     <Button
                                       size="sm"
                                       onClick={() => setEditingMemberId(null)}
-                                      className="mt-2 px-2 py-2 inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium border border-white/10 bg-zinc-800 text-white hover:bg-zinc-700"
+                                      className="mt-2 inline-flex items-center justify-center gap-2 rounded-md border border-white/10 bg-zinc-800 px-2 py-2 text-sm font-medium text-white hover:bg-zinc-700"
                                     >
                                       Cancel
                                     </Button>
                                     <Button
                                       size="sm"
-                                      onClick={() => handleRoleUpdate(member.id)}
-                                      className="mt-2 px-2 py-2 inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium border border-white/10 !bg-[#9334E9] text-[#FAFAFA] hover:!bg-[#3c1671]"
+                                      onClick={() =>
+                                        handleRoleUpdate(member.id)
+                                      }
+                                      className="mt-2 inline-flex items-center justify-center gap-2 rounded-md border border-white/10 !bg-[#9334E9] px-2 py-2 text-sm font-medium text-[#FAFAFA] hover:!bg-[#3c1671]"
                                     >
                                       Save
                                     </Button>
@@ -1757,7 +1796,7 @@ function SettingsContent() {
                                       setEditingMemberId(member.id);
                                       setEditedRole(member.role);
                                     }}
-                                    className="mt-2 px-2 py-2 inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium border border-white/10 !bg-[#9334E9] text-[#FAFAFA] hover:!bg-[#3c1671]"
+                                    className="mt-2 inline-flex items-center justify-center gap-2 rounded-md border border-white/10 !bg-[#9334E9] px-2 py-2 text-sm font-medium text-[#FAFAFA] hover:!bg-[#3c1671]"
                                   >
                                     <Pencil className="h-4 w-4" />
                                     Edit Role
@@ -1779,20 +1818,20 @@ function SettingsContent() {
             <div className="space-y-10">
               <h1 className="text-2xl font-medium text-white">Feedback</h1>
 
-              <Card className="bg-black border-zinc-800">
+              <Card className="border-zinc-800 bg-black">
                 <CardContent className="p-6">
                   {/* Report an issue */}
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div className="space-y-1">
-                        <h2 className="text-md font-semibold flex items-center gap-2 text-white">
+                        <h2 className="text-md flex items-center gap-2 font-semibold text-white">
                           Encounter an issue?
                         </h2>
                         <p className="text-sm text-zinc-400">Help us improve by reporting issues</p>
                       </div>
                       <Button
                         variant="outline"
-                        className="bg-zinc-800 hover:bg-zinc-700 text-white whitespace-nowrap flex items-center"
+                        className="flex items-center whitespace-nowrap bg-zinc-800 text-white hover:bg-zinc-700"
                         onClick={() =>
                           window.open(
                             "https://github.com/thepersonalaicompany/amurex-web/issues/new",
@@ -1800,7 +1839,7 @@ function SettingsContent() {
                           )
                         }
                       >
-                        <Github className="w-5 h-5 text-[#9334E9] mr-2" />
+                        <Github className="mr-2 h-5 w-5 text-[#9334E9]" />
                         Report Issue
                       </Button>
                     </div>
@@ -1808,7 +1847,7 @@ function SettingsContent() {
                     {/* Book a call */}
                     <div className="flex items-center justify-between">
                       <div className="space-y-1">
-                        <h2 className="text-md font-semibold flex items-center gap-2 text-white">
+                        <h2 className="text-md flex items-center gap-2 font-semibold text-white">
                           Want to give us feedback?
                         </h2>
                         <p className="text-sm text-zinc-400">
@@ -1817,7 +1856,7 @@ function SettingsContent() {
                       </div>
                       <Button
                         variant="outline"
-                        className="bg-zinc-800 hover:bg-zinc-700 text-white whitespace-nowrap flex items-center"
+                        className="flex items-center whitespace-nowrap bg-zinc-800 text-white hover:bg-zinc-700"
                         onClick={() =>
                           window.open(
                             "https://cal.com/founders-the-personal-ai-company/15min",
@@ -1825,7 +1864,7 @@ function SettingsContent() {
                           )
                         }
                       >
-                        <Calendar className="w-5 h-5 text-[#9334E9] mr-2" />
+                        <Calendar className="mr-2 h-5 w-5 text-[#9334E9]" />
                         Book a call
                       </Button>
                     </div>
@@ -1838,19 +1877,23 @@ function SettingsContent() {
       </div>
 
       {showSignOutConfirm && (
-        <div className="px-2 fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-black bg-opacity-40 backdrop-blur-sm p-8 rounded-lg shadow-lg border border-white/20">
-            <h3 className="lg:text-xl text-md font-medium mb-4 text-white">Confirm Sign Out</h3>
-            <p className="text-zinc-400 mb-6">Are you sure you want to sign out of your account?</p>
-            <div className="flex gap-3 justify-end">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 px-2">
+          <div className="rounded-lg border border-white/20 bg-black bg-opacity-40 p-8 shadow-lg backdrop-blur-sm">
+            <h3 className="text-md mb-4 font-medium text-white lg:text-xl">
+              Confirm Sign Out
+            </h3>
+            <p className="mb-6 text-zinc-400">
+              Are you sure you want to sign out of your account?
+            </p>
+            <div className="flex justify-end gap-3">
               <button
-                className="px-4 py-2 inline-flex items-center justify-center gap-2 rounded-md text-md font-medium border border-white/10 text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:bg-[#3c1671] hover:border-[#6D28D9]"
+                className="text-md inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-md border border-white/10 px-4 py-2 font-medium text-[#FAFAFA] transition-all duration-200 hover:border-[#6D28D9] hover:bg-[#3c1671]"
                 onClick={() => setShowSignOutConfirm(false)}
               >
                 Cancel
               </button>
               <button
-                className="px-4 py-2 inline-flex items-center justify-center gap-2 rounded-md text-md font-medium border border-white/10 bg-[#9334E9] text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:bg-[#3c1671] hover:border-[#6D28D9]"
+                className="text-md inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-md border border-white/10 bg-[#9334E9] px-4 py-2 font-medium text-[#FAFAFA] transition-all duration-200 hover:border-[#6D28D9] hover:bg-[#3c1671]"
                 onClick={handleLogout}
               >
                 Sign Out
@@ -1861,27 +1904,31 @@ function SettingsContent() {
       )}
 
       {isInviteModalOpen && (
-        <div className="px-2 fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-black bg-opacity-40 backdrop-blur-sm p-8 rounded-lg shadow-lg border border-white/20">
-            <h2 className="lg:text-xl text-md font-medium mb-4 text-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 px-2">
+          <div className="rounded-lg border border-white/20 bg-black bg-opacity-40 p-8 shadow-lg backdrop-blur-sm">
+            <h2 className="text-md mb-4 font-medium text-white lg:text-xl">
               Invite members to <b>{teamName}</b>
             </h2>
 
             <div className="mt-4">
-              <p className="text-white lg:text-md text-sm font-semibold">Send invites via email</p>
+              <p className="lg:text-md text-sm font-semibold text-white">
+                Send invites via email
+              </p>
               <div className="flex items-center">
                 <input
                   type="text"
                   value={emailInput}
                   onChange={handleEmailInputChange}
                   onKeyDown={isMobile ? undefined : handleEmailInputKeyDown}
-                  placeholder={isMobile ? "Enter emails" : "Enter emails and press enter"}
-                  className="w-full mt-2 p-2 border rounded bg-transparent text-white text-sm lg:text-md"
+                  placeholder={
+                    isMobile ? "Enter emails" : "Enter emails and press enter"
+                  }
+                  className="lg:text-md mt-2 w-full rounded border bg-transparent p-2 text-sm text-white"
                 />
                 {isMobile && (
                   <button
                     onClick={addEmail}
-                    className="ml-2 mt-2 p-2 bg-[#9334E9] text-white rounded"
+                    className="ml-2 mt-2 rounded bg-[#9334E9] p-2 text-white"
                   >
                     <Plus />
                   </button>
@@ -1890,16 +1937,18 @@ function SettingsContent() {
 
               {emails.length > 0 && (
                 <ul className="mt-2 text-white">
-                  <li className="font-semibold lg:text-md text-sm">New invites</li>
+                  <li className="lg:text-md text-sm font-semibold">
+                    New invites
+                  </li>
                   {emails.map((email, index) => (
                     <li
                       key={index}
-                      className="lg:text-md text-sm bg-[#27272A] p-2 rounded mt-1 flex justify-between items-center w-min"
+                      className="lg:text-md mt-1 flex w-min items-center justify-between rounded bg-[#27272A] p-2 text-sm"
                     >
                       {email}
                       <button
                         onClick={() => removeEmail(index)}
-                        className="ml-2 p-1 bg-[#9334E9] text-white rounded"
+                        className="ml-2 rounded bg-[#9334E9] p-1 text-white"
                       >
                         <Minus />
                       </button>
@@ -1908,7 +1957,7 @@ function SettingsContent() {
                 </ul>
               )}
               <button
-                className="mt-2 lg:px-4 lg:py-2 px-2 py-2 inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium border border-white/10 bg-[#9334E9] text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:bg-[#3c1671] hover:border-[#6D28D9]"
+                className="mt-2 inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-md border border-white/10 bg-[#9334E9] px-2 py-2 text-sm font-medium text-[#FAFAFA] transition-all duration-200 hover:border-[#6D28D9] hover:bg-[#3c1671] lg:px-4 lg:py-2"
                 onClick={sendInvites}
               >
                 <svg
@@ -1931,15 +1980,17 @@ function SettingsContent() {
             </div>
 
             <div className="mt-6">
-              <p className="text-white lg:text-md text-sm font-semibold">Or copy the invite URL</p>
+              <p className="lg:text-md text-sm font-semibold text-white">
+                Or copy the invite URL
+              </p>
               <input
                 type="text"
                 value={`${window.location.host}/teams/join/${teamInviteCode}`}
                 readOnly
-                className="w-full mt-2 p-2 border rounded bg-transparent text-white lg:text-md text-sm"
+                className="lg:text-md mt-2 w-full rounded border bg-transparent p-2 text-sm text-white"
               />
               <button
-                className="mt-2 lg:px-4 lg:py-2 px-2 py-2 inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium border border-white/10 bg-[#9334E9] text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:bg-[#3c1671] hover:border-[#6D28D9]"
+                className="mt-2 inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-md border border-white/10 bg-[#9334E9] px-2 py-2 text-sm font-medium text-[#FAFAFA] transition-all duration-200 hover:border-[#6D28D9] hover:bg-[#3c1671] lg:px-4 lg:py-2"
                 onClick={handleCopyInviteLink}
               >
                 <svg
@@ -1975,9 +2026,9 @@ function SettingsContent() {
               </button>
             </div>
 
-            <div className="flex justify-end mt-6">
+            <div className="mt-6 flex justify-end">
               <button
-                className="px-4 py-2 inline-flex items-center justify-center gap-2 rounded-md text-md font-medium border border-white/10 text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:bg-[#3c1671] hover:border-[#6D28D9]"
+                className="text-md inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-md border border-white/10 px-4 py-2 font-medium text-[#FAFAFA] transition-all duration-200 hover:border-[#6D28D9] hover:bg-[#3c1671]"
                 onClick={() => setIsInviteModalOpen(false)}
               >
                 <span>Done</span>
@@ -1988,9 +2039,11 @@ function SettingsContent() {
       )}
 
       {isObsidianModalOpen && (
-        <div className="px-2 fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-black bg-opacity-40 backdrop-blur-sm p-8 rounded-lg shadow-lg border border-white/20 max-w-lg w-full">
-            <h2 className="text-xl font-medium mb-4 text-white">Upload Markdown Files</h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 px-2">
+          <div className="w-full max-w-lg rounded-lg border border-white/20 bg-black bg-opacity-40 p-8 shadow-lg backdrop-blur-sm">
+            <h2 className="mb-4 text-xl font-medium text-white">
+              Upload Markdown Files
+            </h2>
 
             <div className="mt-4">
               <input
@@ -2003,13 +2056,13 @@ function SettingsContent() {
               />
               <label
                 htmlFor="markdown-upload"
-                className="cursor-pointer flex items-center justify-center w-full p-4 border-2 border-dashed border-zinc-700 rounded-lg hover:border-[#9334E9] transition-colors"
+                className="flex w-full cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-zinc-700 p-4 transition-colors hover:border-[#9334E9]"
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
               >
                 <div className="text-center">
-                  <FileText className="w-8 h-8 text-[#9334E9] mx-auto mb-2" />
+                  <FileText className="mx-auto mb-2 h-8 w-8 text-[#9334E9]" />
                   <p className="text-white">Click to select markdown files</p>
                   <p className="text-sm text-zinc-400">or drag and drop them here</p>
                 </div>
@@ -2017,11 +2070,16 @@ function SettingsContent() {
 
               {selectedFiles.length > 0 && (
                 <div className="mt-4">
-                  <h3 className="text-white font-medium mb-2">Selected Files:</h3>
+                  <h3 className="mb-2 font-medium text-white">
+                    Selected Files:
+                  </h3>
                   <ul className="space-y-2">
                     {selectedFiles.map((file, index) => (
-                      <li key={index} className="text-zinc-400 flex items-center">
-                        <FileText className="w-4 h-4 mr-2" />
+                      <li
+                        key={index}
+                        className="flex items-center text-zinc-400"
+                      >
+                        <FileText className="mr-2 h-4 w-4" />
                         {file.name}
                       </li>
                     ))}
@@ -2031,32 +2089,32 @@ function SettingsContent() {
 
               {isUploading && (
                 <div className="mt-4">
-                  <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
+                  <div className="h-2 overflow-hidden rounded-full bg-zinc-800">
                     <div
                       className="h-full bg-[#9334E9] transition-all duration-300"
                       style={{ width: `${uploadProgress}%` }}
                     />
                   </div>
-                  <p className="text-zinc-400 text-sm mt-2 text-center">
+                  <p className="mt-2 text-center text-sm text-zinc-400">
                     Uploading... {Math.round(uploadProgress)}%
                   </p>
                 </div>
               )}
 
-              <div className="flex justify-end gap-3 mt-6">
+              <div className="mt-6 flex justify-end gap-3">
                 <button
                   onClick={() => {
                     setIsObsidianModalOpen(false);
                     setSelectedFiles([]);
                   }}
-                  className="mt-2 lg:px-4 lg:py-2 px-2 py-2 inline-flex items-center justify-center gap-2 rounded-sm text-sm font-medium border border-white/10 text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:bg-[#3c1671] hover:border-[#6D28D9]"
+                  className="mt-2 inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-sm border border-white/10 px-2 py-2 text-sm font-medium text-[#FAFAFA] transition-all duration-200 hover:border-[#6D28D9] hover:bg-[#3c1671] lg:px-4 lg:py-2"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleObsidianUpload}
                   disabled={selectedFiles.length === 0 || isUploading}
-                  className="mt-2 lg:px-4 lg:py-2 px-2 py-2 inline-flex items-center justify-center gap-2 rounded-sm text-sm font-medium border border-white/10 !bg-[#9334E9] text-[#FAFAFA] cursor-pointer transition-all duration-200 whitespace-nowrap hover:!bg-[#3c1671] hover:border-[#6D28D9]"
+                  className="mt-2 inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-sm border border-white/10 !bg-[#9334E9] px-2 py-2 text-sm font-medium text-[#FAFAFA] transition-all duration-200 hover:border-[#6D28D9] hover:!bg-[#3c1671] lg:px-4 lg:py-2"
                 >
                   Upload Files
                 </button>
@@ -2067,20 +2125,24 @@ function SettingsContent() {
       )}
 
       {showBroaderAccessModal && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
-          <div className="bg-zinc-900 rounded-lg p-6 max-w-md w-full border border-zinc-700">
-            <h3 className="text-xl font-medium text-white mb-4">Broader Google Access Required</h3>
-            <p className="text-zinc-300 mb-6">
-              We need broader access to your Google account to enable Google Docs integration. The
-              app is still in the verification process from Google.
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="w-full max-w-md rounded-lg border border-zinc-700 bg-zinc-900 p-6">
+            <h3 className="mb-4 text-xl font-medium text-white">
+              Broader Google Access Required
+            </h3>
+            <p className="mb-6 text-zinc-300">
+              We need broader access to your Google account to enable Google
+              Docs integration. The app is still in the verification process
+              from Google.
             </p>
-            <p className="text-zinc-300 mb-6">
-              If you wish to proceed, you can continue with the authentication process.
+            <p className="mb-6 text-zinc-300">
+              If you wish to proceed, you can continue with the authentication
+              process.
             </p>
             <div className="flex justify-end gap-4">
               <button
                 onClick={() => setShowBroaderAccessModal(false)}
-                className="px-4 py-2 rounded-lg bg-zinc-800 text-white hover:bg-zinc-700 transition-colors"
+                className="rounded-lg bg-zinc-800 px-4 py-2 text-white transition-colors hover:bg-zinc-700"
               >
                 Cancel
               </button>
@@ -2089,7 +2151,7 @@ function SettingsContent() {
                   setShowBroaderAccessModal(false);
                   window.location.href = "/api/google/auth";
                 }}
-                className="px-4 py-2 rounded-lg bg-[#9334E9] text-white hover:bg-[#7928CA] transition-colors"
+                className="rounded-lg bg-[#9334E9] px-4 py-2 text-white transition-colors hover:bg-[#7928CA]"
               >
                 Continue
               </button>

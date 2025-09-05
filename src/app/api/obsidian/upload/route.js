@@ -285,4 +285,3 @@ function calculateCentroid(embeddings) {
 
   return centroid;
 }
-

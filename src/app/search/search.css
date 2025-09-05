@@ -12,7 +12,7 @@
   flex-direction: column;
   background: rgb(24 24 27 / 0.7);
   /* backdrop-filter: blur(9px); */
-  border: 1px solid #27272A;
+  border: 1px solid #27272a;
   border-radius: 0.5rem;
   z-index: 48;
   /* padding: 18px 10px; */
@@ -68,7 +68,7 @@
 }
 
 .sidebarItem.sidebarItemActive:hover {
-  border: 1px solid #6D28D9;
+  border: 1px solid #6d28d9;
 }
 
 .deleteIcon {
@@ -130,7 +130,6 @@
   margin-left: 0;
 }
 
-
 .followUpInputArea {
   padding: 15px 40px;
   width: calc(100% - 40px);
@@ -139,10 +138,7 @@
   right: 11px;
 }
 
-
-
 .answer {
-  
 }
 .sourceItems {
   display: flex;
@@ -152,7 +148,7 @@
 .sourceItem {
   background-color: black;
   border-radius: 0.5rem; /* rounded-lg */
-  padding: 1rem;         /* p-4 */
+  padding: 1rem; /* p-4 */
   border: 1px solid #27272a; /* border-zinc-800 */
   position: relative;
   transition: border-color 0.2s ease; /* transition-colors */
@@ -161,7 +157,7 @@
 }
 
 .sourceItem:hover {
-  border-color: #6D28D9;
+  border-color: #6d28d9;
 }
 
 .threadItem {
@@ -170,7 +166,6 @@
 .threadItem:last-child {
   margin-bottom: 0;
 }
-
 
 .popupTitle {
   font-size: 21px;
@@ -212,12 +207,11 @@
   margin-right: 11px;
   color: #fff;
 
-  border: 2px solid #E9EAEC;
+  border: 2px solid #e9eaec;
   background: #3a3a3a;
 }
 .fileMutationButton:hover {
   background: #414141;
-  
 }
 .fileMutationButtonHighlight {
   padding: 7px 22px;
@@ -246,8 +240,8 @@
 
 /* Hide scrollbar for IE, Edge and Firefox */
 .no-scrollbar {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
 }
 
 .sidebarDateHeader {
@@ -299,7 +293,9 @@
 
 .spotlight-container {
   animation: scaleIn 0.2s ease-out;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6), 0 10px 10px -5px rgba(0, 0, 0, 0.4);
+  box-shadow:
+    0 10px 25px -5px rgba(0, 0, 0, 0.6),
+    0 10px 10px -5px rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(8px);
 }
 
