@@ -39,35 +39,38 @@ export default function ResetPassword() {
       }}
     >
       <div className="w-full max-w-[95%] md:max-w-md">
-        <div className="flex justify-center items-center mb-6 md:mb-8">
+        <div className="mb-6 flex items-center justify-center md:mb-8">
           <img
             src="/amurex.png"
             alt="Amurex logo"
-            className="w-8 h-8 md:w-10 md:h-10 border-2 border-white rounded-full"
+            className="h-8 w-8 rounded-full border-2 border-white md:h-10 md:w-10"
           />
-          <p className="text-white text-base md:text-lg font-semibold pl-2">
+          <p className="pl-2 text-base font-semibold text-white md:text-lg">
             Amurex
           </p>
         </div>
 
-        <div className="w-full rounded-lg bg-[#0E0F0F] p-6 md:p-8 backdrop-blur-sm shadow-lg">
-          <div className="text-center mb-6 md:mb-8">
+        <div className="w-full rounded-lg bg-[#0E0F0F] p-6 shadow-lg backdrop-blur-sm md:p-8">
+          <div className="mb-6 text-center md:mb-8">
             <h1
-              className="font-serif text-3xl md:text-4xl mb-2 text-white"
+              className="mb-2 font-serif text-3xl text-white md:text-4xl"
               style={{ fontFamily: "var(--font-noto-serif)" }}
             >
               Reset Password
             </h1>
-            <p className="text-gray-400 text-sm md:text-base">
+            <p className="text-sm text-gray-400 md:text-base">
               Enter your email to receive reset instructions
             </p>
           </div>
 
           <hr className="mb-6 border-gray-800" />
 
-          <form onSubmit={handleSendResetEmail} className="space-y-4 md:space-y-6">
+          <form
+            onSubmit={handleSendResetEmail}
+            className="space-y-4 md:space-y-6"
+          >
             <div>
-              <label className="block text-sm font-medium font-semibold text-white mb-1">
+              <label className="mb-1 block text-sm font-medium font-semibold text-white">
                 Email
               </label>
               <Input
@@ -75,7 +78,7 @@ export default function ResetPassword() {
                 placeholder="Enter your email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full py-3 md:py-4 px-3 bg-[#262727] text-white border border-[#262727] text-sm md:text-base"
+                className="w-full border border-[#262727] bg-[#262727] px-3 py-3 text-sm text-white md:py-4 md:text-base"
               />
             </div>
 
@@ -92,15 +95,18 @@ export default function ResetPassword() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-white text-[#0E0F0F] p-2.5 md:p-3 text-sm md:text-base font-semibold rounded-lg hover:bg-[#0E0F0F] hover:text-white hover:border-white border border-[#0E0F0F] transition-all duration-200"
+              className="w-full rounded-lg border border-[#0E0F0F] bg-white p-2.5 text-sm font-semibold text-[#0E0F0F] transition-all duration-200 hover:border-white hover:bg-[#0E0F0F] hover:text-white md:p-3 md:text-base"
             >
               {loading ? "Sending..." : "Send Reset Instructions"}
             </button>
           </form>
 
-          <p className="mt-4 md:mt-6 text-center text-xs md:text-sm text-gray-400">
+          <p className="mt-4 text-center text-xs text-gray-400 md:mt-6 md:text-sm">
             Remember your password?{" "}
-            <Link href="/web_app/signin" className="text-white font-light hover:underline">
+            <Link
+              href="/web_app/signin"
+              className="font-light text-white hover:underline"
+            >
               Sign In
             </Link>
           </p>

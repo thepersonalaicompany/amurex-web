@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 
 // Initialize Supabase client with environment variables
 const supabase = createClient(
@@ -10,10 +10,11 @@ const supabase = createClient(
 export async function GET(request, { params }) {
   try {
     const { id } = params;
-    
+
     const { data, error } = await supabase
-      .from('late_meeting')
-      .select(`
+      .from("late_meeting")
+      .select(
+        `
         id,
         meeting_id,
         meeting_title,
@@ -21,8 +22,9 @@ export async function GET(request, { params }) {
         summary,
         transcript,
         action_items
-      `)
-      .eq('id', id)
+      `
+      )
+      .eq("id", id)
       .single();
 
     if (error) {
@@ -31,7 +33,10 @@ export async function GET(request, { params }) {
 
     return NextResponse.json(data);
   } catch (error) {
-    console.error('API error:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    console.error("API error:", error);
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 }
+    );
   }
-} 
+}

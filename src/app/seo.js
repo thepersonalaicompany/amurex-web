@@ -26,4 +26,3 @@ export const defaultSEOConfig = {
     description: "Your AI copilot for work and life",
   },
 };
-

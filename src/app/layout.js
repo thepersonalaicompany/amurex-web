@@ -87,11 +87,9 @@ export default function RootLayout({ children }) {
 
                 // style={{ backgroundColor: "var(--surface-color-2)" }}
               >
-                <div className="flex flex-row h-screen">
+                <div className="flex h-screen flex-row">
                   <Navbar />
-                  <div className="flex-1 overflow-y-auto">
-                    {children}
-                  </div>
+                  <div className="flex-1 overflow-y-auto">{children}</div>
                 </div>
               </main>
             </span>

@@ -1,32 +1,32 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { X, ChevronLeft, ChevronRight } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { supabase } from '@/lib/supabaseClient';
+import React, { useEffect, useRef, useState } from "react";
+import { X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { supabase } from "@/lib/supabaseClient";
 
 export function PinPopover({ pin, onClose }) {
   const popoverRef = useRef(null);
-  const [newTag, setNewTag] = useState('');
+  const [newTag, setNewTag] = useState("");
   const [currentTagPage, setCurrentTagPage] = useState(0);
 
   useEffect(() => {
-    console.log('PinPopover mounted');
-    console.log('Pin:', pin);
+    console.log("PinPopover mounted");
+    console.log("Pin:", pin);
     const handleClickOutside = (event) => {
       if (popoverRef.current && !popoverRef.current.contains(event.target)) {
         onClose();
       }
     };
     const handleEscapeKey = (event) => {
-      if (event.key === 'Escape') {
+      if (event.key === "Escape") {
         onClose();
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('keydown', handleEscapeKey);
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscapeKey);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleEscapeKey);
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscapeKey);
     };
   }, [onClose]);
 
@@ -36,17 +36,17 @@ export function PinPopover({ pin, onClose }) {
       try {
         const updatedTags = [...(pin.tags || []), newTag.trim()];
         const { data, error } = await supabase
-          .from('documents')
+          .from("documents")
           .update({ tags: updatedTags })
-          .eq('id', pin.id);
+          .eq("id", pin.id);
 
         if (error) throw error;
 
         // Update the pin state locally
         pin.tags = updatedTags;
-        setNewTag('');
+        setNewTag("");
       } catch (error) {
-        console.error('Error adding tag:', error);
+        console.error("Error adding tag:", error);
       }
     }
   };
@@ -63,29 +63,40 @@ export function PinPopover({ pin, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div ref={popoverRef} className="bg-white rounded-lg p-6 w-full sm:w-3/4 h-full sm:h-3/4 flex flex-col sm:flex-row">
-        <div className="w-full sm:w-3/4 pr-4 overflow-y-auto">
-          <h2 className="text-2xl font-bold mb-4">{pin.title}</h2>
-          <p>{pin.text || 'No content available'}</p>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+      <div
+        ref={popoverRef}
+        className="flex h-full w-full flex-col rounded-lg bg-white p-6 sm:h-3/4 sm:w-3/4 sm:flex-row"
+      >
+        <div className="w-full overflow-y-auto pr-4 sm:w-3/4">
+          <h2 className="mb-4 text-2xl font-bold">{pin.title}</h2>
+          <p>{pin.text || "No content available"}</p>
         </div>
-        <div className="w-full sm:w-1/4 mt-4 sm:mt-0 sm:pl-4 sm:border-l">
-          <h3 className="text-xl font-semibold mb-2">Tags</h3>
-          <div className="flex flex-wrap mb-4 h-[120px] mt-4">
+        <div className="mt-4 w-full sm:mt-0 sm:w-1/4 sm:border-l sm:pl-4">
+          <h3 className="mb-2 text-xl font-semibold">Tags</h3>
+          <div className="mb-4 mt-4 flex h-[120px] flex-wrap">
             {pin.tags && pin.tags.length > 0 ? (
               <>
-                {pin.tags.slice(currentTagPage * tagsPerPage, (currentTagPage + 1) * tagsPerPage).map((tag, index) => (
-                  <span key={index} className="bg-gray-200 rounded-full px-3 py-1 text-sm font-semibold text-gray-700 mr-2 mb-2">
-                    {tag}
-                  </span>
-                ))}
+                {pin.tags
+                  .slice(
+                    currentTagPage * tagsPerPage,
+                    (currentTagPage + 1) * tagsPerPage
+                  )
+                  .map((tag, index) => (
+                    <span
+                      key={index}
+                      className="mb-2 mr-2 rounded-full bg-gray-200 px-3 py-1 text-sm font-semibold text-gray-700"
+                    >
+                      {tag}
+                    </span>
+                  ))}
               </>
             ) : (
               <p>No tags available</p>
             )}
           </div>
           {totalPages > 1 && (
-            <div className="flex justify-between mb-4">
+            <div className="mb-4 flex justify-between">
               <Button
                 onClick={handlePrevPage}
                 disabled={currentTagPage === 0}
@@ -121,7 +132,7 @@ export function PinPopover({ pin, onClose }) {
         <Button
           onClick={onClose}
           variant="ghost"
-          className="absolute top-4 right-4"
+          className="absolute right-4 top-4"
         >
           <X className="h-6 w-6" />
         </Button>
