@@ -51,7 +51,8 @@ class TextSplitter {
 }
 
 async function generateTags(text) {
-  if (process.env.CLIENT_MODE === 'local' && process.env.MODEL_NAME) {
+  const clientMode = process.env.CLIENT_MODE || 'local';
+  if (clientMode === 'local' && process.env.MODEL_NAME) {
     try {
       // Use local Ollama model
       const response = await fetch(`${process.env.NEXT_PUBLIC_LOCAL_AI_MODEL_URL}/generate`, {

@@ -70,8 +70,8 @@ async function generateCompletion(messages, modelName) {
 
 // Add this new function near the other helper functions
 async function generatePrompts(documents) {
-  const modelName = process.env.MODEL_NAME;
-  const clientMode = process.env.CLIENT_MODE;
+  const modelName = process.env.MODEL_NAME || '';
+  const clientMode = process.env.CLIENT_MODE || 'local';
   const messages = [
     {
       role: "system",

@@ -16,7 +16,8 @@ export const maxDuration = 300;
 export const dynamic = "force-dynamic";
 
 async function generateTags(text) {
-  if (process.env.CLIENT_MODE === 'local') {
+  const clientMode = process.env.CLIENT_MODE || 'local';
+  if (clientMode === 'local') {
     // Use local Ollama model as fallback
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_LOCAL_AI_MODEL_URL}/generate`, {

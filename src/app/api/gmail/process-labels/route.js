@@ -52,7 +52,7 @@ const GMAIL_COLORS = {
 // Helper function to categorize emails using Groq
 async function categorizeWithAI(fromEmail, subject, body, enabledCategories) {
   const modelName = process.env.MODEL_NAME;
-  const clientMode = process.env.CLIENT_MODE;
+  const clientMode = process.env.CLIENT_MODE || 'local';
   try {
     // Build the system prompt based on enabled categories
     let systemPrompt =
